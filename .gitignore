@@ -10,6 +10,8 @@
 !.yarn/releases
 !.yarn/versions
 
+/amplify/node_modules
+
 # testing
 /coverage
 
@@ -43,4 +45,5 @@ next-env.d.ts
 
 # amplify
 .amplify
+amplify_outputs.json
 
