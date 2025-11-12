@@ -8,7 +8,7 @@ backend:
         - which npx
         - npx ampx --version
         - echo "=== Running pipeline-deploy ==="
-        - npx ampx pipeline-deploy --branch main --app-id YOUR_ACTUAL_APP_ID
+        - npx ampx pipeline-deploy --branch main --app-id do854wbkc4od4
 frontend:
   phases:
     preBuild:
