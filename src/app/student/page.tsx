@@ -36,6 +36,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useStudentDashboard } from "@/lib/hooks/use-student-dashboard";
+// For live backend: useGenerateStory, useUpdateWordMastery hooks
+// import { useGenerateStory, useUpdateWordMastery } from "@/lib/hooks/use-mutations";
 import { mockStudentProfile } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import type { Story, StudentProfile, Word } from "@/lib/types";

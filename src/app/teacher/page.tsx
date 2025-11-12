@@ -29,6 +29,7 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTeacherDashboard } from "@/lib/hooks/use-teacher-dashboard";
+// Future: import { useGenerateStory } from "@/lib/hooks/use-mutations" to create AI assignments
 import { mockAssignments, mockClassSummaries, mockSubmissions, mockTeacherProfile } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import type { Assignment, ClassSummary, TeacherProfile } from "@/lib/types";
