@@ -24,7 +24,9 @@ const schema = a.schema({
       level: a.string().required(),
       createdAt: a.datetime().required(),
       studentId: a.id(),
+      student: a.belongsTo('StudentProfile', 'studentId'),
       teacherId: a.id(),
+      teacher: a.belongsTo('TeacherProfile', 'teacherId'),
       unknownWordIds: a.string().array(),
       highlightedWords: a.ref('HighlightedWord').array(),
       mode: a.ref('StoryGenerationMode'),
@@ -49,6 +51,7 @@ const schema = a.schema({
   Achievement: a
     .model({
       studentId: a.id().required(),
+      student: a.belongsTo('StudentProfile', 'studentId'),
       title: a.string().required(),
       description: a.string().required(),
       icon: a.string().required(),
@@ -81,6 +84,7 @@ const schema = a.schema({
   ClassSummary: a
     .model({
       teacherId: a.id().required(),
+      teacher: a.belongsTo('TeacherProfile', 'teacherId'),
       name: a.string().required(),
       studentCount: a.integer().required(),
       averageLevel: a.string().required(),
@@ -92,6 +96,7 @@ const schema = a.schema({
   Assignment: a
     .model({
       teacherId: a.id().required(),
+      teacher: a.belongsTo('TeacherProfile', 'teacherId'),
       title: a.string().required(),
       dueDate: a.date().required(),
       level: a.string().required(),
@@ -107,8 +112,11 @@ const schema = a.schema({
   SubmissionSummary: a
     .model({
       assignmentId: a.id().required(),
+      assignment: a.belongsTo('Assignment', 'assignmentId'),
       teacherId: a.id().required(),
+      teacher: a.belongsTo('TeacherProfile', 'teacherId'),
       studentId: a.id().required(),
+      student: a.belongsTo('StudentProfile', 'studentId'),
       studentName: a.string().required(),
       submittedAt: a.datetime().required(),
       score: a.integer(),
