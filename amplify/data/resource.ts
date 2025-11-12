@@ -37,6 +37,7 @@ const schema = a.schema({
   Word: a
     .model({
       studentId: a.id().required(),
+      student: a.belongsTo('StudentProfile', 'studentId'),
       text: a.string().required(),
       translation: a.string().required(),
       exampleSentence: a.string(),
