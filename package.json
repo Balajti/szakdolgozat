@@ -7,8 +7,7 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest --run",
-    "amplify:deploy": "ampx pipeline-deploy"
+    "test": "vitest --run"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
