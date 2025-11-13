@@ -17,7 +17,7 @@ export function useUpdateWordMastery(options?: UpdateWordMasteryOptions) {
       const updated: Word = {
         id: input.wordId,
         studentId: input.studentId,
-        text: "", // Unknown locally; caller can merge later
+        text: "",
         translation: "",
         mastery: input.mastery,
         exampleSentence: undefined,
@@ -30,7 +30,7 @@ export function useUpdateWordMastery(options?: UpdateWordMasteryOptions) {
     onError: (err) => options?.onError?.(err),
     onSettled: () => options?.onSettled?.(),
     onSuccess: (word) => {
-      // Invalidate dashboards so they refetch
+      
       queryClient.invalidateQueries({ queryKey: ["student-dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["teacher-dashboard"] });
       return word;
@@ -43,7 +43,7 @@ export function useGenerateStory() {
   return useMutation<GenerateStoryResult, unknown, GenerateStoryArgs>({
     mutationFn: (input) => generateStory(input),
     onSuccess: (result) => {
-      // Refresh student dashboard; teacher dashboard may benefit if assignments use stories later.
+    
       queryClient.invalidateQueries({ queryKey: ["student-dashboard"] });
       return result;
     },

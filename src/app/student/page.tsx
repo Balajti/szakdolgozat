@@ -37,9 +37,9 @@ import {
 } from "@/components/ui/dialog";
 import { useStudentDashboard } from "@/lib/hooks/use-student-dashboard";
 import { useGenerateStory, useUpdateWordMastery } from "@/lib/hooks/use-mutations";
-import { mockStudentProfile } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import type { Story, StudentProfile, Word } from "@/lib/types";
+import { ensureAmplifyConfigured } from "@/lib/api/config";
 
 const masteryLabels: Record<Word["mastery"], string> = {
   known: "Ismert",
@@ -60,16 +60,14 @@ const masteryBadgeAccent: Record<Word["mastery"], string> = {
 };
 
 export default function StudentPortalPage() {
-  const { data, isLoading, isFetching } = useStudentDashboard();
-  const profile = data?.profile ?? mockStudentProfile;
+  useEffect(() => {
+    ensureAmplifyConfigured();
+  }, []);
+  const { data, isLoading, isFetching, error } = useStudentDashboard();
 
-  const [stories, setStories] = useState<Story[]>(() => profile.stories);
-  const [selectedStoryId, setSelectedStoryId] = useState<string>(
-    () => stories[0]?.id ?? "",
-  );
-  const [wordStatuses, setWordStatuses] = useState<Record<string, Word["mastery"]>>(
-    () => Object.fromEntries(profile.words.map((word) => [word.id, word.mastery])),
-  );
+  const [stories, setStories] = useState<Story[]>([]);
+  const [selectedStoryId, setSelectedStoryId] = useState<string>("");
+  const [wordStatuses, setWordStatuses] = useState<Record<string, Word["mastery"]>>({});
   const [activeWordId, setActiveWordId] = useState<string | null>(() => {
     const initialStory = stories[0];
     if (!initialStory) {
@@ -95,9 +93,7 @@ export default function StudentPortalPage() {
 
   useEffect(() => {
     const profileData = data?.profile;
-    if (!profileData) {
-      return;
-    }
+    if (!profileData) return;
 
     const updatedStories = profileData.stories;
     const defaultStatuses = Object.fromEntries(
@@ -129,16 +125,16 @@ export default function StudentPortalPage() {
 
   const wordLookup = useMemo(() => {
     const entries = new Map<string, Word>();
-    profile.words.forEach((word) => entries.set(word.text.toLowerCase(), word));
+    (data?.profile?.words ?? []).forEach((word) => entries.set(word.text.toLowerCase(), word));
     return entries;
-  }, [profile.words]);
+  }, [data?.profile?.words]);
 
   const activeWord = activeWordId
-    ? profile.words.find((word) => word.id === activeWordId)
+    ? data?.profile?.words.find((word) => word.id === activeWordId)
     : undefined;
 
   const masteryCounts = useMemo(() => {
-    return profile.words.reduce(
+    return (data?.profile?.words ?? []).reduce(
       (acc, word) => {
         const mastery = wordStatuses[word.id];
         if (mastery) {
@@ -148,10 +144,10 @@ export default function StudentPortalPage() {
       },
       { known: 0, learning: 0, unknown: 0 } as Record<Word["mastery"], number>,
     );
-  }, [profile.words, wordStatuses]);
+  }, [data?.profile?.words, wordStatuses]);
 
   const vocabularyProgress = Math.round(
-    (masteryCounts.known / Math.max(profile.words.length, 1)) * 100,
+    (masteryCounts.known / Math.max((data?.profile?.words.length ?? 0), 1)) * 100,
   );
 
   const storyTokens = useMemo(() => {
@@ -205,8 +201,8 @@ export default function StudentPortalPage() {
   }, [selectedStory, wordLookup, wordStatuses, activeWordId]);
 
   const achievements = useMemo(
-    () => profile.achievements.slice(0, 3),
-    [profile.achievements],
+    () => (data?.profile?.achievements ?? []).slice(0, 3),
+    [data?.profile?.achievements],
   );
 
   useEffect(() => {
@@ -239,6 +235,7 @@ export default function StudentPortalPage() {
     setReadingError(null);
 
     try {
+      const profile = data!.profile;
       const birthdayYear = profile.birthday ? new Date(profile.birthday).getFullYear() : undefined;
       const currentYear = new Date().getFullYear();
       const age = birthdayYear ? Math.max(5, Math.min(18, currentYear - birthdayYear)) : 12;
@@ -316,7 +313,7 @@ export default function StudentPortalPage() {
     const fallbackWordId =
       story.unknownWordIds.find((id) => wordStatuses[id] !== "known") ??
       story.unknownWordIds[0] ??
-      profile.words[0]?.id ??
+      data?.profile?.words[0]?.id ??
       null;
 
     setActiveWordId(fallbackWordId);
@@ -325,12 +322,30 @@ export default function StudentPortalPage() {
   const handleMasteryUpdate = async (wordId: string, mastery: Word["mastery"]) => {
     setWordStatuses((prev) => ({ ...prev, [wordId]: mastery }));
     try {
-      await updateWordMasteryMutation.mutateAsync({ studentId: profile.id, wordId, mastery });
+      await updateWordMasteryMutation.mutateAsync({ studentId: data!.profile.id, wordId, mastery });
     } catch {
       // Revert on error
-      setWordStatuses((prev) => ({ ...prev, [wordId]: (profile.words.find((w) => w.id === wordId)?.mastery ?? prev[wordId]) }));
+      setWordStatuses((prev) => ({ ...prev, [wordId]: (data!.profile.words.find((w) => w.id === wordId)?.mastery ?? prev[wordId]) }));
     }
   };
+
+  if (error) {
+    return (
+      <PortalShell backHref="/" backLabel="Vissza a kezdőlapra" sidebar={<div />}> 
+        <Alert variant="destructive" title="Hiba történt" description="Nem sikerült betölteni a diák adatait. Próbáld újra később." />
+      </PortalShell>
+    );
+  }
+
+  if (isLoading || !data?.profile) {
+    return (
+      <PortalShell backHref="/" backLabel="Vissza a kezdőlapra" sidebar={<div />}> 
+        <Alert variant="info" title="Betöltés" description="A diák irányítópult adatainak betöltése folyamatban." />
+      </PortalShell>
+    );
+  }
+
+  const profile = data.profile;
 
   return (
     <TooltipProvider delayDuration={120}>
@@ -401,13 +416,11 @@ export default function StudentPortalPage() {
             </div>
           </header>
 
-          {(isLoading || isFetching) && (
-            <Alert
-              variant="info"
-              title="Adatok frissítése"
-              description="A tanulói irányítópult legfrissebb adatait töltjük be."
-            />
-          )}
+          <div className="space-y-2">
+            {isFetching && (
+              <Alert variant="info" title="Adatok frissítése" description="A legfrissebb adataidat töltjük be." />
+            )}
+          </div>
 
           {/* Demo mode alert removed */}
 

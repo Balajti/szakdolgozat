@@ -6,13 +6,13 @@ import { motion } from "motion/react";
 import { Suspense, useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { CalendarDays, Loader2, Lock, Mail, Sparkles, UserPlus } from "lucide-react";
+import { CalendarDays, Loader2, Lock, Mail, Sparkles, UserPlus, CheckCircle2, Circle } from "lucide-react";
 
 import {
   registerSchema,
   type RegisterInput,
 } from "@/lib/auth-client";
-import { signUp, confirmSignUp } from "aws-amplify/auth";
+import { signUp, confirmSignUp, resendSignUpCode } from "aws-amplify/auth";
 import { ensureAmplifyConfigured } from "@/lib/api/config";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +28,11 @@ function RegisterPageContent() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "confirm" | "confirmed" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [confirmationCode, setConfirmationCode] = useState("");
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const RESEND_COOLDOWN_SECONDS = 30;
 
   const form = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
@@ -42,11 +47,28 @@ function RegisterPageContent() {
     },
   });
 
+  const passwordValue = form.watch("password") || "";
+  const passwordCriteria = {
+    minLength: passwordValue.length >= 8,
+    hasLower: /[a-z]/.test(passwordValue),
+    hasUpper: /[A-Z]/.test(passwordValue),
+    hasNumber: /\d/.test(passwordValue),
+    hasSymbol: /[^A-Za-z0-9]/.test(passwordValue),
+  } as const;
+
   useEffect(() => {
     // Ensure Amplify is configured before calling Auth APIs
     ensureAmplifyConfigured();
     form.setValue("role", preselectedRole);
   }, [form, preselectedRole]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   const onSubmit = async (values: RegisterInput) => {
     setStatus("loading");
@@ -69,14 +91,27 @@ function RegisterPageContent() {
       }
     } catch (error) {
       console.error(error);
+      const err = error as { name?: string; message?: string } | undefined;
+      let msg = "Hiba történt a regisztráció során. Ellenőrizd az adatokat vagy próbáld újra később.";
+      switch (err?.name) {
+        case "UsernameExistsException":
+          msg = "Ehhez az e-mail címhez már létezik fiók. Jelentkezz be, vagy kérj új jelszót.";
+          break;
+        case "InvalidPasswordException":
+          msg = "A jelszó nem felel meg a követelményeknek. Legalább 8 karakter, kis- és nagybetű, szám és különleges karakter szükséges.";
+          break;
+        case "InvalidParameterException":
+          msg = "Érvénytelen adatok. Kérjük, ellenőrizd az űrlapot.";
+          break;
+      }
       setStatus("error");
-      setErrorMessage("Hiba történt a regisztráció során. Ellenőrizd az adatokat vagy próbáld újra később.");
+      setErrorMessage(msg);
     }
   };
 
   const handleConfirm = async () => {
     if (status !== "confirm") return;
-    setStatus("loading");
+    setIsConfirming(true);
     setErrorMessage(null);
     try {
       const email = form.getValues("email");
@@ -91,8 +126,54 @@ function RegisterPageContent() {
       }
     } catch (error) {
       console.error(error);
+      const err = error as { name?: string; message?: string } | undefined;
+      let msg = "Nem sikerült megerősíteni a kódot. Ellenőrizd és próbáld újra.";
+      switch (err?.name) {
+        case "CodeMismatchException":
+          msg = "A megadott kód nem megfelelő. Ellenőrizd a karaktereket és próbáld újra.";
+          break;
+        case "ExpiredCodeException":
+          msg = "A kód lejárt. Kérj új kódot az " + '"Kód újraküldése"' + " gombbal.";
+          break;
+        case "LimitExceededException":
+          msg = "Túl sok próbálkozás. Várj pár percet, majd próbáld újra.";
+          break;
+      }
       setStatus("error");
-      setErrorMessage("Nem sikerült megerősíteni a kódot. Ellenőrizd és próbáld újra.");
+      setErrorMessage(msg);
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (status !== "confirm" || resendCooldown > 0 || isResending) return;
+    setIsResending(true);
+    setErrorMessage(null);
+    setResendMessage(null);
+    try {
+      const email = form.getValues("email");
+      await resendSignUpCode({ username: email });
+      setResendMessage("Új megerősítő kódot küldtünk az e-mail címedre.");
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    } catch (error) {
+      console.error(error);
+      const err = error as { name?: string; message?: string } | undefined;
+      let msg = "Nem sikerült újraküldeni a kódot. Próbáld újra később.";
+      switch (err?.name) {
+        case "LimitExceededException":
+          msg = "Túl sok kérés. Várj pár percet, majd próbáld újra.";
+          break;
+        case "UserNotFoundException":
+          msg = "Ehhez az e-mail címhez nem található felhasználó.";
+          break;
+        case "NotAuthorizedException":
+          msg = "A fiókot már megerősítették. Jelentkezz be.";
+          break;
+      }
+      setErrorMessage(msg);
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -186,8 +267,40 @@ function RegisterPageContent() {
                       />
                     </FormControl>
                     <FormDescription>
-                      Legalább 8 karakter, kis- és nagybetű, valamint szám szükséges.
+                      Legalább 8 karakter, kis- és nagybetű, szám és különleges karakter szükséges.
                     </FormDescription>
+                    <ul className="mt-2 grid gap-1 text-sm list-none">
+                      <li className={passwordCriteria.minLength ? "text-green-600" : "text-muted-foreground"}>
+                        <span className="inline-flex items-center gap-2">
+                          {passwordCriteria.minLength ? <CheckCircle2 className="size-4 shrink-0" /> : <Circle className="size-4 shrink-0" />}
+                          Minimum 8 karakter
+                        </span>
+                      </li>
+                      <li className={passwordCriteria.hasLower ? "text-green-600" : "text-muted-foreground"}>
+                        <span className="inline-flex items-center gap-2">
+                          {passwordCriteria.hasLower ? <CheckCircle2 className="size-4 shrink-0" /> : <Circle className="size-4 shrink-0" />}
+                          Tartalmaz kisbetűt (a–z)
+                        </span>
+                      </li>
+                      <li className={passwordCriteria.hasUpper ? "text-green-600" : "text-muted-foreground"}>
+                        <span className="inline-flex items-center gap-2">
+                          {passwordCriteria.hasUpper ? <CheckCircle2 className="size-4 shrink-0" /> : <Circle className="size-4 shrink-0" />}
+                          Tartalmaz nagybetűt (A–Z)
+                        </span>
+                      </li>
+                      <li className={passwordCriteria.hasNumber ? "text-green-600" : "text-muted-foreground"}>
+                        <span className="inline-flex items-center gap-2">
+                          {passwordCriteria.hasNumber ? <CheckCircle2 className="size-4 shrink-0" /> : <Circle className="size-4 shrink-0" />}
+                          Tartalmaz számot (0–9)
+                        </span>
+                      </li>
+                      <li className={passwordCriteria.hasSymbol ? "text-green-600" : "text-muted-foreground"}>
+                        <span className="inline-flex items-center gap-2">
+                          {passwordCriteria.hasSymbol ? <CheckCircle2 className="size-4 shrink-0" /> : <Circle className="size-4 shrink-0" />}
+                          Tartalmaz különleges karaktert (!@#$%^&*…)
+                        </span>
+                      </li>
+                    </ul>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -257,6 +370,9 @@ function RegisterPageContent() {
           {status === "confirm" ? (
             <div className="space-y-4 rounded-2xl border border-primary/40 bg-primary/5 p-4">
               <Alert variant="info" title="Kód megerősítés szükséges" description="Írd be az e-mailben kapott 6 jegyű kódot." />
+              {resendMessage ? (
+                <Alert variant="success" title={resendMessage} />
+              ) : null}
               <div className="flex gap-3">
                 <Input
                   placeholder="Megerősítő kód"
@@ -264,8 +380,11 @@ function RegisterPageContent() {
                   onChange={(e) => setConfirmationCode(e.target.value.trim())}
                   className="flex-1"
                 />
-                <Button type="button" onClick={handleConfirm} disabled={!confirmationCode || status === "confirm"}>
+                <Button type="button" onClick={handleConfirm} disabled={!confirmationCode || isConfirming}>
                   Megerősítés
+                </Button>
+                <Button type="button" variant="secondary" onClick={handleResend} disabled={isResending || resendCooldown > 0}>
+                  {resendCooldown > 0 ? `Kód újraküldése (${resendCooldown}s)` : "Kód újraküldése"}
                 </Button>
               </div>
             </div>

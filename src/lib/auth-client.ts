@@ -8,7 +8,8 @@ export const registerSchema = z
       .min(8, "A jelszó legalább 8 karakter legyen")
       .regex(/[A-Z]/, "Tartalmazzon nagybetűt")
       .regex(/[a-z]/, "Tartalmazzon kisbetűt")
-      .regex(/\d/, "Tartalmazzon számot"),
+      .regex(/\d/, "Tartalmazzon számot")
+      .regex(/[^A-Za-z0-9]/, "Tartalmazzon különleges karaktert"),
     confirmPassword: z.string(),
     birthday: z.string(),
     role: z.enum(["student", "teacher"]),

@@ -30,9 +30,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTeacherDashboard } from "@/lib/hooks/use-teacher-dashboard";
 // Future: import { useGenerateStory } from "@/lib/hooks/use-mutations" to create AI assignments
-import { mockAssignments, mockClassSummaries, mockSubmissions, mockTeacherProfile } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import type { Assignment, ClassSummary, TeacherProfile } from "@/lib/types";
+import { ensureAmplifyConfigured } from "@/lib/api/config";
 
 const assignmentStatusLabels: Record<Assignment["status"], string> = {
   draft: "Piszkozat",
@@ -49,12 +49,14 @@ const assignmentStatusAccent: Record<Assignment["status"], string> = {
 };
 
 export default function TeacherPortalPage() {
-  const { data, isLoading, isFetching } = useTeacherDashboard();
+  useEffect(() => {
+    ensureAmplifyConfigured();
+  }, []);
+  const { data, isLoading, isFetching, error } = useTeacherDashboard();
 
-  const profile: TeacherProfile = data?.profile ?? mockTeacherProfile;
-  const assignments: Assignment[] = data?.assignments ?? mockAssignments;
-  const submissions = data?.submissions ?? mockSubmissions;
-  const classes: ClassSummary[] = data?.classes ?? mockClassSummaries;
+  const assignments: Assignment[] = useMemo(() => data?.assignments ?? [], [data?.assignments]);
+  const submissions = useMemo(() => data?.submissions ?? [], [data?.submissions]);
+  const classes: ClassSummary[] = useMemo(() => data?.classes ?? [], [data?.classes]);
   
   const lastSyncedAt = data?.lastSyncedAt;
 
@@ -104,6 +106,24 @@ export default function TeacherPortalPage() {
     const sorted = [...classes].sort((a, b) => b.completionRate - a.completionRate);
     return sorted[0]?.name ?? "—";
   }, [classes]);
+
+  if (error) {
+    return (
+      <PortalShell backHref="/" backLabel="Vissza a kezdőlapra" sidebar={<div />}> 
+        <Alert variant="destructive" title="Hiba történt" description="Nem sikerült betölteni a tanári adataidat. Próbáld újra később." />
+      </PortalShell>
+    );
+  }
+
+  if (isLoading || !data?.profile) {
+    return (
+      <PortalShell backHref="/" backLabel="Vissza a kezdőlapra" sidebar={<div />}> 
+        <Alert variant="info" title="Betöltés" description="A tanári irányítópult adatainak betöltése folyamatban." />
+      </PortalShell>
+    );
+  }
+
+  const profile: TeacherProfile = data.profile;
 
   return (
     <PortalShell
@@ -168,7 +188,7 @@ export default function TeacherPortalPage() {
           </div>
         </header>
 
-        {(isLoading || isFetching) && (
+        {isFetching && (
           <Alert
             variant="info"
             title="Adatok frissítése"
