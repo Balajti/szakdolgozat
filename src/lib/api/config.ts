@@ -64,7 +64,28 @@ let configured = false;
 
 export function ensureAmplifyConfigured() {
   if (configured) return;
-
+  const cognito = resolvedConfig.Auth?.Cognito;
+  if (!cognito?.userPoolId || !cognito?.userPoolClientId) {
+    console.warn(
+      "[Amplify] Incomplete Cognito configuration: userPoolId or userPoolClientId missing. Login/signUp will fail until both are set."
+    );
+  }
   Amplify.configure(resolvedConfig);
   configured = true;
+}
+
+export function isAuthReady(): boolean {
+  const cognito = resolvedConfig.Auth?.Cognito;
+  return !!(cognito?.userPoolId && cognito?.userPoolClientId);
+}
+
+export function getAuthConfigSummary() {
+  const cognito = resolvedConfig.Auth?.Cognito;
+  return {
+    userPoolId: cognito?.userPoolId || null,
+    userPoolClientId: cognito?.userPoolClientId || null,
+    identityPoolId: cognito?.identityPoolId || null,
+    region: resolvedConfig.API?.GraphQL?.region || null,
+    ready: isAuthReady(),
+  } as const;
 }

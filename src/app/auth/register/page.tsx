@@ -11,8 +11,8 @@ import { CalendarDays, Loader2, Lock, Mail, Sparkles, UserPlus } from "lucide-re
 import {
   registerSchema,
   type RegisterInput,
-  mockRegisterUser,
 } from "@/lib/auth-client";
+import { signUp, confirmSignUp } from "aws-amplify/auth";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,8 +24,9 @@ import { Textarea } from "@/components/ui/textarea";
 function RegisterPageContent() {
   const searchParams = useSearchParams();
   const preselectedRole = (searchParams.get("role") as RegisterInput["role"]) ?? "student";
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "confirm" | "confirmed" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [confirmationCode, setConfirmationCode] = useState("");
 
   const form = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
@@ -48,12 +49,47 @@ function RegisterPageContent() {
     setStatus("loading");
     setErrorMessage(null);
     try {
-      await mockRegisterUser(values);
-      setStatus("success");
+      const result = await signUp({
+        username: values.email,
+        password: values.password,
+        options: {
+          userAttributes: {
+            email: values.email,
+          },
+        },
+      });
+
+      if (!result.isSignUpComplete && result.nextStep?.signUpStep === "CONFIRM_SIGN_UP") {
+        setStatus("confirm");
+      } else {
+        setStatus("success");
+      }
     } catch (error) {
       console.error(error);
       setStatus("error");
-      setErrorMessage("Hiba történt a regisztráció során. Próbáld újra később.");
+      setErrorMessage("Hiba történt a regisztráció során. Ellenőrizd az adatokat vagy próbáld újra később.");
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (status !== "confirm") return;
+    setStatus("loading");
+    setErrorMessage(null);
+    try {
+      const email = form.getValues("email");
+      const result = await confirmSignUp({
+        username: email,
+        confirmationCode,
+      });
+      if (result.isSignUpComplete) {
+        setStatus("confirmed");
+      } else {
+        setStatus("success");
+      }
+    } catch (error) {
+      console.error(error);
+      setStatus("error");
+      setErrorMessage("Nem sikerült megerősíteni a kódot. Ellenőrizd és próbáld újra.");
     }
   };
 
@@ -210,8 +246,31 @@ function RegisterPageContent() {
           </div>
 
           {status === "success" ? (
-            <Alert variant="success" title="Sikeres regisztráció">
-              A megadott e-mail címre hamarosan egy megerősítő üzenetet küldünk. Lépj be, és próbáld ki az első történetet!
+            <Alert variant="success" title="Regisztráció elküldve">
+              Ellenőrizd az e-mail fiókodat és írd be a megerősítő kódot.
+            </Alert>
+          ) : null}
+
+          {status === "confirm" ? (
+            <div className="space-y-4 rounded-2xl border border-primary/40 bg-primary/5 p-4">
+              <Alert variant="info" title="Kód megerősítés szükséges" description="Írd be az e-mailben kapott 6 jegyű kódot." />
+              <div className="flex gap-3">
+                <Input
+                  placeholder="Megerősítő kód"
+                  value={confirmationCode}
+                  onChange={(e) => setConfirmationCode(e.target.value.trim())}
+                  className="flex-1"
+                />
+                <Button type="button" onClick={handleConfirm} disabled={!confirmationCode || status === "confirm"}>
+                  Megerősítés
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {status === "confirmed" ? (
+            <Alert variant="success" title="Sikeres megerősítés">
+              A fiók létrejött. Most már <Link href="/auth/login" className="underline">bejelentkezhetsz</Link>.
             </Alert>
           ) : null}
 
@@ -219,9 +278,11 @@ function RegisterPageContent() {
             <Alert variant="destructive" title="Hoppá, hiba történt" description={errorMessage} />
           ) : null}
 
-          <Button type="submit" size="lg" variant="gradient" className="w-full" disabled={status === "loading"}>
-            {status === "loading" ? <Loader2 className="mr-2 size-5 animate-spin" /> : <UserPlus className="mr-2 size-5" />} Regisztráció
-          </Button>
+          {status === "confirm" ? null : (
+            <Button type="submit" size="lg" variant="gradient" className="w-full" disabled={status === "loading"}>
+              {status === "loading" ? <Loader2 className="mr-2 size-5 animate-spin" /> : <UserPlus className="mr-2 size-5" />} Regisztráció
+            </Button>
+          )}
         </form>
       </Form>
 
