@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { fetchAuthSession, getCurrentUser, signIn as amplifySignIn, signOut as amplifySignOut } from "aws-amplify/auth";
-import { Hub } from "aws-amplify";
+import { Hub } from "aws-amplify/utils";
 import { ensureAmplifyConfigured } from "@/lib/api/config";
 import { QueryClient, useQueryClient } from "@tanstack/react-query";
 
