@@ -276,7 +276,7 @@ const schema = a.schema({
     .returns(a.ref('TeacherDashboardPayload'))
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(teacherDashboard)),
-  listStories: a
+  listStudentStories: a
     .query()
     .arguments({
       studentId: a.id(),
@@ -286,7 +286,7 @@ const schema = a.schema({
     .returns(a.ref('StoryConnection'))
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(listStories)),
-  listAssignments: a
+  listTeacherAssignments: a
     .query()
     .arguments({ teacherId: a.id() })
     .returns(a.ref('AssignmentView').array())
@@ -304,7 +304,7 @@ const schema = a.schema({
     .returns(a.ref('Word'))
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(updateWordMastery)),
-  createAssignment: a
+  createTeacherAssignment: a
     .mutation()
     .arguments({ input: a.ref('CreateAssignmentInput') })
     .returns(a.ref('Assignment'))

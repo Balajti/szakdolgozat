@@ -5,7 +5,7 @@ type AssignmentModel = Schema["Assignment"]["type"];
 type AssignmentView = Schema["AssignmentView"]["type"];
 type ListResult<T> = GraphQLResult<T[]> & { nextToken?: string | null };
 
-type Handler = Schema["listAssignments"]["functionHandler"];
+type Handler = Schema["listTeacherAssignments"]["functionHandler"];
 
 export const handler: Handler = async (event) => {
   const { teacherId } = event.arguments;

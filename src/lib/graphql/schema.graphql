@@ -7,14 +7,14 @@ schema {
 type Query {
   getStudentDashboard(id: ID!): StudentDashboardPayload!
   getTeacherDashboard(id: ID!): TeacherDashboardPayload!
-  listAssignments(teacherId: ID!): [AssignmentView!]!
-  listStories(studentId: ID!, limit: Int, nextToken: String): StoryConnection!
+  listTeacherAssignments(teacherId: ID!): [AssignmentView!]!
+  listStudentStories(studentId: ID!, limit: Int, nextToken: String): StoryConnection!
 }
 
 type Mutation {
   generateStory(input: StoryGenerationInput!): StoryGenerationPayload!
   updateWordMastery(input: UpdateWordMasteryInput!): Word!
-  createAssignment(input: CreateAssignmentInput!): Assignment!
+  createTeacherAssignment(input: CreateAssignmentInput!): Assignment!
 }
 
 type StudentDashboardPayload {

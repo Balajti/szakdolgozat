@@ -4,7 +4,7 @@ import { getDataClient, unwrapOptionalResult, unwrapResult, type GraphQLResult }
 type AssignmentModel = Schema["Assignment"]["type"];
 type TeacherProfileModel = Schema["TeacherProfile"]["type"];
 
-type Handler = Schema["createAssignment"]["functionHandler"];
+type Handler = Schema["createTeacherAssignment"]["functionHandler"];
 
 const DEFAULT_STATUS: AssignmentModel["status"] = "draft";
 

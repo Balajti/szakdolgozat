@@ -2,11 +2,11 @@ import type { Schema } from "../../data/resource";
 import { getDataClient, unwrapListResult, type GraphQLResult } from "../shared/data-client";
 
 type StoryModel = Schema["Story"]["type"];
-type StoryConnection = Schema["listStories"]["returnType"];
+type StoryConnection = Schema["listStudentStories"]["returnType"];
 type StoryView = Schema["StoryView"]["type"];
 type ListResult<T> = GraphQLResult<T[]> & { nextToken?: string | null };
 
-export const handler: Schema["listStories"]["functionHandler"] = async (event) => {
+export const handler: Schema["listStudentStories"]["functionHandler"] = async (event) => {
   const { studentId, limit, nextToken } = event.arguments;
   if (!studentId) {
     throw new Error("studentId is required");
