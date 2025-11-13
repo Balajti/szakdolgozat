@@ -46,7 +46,8 @@ import { useStudentDashboard } from "@/lib/hooks/use-student-dashboard";
 import { useGenerateStory, useUpdateWordMastery } from "@/lib/hooks/use-mutations";
 import { cn } from "@/lib/utils";
 import type { Story, StudentProfile, Word } from "@/lib/types";
-import { ensureAmplifyConfigured } from "@/lib/api/config";
+import { RequireAuth } from "@/components/providers/require-auth";
+import { LogoutButton } from "@/components/ui/logout-button";
 
 const masteryLabels: Record<Word["mastery"], string> = {
   known: "Ismert",
@@ -66,10 +67,7 @@ const masteryBadgeAccent: Record<Word["mastery"], string> = {
   unknown: "bg-amber-500/10 text-amber-700",
 };
 
-export default function StudentPortalPage() {
-  useEffect(() => {
-    ensureAmplifyConfigured();
-  }, []);
+function StudentPortalPageInner() {
   const { data, isLoading, isFetching, error } = useStudentDashboard();
 
   const [stories, setStories] = useState<Story[]>([]);
@@ -377,6 +375,7 @@ export default function StudentPortalPage() {
               )}
               {isGeneratingStory ? "AI történet készítése..." : "Új AI történet"}
             </Button>
+            <LogoutButton className="ml-2" />
           </div>
         }
       >
@@ -958,6 +957,14 @@ export default function StudentPortalPage() {
         </DialogContent>
       </Dialog>
     </TooltipProvider>
+  );
+}
+
+export default function StudentPortalPage() {
+  return (
+    <RequireAuth>
+      <StudentPortalPageInner />
+    </RequireAuth>
   );
 }
 

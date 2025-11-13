@@ -8,9 +8,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Loader2, Lock, LogIn, Mail, Sparkles } from "lucide-react";
 
-import { loginSchema, type LoginInput, mockUsers } from "@/lib/auth-client";
-import { signIn } from "aws-amplify/auth";
-import { ensureAmplifyConfigured } from "@/lib/api/config";
+import { loginSchema, type LoginInput } from "@/lib/auth-client";
+import { useAuth } from "@/components/providers/auth-provider";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,14 +30,18 @@ export default function LoginPage() {
     },
   });
 
-  // Configure Amplify once when the component is used
-  ensureAmplifyConfigured();
+  const { isAuthenticated, status: authStatus, signIn } = useAuth();
+
+  // If already authenticated, redirect immediately
+  if (isAuthenticated) {
+    router.replace("/student");
+  }
 
   const onSubmit = async (values: LoginInput) => {
     setStatus("loading");
     setErrorMessage(null);
     try {
-      await signIn({ username: values.email, password: values.password });
+      await signIn(values.email, values.password);
       setStatus("success");
       // Default to student dashboard; adjust if you add role routing
       router.push("/student");
@@ -111,7 +114,7 @@ export default function LoginPage() {
             </Alert>
           ) : null}
 
-          <Button type="submit" size="lg" className="w-full" disabled={status === "loading"}>
+          <Button type="submit" size="lg" className="w-full" disabled={status === "loading" || isAuthenticated}>
             {status === "loading" ? <Loader2 className="mr-2 size-5 animate-spin" /> : <LogIn className="mr-2 size-5" />} Belépés
           </Button>
         </form>

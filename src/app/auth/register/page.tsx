@@ -13,7 +13,6 @@ import {
   type RegisterInput,
 } from "@/lib/auth-client";
 import { signUp, confirmSignUp, resendSignUpCode } from "aws-amplify/auth";
-import { ensureAmplifyConfigured } from "@/lib/api/config";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,8 +56,6 @@ function RegisterPageContent() {
   } as const;
 
   useEffect(() => {
-    // Ensure Amplify is configured before calling Auth APIs
-    ensureAmplifyConfigured();
     form.setValue("role", preselectedRole);
   }, [form, preselectedRole]);
 

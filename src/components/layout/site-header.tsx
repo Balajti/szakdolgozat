@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
 import { LogIn, Sparkles } from "lucide-react";
+import { LogoutButton } from "@/components/ui/logout-button";
+import { useAuth } from "@/components/providers/auth-provider";
 
 import { Logo } from "@/components/common/logo";
 import { Button } from "@/components/ui/button";
@@ -17,6 +19,8 @@ const navItems = [
 
 export function SiteHeader() {
   const pathname = usePathname();
+
+  const { isAuthenticated } = useAuth();
 
   return (
     <motion.header
@@ -42,16 +46,22 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Button variant="ghost" asChild>
-            <Link href="/auth/login">
-              <LogIn className="size-4" /> Belépés
-            </Link>
-          </Button>
-          <Button variant="gradient" size="sm" asChild>
-            <Link href={pathname?.startsWith("/teacher") ? "/auth/register?role=teacher" : "/auth/register"}>
-              <Sparkles className="size-4" /> Kezdjük!
-            </Link>
-          </Button>
+          {isAuthenticated ? (
+            <LogoutButton />
+          ) : (
+            <>
+              <Button variant="ghost" asChild>
+                <Link href="/auth/login">
+                  <LogIn className="size-4" /> Belépés
+                </Link>
+              </Button>
+              <Button variant="gradient" size="sm" asChild>
+                <Link href={pathname?.startsWith("/teacher") ? "/auth/register?role=teacher" : "/auth/register"}>
+                  <Sparkles className="size-4" /> Kezdjük!
+                </Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </motion.header>

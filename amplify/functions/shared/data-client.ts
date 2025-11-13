@@ -15,17 +15,13 @@ let dataClient: ReturnType<typeof generateClient<Schema>> | undefined;
 let configurePromise: Promise<void> | undefined;
 
 function validateEnvForData(env: Record<string, string | undefined>): void {
-  // Known required markers for Gen 2 data client (may evolve; we check a minimal set)
-  const expectedKeys = [
-    "AMPLIFY_DATA_ENV_CONFIG", // consolidated config JSON
-    "AWS_REGION",
-  ];
-
-  const missing = expectedKeys.filter((k) => !env[k] || env[k] === "{}");
-  if (missing.length > 0) {
+  // Accept either new consolidated key or SSM key used in some runtimes
+  const hasPrimary = !!env["AMPLIFY_DATA_ENV_CONFIG"] && env["AMPLIFY_DATA_ENV_CONFIG"] !== "{}";
+  const hasSsm = !!env["AMPLIFY_SSM_ENV_CONFIG"] && env["AMPLIFY_SSM_ENV_CONFIG"] !== "{}";
+  const regionOk = !!env["AWS_REGION"] || !!env["AWS_DEFAULT_REGION"];
+  if (!(regionOk && (hasPrimary || hasSsm))) {
     throw new Error(
-      `Amplify Data configuration missing in Lambda environment. Missing keys: ${missing.join(", ")}. ` +
-      `Redeploy backend or update function binding. Prevent leaking full env; diagnostics limited.`,
+      "Amplify Data configuration missing or incomplete in Lambda environment. Add 'permissions: [data]' to defineFunction and redeploy with 'npx ampx push'.",
     );
   }
 }

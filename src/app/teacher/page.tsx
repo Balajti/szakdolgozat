@@ -43,7 +43,8 @@ import { useTeacherDashboard } from "@/lib/hooks/use-teacher-dashboard";
 // Future: import { useGenerateStory } from "@/lib/hooks/use-mutations" to create AI assignments
 import { cn } from "@/lib/utils";
 import type { Assignment, ClassSummary, TeacherProfile } from "@/lib/types";
-import { ensureAmplifyConfigured } from "@/lib/api/config";
+import { RequireAuth } from "@/components/providers/require-auth";
+import { LogoutButton } from "@/components/ui/logout-button";
 
 const assignmentStatusLabels: Record<Assignment["status"], string> = {
   draft: "Piszkozat",
@@ -59,10 +60,7 @@ const assignmentStatusAccent: Record<Assignment["status"], string> = {
   graded: "bg-emerald-100 text-emerald-800",
 };
 
-export default function TeacherPortalPage() {
-  useEffect(() => {
-    ensureAmplifyConfigured();
-  }, []);
+function TeacherPortalPageInner() {
   const { data, isLoading, isFetching, error } = useTeacherDashboard();
 
   const assignments: Assignment[] = useMemo(() => data?.assignments ?? [], [data?.assignments]);
@@ -160,6 +158,7 @@ export default function TeacherPortalPage() {
             <Sparkles className="size-4" />
             Új AI történet
           </Button>
+          <LogoutButton className="ml-1" />
         </div>
       }
     >
@@ -908,6 +907,14 @@ export default function TeacherPortalPage() {
         </Tabs>
       </div>
     </PortalShell>
+  );
+}
+
+export default function TeacherPortalPage() {
+  return (
+    <RequireAuth>
+      <TeacherPortalPageInner />
+    </RequireAuth>
   );
 }
 
