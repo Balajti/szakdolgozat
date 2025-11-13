@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   mockAssignments,
   mockClassSummaries,
+  mockRecommendations,
   mockStudentProfile,
   mockSubmissions,
   mockTeacherProfile,
@@ -37,11 +38,15 @@ describe("WordNest data client", () => {
 
     const result = await fetchStudentDashboard({ studentId: "demo-student" });
 
-  expect(result.source).toBe("mock");
-  expect(result.profile.name).toBe(mockStudentProfile.name);
-  expect(result.profile.email).toBe(mockStudentProfile.email);
-  expect(result.profile.words.length).toBe(mockStudentProfile.words.length);
-  expect(result.profile.stories.length).toBe(mockStudentProfile.stories.length);
+    expect(result.source).toBe("mock");
+    expect(result.profile.name).toBe(mockStudentProfile.name);
+    expect(result.profile.email).toBe(mockStudentProfile.email);
+    expect(result.profile.words.length).toBe(mockStudentProfile.words.length);
+    expect(result.profile.stories.length).toBe(mockStudentProfile.stories.length);
+    expect(result.recommendations).toHaveLength(mockRecommendations.length);
+    expect(result.recommendations.map((story) => story.title)).toEqual(
+      mockRecommendations.map((story) => story.title),
+    );
   });
 
   it("fetches student dashboard via Amplify when configured", async () => {
@@ -51,6 +56,7 @@ describe("WordNest data client", () => {
       data: {
         getStudentDashboard: {
           profile: mockStudentProfile,
+          recommendations: mockRecommendations,
         },
       },
     });
@@ -65,6 +71,7 @@ describe("WordNest data client", () => {
     });
     expect(result.source).toBe("api");
     expect(result.profile).toEqual(mockStudentProfile);
+    expect(result.recommendations).toEqual(mockRecommendations);
     expect((Amplify.configure as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBe(1);
   });
 
@@ -103,6 +110,7 @@ describe("WordNest data client", () => {
       data: {
         getStudentDashboard: {
           profile: mockStudentProfile,
+          recommendations: mockRecommendations,
         },
       },
     });

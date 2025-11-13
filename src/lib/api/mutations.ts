@@ -63,11 +63,16 @@ export async function generateStory(input: GenerateStoryInput): Promise<Generate
     const now = new Date();
     const story: Story = {
       id: `local-${now.getTime()}`,
+      studentId: mockStudentProfile.id,
+      teacherId: null,
       title: `AI Story (${input.mode})`,
       content: `This is a locally generated mock story for ${input.level} level containing ${wordsPool.length} words to practice.`,
       createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
       level: input.level,
+      mode: input.mode,
       unknownWordIds: wordsPool.filter((w) => w.mastery !== "known").map((w) => w.id),
+      highlightedWords: [],
     };
     return { story, newWords: [], source: "mock" };
   }

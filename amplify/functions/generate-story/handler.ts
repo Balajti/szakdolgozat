@@ -17,6 +17,8 @@ type WordModel = Schema["Word"]["type"];
 type StudentProfileModel = Schema["StudentProfile"]["type"];
 type StoryGenerationInputModel = Schema["StoryGenerationInput"]["type"];
 type StoryGenerationPayload = Schema["generateStory"]["returnType"];
+type StoryView = Schema["StoryView"]["type"];
+type WordView = Schema["WordView"]["type"];
 type ListResult<T> = GraphQLResult<T[]> & { nextToken?: string | null };
 type Identity = AppSyncIdentityCognito & { sub: string };
 
@@ -73,6 +75,40 @@ function synthesizeStory(input: SanitizedInput): { title: string; content: strin
     content: [intro, vocabularyLine, challengeLine, "", body, conclusion].join("\n"),
   };
 }
+
+const toStoryView = (story: StoryModel): StoryView => {
+  const fallbackTimestamp = new Date().toISOString();
+
+  return {
+    id: story.id,
+    studentId: story.studentId ?? null,
+    teacherId: story.teacherId ?? null,
+    title: story.title,
+    content: story.content,
+    level: story.level,
+    createdAt: story.createdAt ?? fallbackTimestamp,
+    updatedAt: story.updatedAt ?? story.createdAt ?? fallbackTimestamp,
+    mode: story.mode ?? null,
+    unknownWordIds: story.unknownWordIds ?? [],
+    highlightedWords: story.highlightedWords ?? [],
+  };
+};
+
+const toWordView = (word: WordModel): WordView => {
+  const fallbackTimestamp = new Date().toISOString();
+
+  return {
+    id: word.id,
+    studentId: word.studentId,
+    text: word.text,
+    translation: word.translation,
+    exampleSentence: word.exampleSentence ?? null,
+    mastery: word.mastery,
+    lastReviewedAt: word.lastReviewedAt ?? null,
+    createdAt: word.createdAt ?? fallbackTimestamp,
+    updatedAt: word.updatedAt ?? word.createdAt ?? fallbackTimestamp,
+  };
+};
 
 export const handler: Handler = async (event) => {
   const rawInput = event.arguments.input;
@@ -178,8 +214,8 @@ export const handler: Handler = async (event) => {
   );
 
   const payload: StoryGenerationPayload = {
-    story,
-    newWords,
+    story: toStoryView(story),
+    newWords: newWords.map(toWordView),
   };
 
   return payload;

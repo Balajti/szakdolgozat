@@ -7,7 +7,7 @@ schema {
 type Query {
   getStudentDashboard(id: ID!): StudentDashboardPayload!
   getTeacherDashboard(id: ID!): TeacherDashboardPayload!
-  listAssignments(teacherId: ID!): [Assignment!]!
+  listAssignments(teacherId: ID!): [AssignmentView!]!
   listStories(studentId: ID!, limit: Int, nextToken: String): StoryConnection!
 }
 
@@ -18,20 +18,206 @@ type Mutation {
 }
 
 type StudentDashboardPayload {
-  profile: StudentProfile!
-  recommendations: [Story!]!
+  profile: StudentProfileView!
+  recommendations: [StoryView!]!
 }
 
 type TeacherDashboardPayload {
-  profile: TeacherProfile!
-  assignments: [Assignment!]!
-  submissions: [SubmissionSummary!]!
-  classes: [ClassSummary!]!
+  profile: TeacherProfileView!
+  assignments: [AssignmentView!]!
+  submissions: [SubmissionSummaryView!]!
+  classes: [ClassSummaryView!]!
 }
 
 type StoryConnection {
-  items: [Story!]!
+  items: [StoryView!]!
   nextToken: String
+}
+
+type StudentProfileView {
+  id: ID!
+  name: String!
+  email: AWSEmail!
+  birthday: AWSDate
+  avatarUrl: AWSURL
+  level: String!
+  streak: Int!
+  vocabularyCount: Int!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+  achievements: [AchievementView!]!
+  words: [WordView!]!
+  stories: [StoryView!]!
+}
+
+type TeacherProfileView {
+  id: ID!
+  name: String!
+  email: AWSEmail!
+  school: String
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type Word {
+  id: ID!
+  studentId: ID!
+  text: String!
+  translation: String!
+  exampleSentence: String
+  mastery: WordMastery!
+  lastReviewedAt: AWSDateTime
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+enum WordMastery {
+  known
+  learning
+  unknown
+}
+
+type Story {
+  id: ID!
+  studentId: ID
+  teacherId: ID
+  title: String!
+  content: String!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+  level: String!
+  mode: StoryGenerationMode
+  unknownWordIds: [ID!]!
+  highlightedWords: [HighlightedWord!]
+}
+
+type StoryView {
+  id: ID!
+  studentId: ID
+  teacherId: ID
+  title: String!
+  content: String!
+  level: String!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+  mode: StoryGenerationMode
+  unknownWordIds: [String!]
+  highlightedWords: [HighlightedWord!]
+}
+
+type HighlightedWord {
+  word: String!
+  offset: Int!
+  length: Int!
+}
+
+type Achievement {
+  id: ID!
+  studentId: ID!
+  title: String!
+  description: String!
+  icon: String!
+  achievedAt: AWSDate!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type ClassSummary {
+  id: ID!
+  teacherId: ID!
+  name: String!
+  studentCount: Int!
+  averageLevel: String!
+  completionRate: Float!
+  mostChallengingWord: String
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type Assignment {
+  id: ID!
+  teacherId: ID!
+  title: String!
+  dueDate: AWSDate!
+  level: String!
+  status: AssignmentStatus!
+  requiredWords: [String!]
+  excludedWords: [String!]
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type AssignmentView {
+  id: ID!
+  teacherId: ID!
+  title: String!
+  dueDate: AWSDate!
+  level: String!
+  status: AssignmentStatus!
+  requiredWords: [String!]
+  excludedWords: [String!]
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+enum AssignmentStatus {
+  draft
+  sent
+  submitted
+  graded
+}
+
+type SubmissionSummaryView {
+  id: ID!
+  assignmentId: ID!
+  teacherId: ID!
+  studentId: ID!
+  studentName: String!
+  submittedAt: AWSDateTime!
+  score: Int
+  unknownWords: [String!]
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type ClassSummaryView {
+  id: ID!
+  teacherId: ID!
+  name: String!
+  studentCount: Int!
+  averageLevel: String!
+  completionRate: Float!
+  mostChallengingWord: String
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type StoryGenerationPayload {
+  story: StoryView!
+  newWords: [WordView!]!
+}
+
+type WordView {
+  id: ID!
+  studentId: ID!
+  text: String!
+  translation: String!
+  exampleSentence: String
+  mastery: WordMastery!
+  lastReviewedAt: AWSDateTime
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type AchievementView {
+  id: ID!
+  studentId: ID!
+  title: String!
+  description: String!
+  icon: String!
+  achievedAt: AWSDate!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
 }
 
 type StudentProfile {
@@ -46,6 +232,8 @@ type StudentProfile {
   achievements: [Achievement!]!
   words: [Word!]!
   stories: [Story!]!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
 }
 
 type TeacherProfile {
@@ -54,87 +242,24 @@ type TeacherProfile {
   email: AWSEmail!
   school: String
   classes: [ClassSummary!]!
-}
-
-type Word {
-  id: ID!
-  text: String!
-  translation: String!
-  exampleSentence: String
-  mastery: WordMastery!
-  lastReviewedAt: AWSDateTime
-}
-
-enum WordMastery {
-  known
-  learning
-  unknown
-}
-
-type Story {
-  id: ID!
-  title: String!
-  content: String!
   createdAt: AWSDateTime!
-  level: String!
-  unknownWordIds: [ID!]!
-  highlightedWords: [HighlightedWord!]
-}
-
-type HighlightedWord {
-  word: String!
-  offset: Int!
-  length: Int!
-}
-
-type Achievement {
-  id: ID!
-  title: String!
-  description: String!
-  icon: String!
-  achievedAt: AWSDate!
-}
-
-type ClassSummary {
-  id: ID!
-  name: String!
-  studentCount: Int!
-  averageLevel: String!
-  completionRate: Float!
-  mostChallengingWord: String
-}
-
-type Assignment {
-  id: ID!
-  title: String!
-  dueDate: AWSDate!
-  level: String!
-  status: AssignmentStatus!
-  requiredWords: [String!]
-  excludedWords: [String!]
-}
-
-enum AssignmentStatus {
-  draft
-  sent
-  submitted
-  graded
+  updatedAt: AWSDateTime!
 }
 
 type SubmissionSummary {
+  id: ID!
+  assignmentId: ID!
+  teacherId: ID!
   studentId: ID!
   studentName: String!
   submittedAt: AWSDateTime!
   score: Int
   unknownWords: [String!]!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
 }
 
-type StoryGenerationPayload {
-  story: Story!
-  newWords: [Word!]!
-}
-
-input StoryGenerationInput {
+type StoryGenerationInput {
   level: String!
   age: Int!
   knownWords: [String!]!

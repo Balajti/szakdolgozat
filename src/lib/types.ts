@@ -1,84 +1,113 @@
 export type UserRole = "student" | "teacher" | "parent";
 
+export type WordMastery = "known" | "learning" | "unknown";
+export type AssignmentStatus = "draft" | "sent" | "submitted" | "graded";
+export type StoryGenerationMode = "placement" | "personalized" | "teacher";
+
+export interface HighlightedWord {
+  word: string;
+  offset: number;
+  length: number;
+}
+
 export interface Word {
   id: string;
+  studentId: string;
   text: string;
   translation: string;
-  exampleSentence?: string;
-  mastery: "known" | "learning" | "unknown";
-  lastReviewedAt?: string;
+  exampleSentence?: string | null;
+  mastery: WordMastery;
+  lastReviewedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Story {
   id: string;
+  studentId?: string | null;
+  teacherId?: string | null;
   title: string;
   content: string;
-  createdAt: string;
   level: string;
+  createdAt: string;
+  updatedAt: string;
+  mode?: StoryGenerationMode | null;
   unknownWordIds: string[];
-  highlightedWords?: Array<{
-    word: string;
-    offset: number;
-    length: number;
-  }>;
+  highlightedWords?: HighlightedWord[];
+}
+
+export interface Achievement {
+  id: string;
+  studentId: string;
+  title: string;
+  description: string;
+  icon: string;
+  achievedAt: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface StudentProfile {
   id: string;
   name: string;
   email: string;
-  birthday: string;
-  avatarUrl?: string;
+  birthday?: string | null;
+  avatarUrl?: string | null;
   level: string;
   streak: number;
   vocabularyCount: number;
   achievements: Achievement[];
   words: Word[];
   stories: Story[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface TeacherProfile {
   id: string;
   name: string;
   email: string;
-  school?: string;
-  classes: ClassSummary[];
+  school?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ClassSummary {
   id: string;
+  teacherId: string;
   name: string;
   studentCount: number;
   averageLevel: string;
   completionRate: number;
-  mostChallengingWord?: string;
-}
-
-export interface Achievement {
-  id: string;
-  title: string;
-  description: string;
-  icon: string;
-  achievedAt: string;
+  mostChallengingWord?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Assignment {
   id: string;
+  teacherId: string;
   title: string;
   dueDate: string;
   level: string;
-  status: "draft" | "sent" | "submitted" | "graded";
-  requiredWords?: string[];
-  excludedWords?: string[];
-  submissions?: SubmissionSummary[];
+  status: AssignmentStatus;
+  requiredWords: string[];
+  excludedWords: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface SubmissionSummary {
+  id: string;
+  assignmentId: string;
+  teacherId: string;
   studentId: string;
   studentName: string;
   submittedAt: string;
-  score?: number;
+  score?: number | null;
   unknownWords: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface StoryGenerationRequest {
@@ -88,7 +117,7 @@ export interface StoryGenerationRequest {
   unknownWords: string[];
   requiredWords?: string[];
   excludedWords?: string[];
-  mode: "placement" | "personalized" | "teacher";
+  mode: StoryGenerationMode;
 }
 
 export interface StoryGenerationResponse {

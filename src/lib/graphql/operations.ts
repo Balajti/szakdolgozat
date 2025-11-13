@@ -10,33 +10,62 @@ export const getStudentDashboardQuery = /* GraphQL */ `
         level
         streak
         vocabularyCount
+        createdAt
+        updatedAt
         achievements {
           id
+          studentId
           title
           description
           icon
           achievedAt
+          createdAt
+          updatedAt
         }
         words {
           id
+          studentId
           text
           translation
           exampleSentence
           mastery
           lastReviewedAt
+          createdAt
+          updatedAt
         }
         stories {
           id
+          studentId
+          teacherId
           title
           content
-          createdAt
           level
+          createdAt
+          updatedAt
+          mode
           unknownWordIds
           highlightedWords {
             word
             offset
             length
           }
+        }
+      }
+      recommendations {
+        id
+        studentId
+        teacherId
+        title
+        content
+        level
+        createdAt
+        updatedAt
+        mode
+        unknownWordIds
+        highlightedWords {
+          word
+          offset
+          length
         }
       }
     }
@@ -51,38 +80,43 @@ export const getTeacherDashboardQuery = /* GraphQL */ `
         name
         email
         school
-        classes {
-          id
-          name
-          studentCount
-          averageLevel
-          completionRate
-          mostChallengingWord
-        }
+        createdAt
+        updatedAt
       }
       assignments {
         id
+        teacherId
         title
         dueDate
         level
         status
         requiredWords
         excludedWords
+        createdAt
+        updatedAt
       }
       submissions {
+        id
+        assignmentId
+        teacherId
         studentId
         studentName
         submittedAt
         score
         unknownWords
+        createdAt
+        updatedAt
       }
       classes {
         id
+        teacherId
         name
         studentCount
         averageLevel
         completionRate
         mostChallengingWord
+        createdAt
+        updatedAt
       }
     }
   }

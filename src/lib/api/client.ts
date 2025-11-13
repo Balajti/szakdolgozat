@@ -4,6 +4,7 @@ import { ensureAmplifyConfigured } from "@/lib/api/config";
 import {
   mockAssignments,
   mockClassSummaries,
+  mockRecommendations,
   mockStudentProfile,
   mockSubmissions,
   mockTeacherProfile,
@@ -11,6 +12,7 @@ import {
 import type {
   Assignment,
   ClassSummary,
+  Story,
   StudentProfile,
   SubmissionSummary,
   TeacherProfile,
@@ -22,6 +24,7 @@ type DataSource = "mock" | "api";
 type StudentDashboardQueryResult = {
   getStudentDashboard?: {
     profile: StudentProfile;
+    recommendations: Story[];
   } | null;
 };
 
@@ -50,6 +53,7 @@ function getQueryData<T>(response: unknown): T {
 
 export interface StudentDashboardPayload {
   profile: StudentProfile;
+  recommendations: Story[];
   source: DataSource;
   lastSyncedAt: string;
 }
@@ -77,6 +81,7 @@ export async function fetchStudentDashboard(options: { studentId: string }): Pro
   if (fetchMode === "mock") {
     return {
       profile: mockStudentProfile,
+      recommendations: mockRecommendations,
       source: "mock",
       lastSyncedAt: new Date().toISOString(),
     };
@@ -94,10 +99,11 @@ export async function fetchStudentDashboard(options: { studentId: string }): Pro
     throw new Error("Unexpected API response while fetching student dashboard");
   }
 
-  const { profile } = data.getStudentDashboard;
+  const { profile, recommendations } = data.getStudentDashboard;
 
   return {
     profile,
+    recommendations,
     source: "api",
     lastSyncedAt: new Date().toISOString(),
   };

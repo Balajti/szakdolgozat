@@ -320,11 +320,16 @@ export default function StudentPortalPage() {
 
       const newStory: Story = {
         id: `ai-story-${now.getTime()}`,
+        studentId: profile.id,
+        teacherId: null,
         title: `AI történet #${stories.length + 1}`,
         content: buildGeneratedStoryText(uniqueFocusWords),
         createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
         level: profile.level,
+        mode: "personalized",
         unknownWordIds: uniqueFocusWords.map((word) => word.id),
+        highlightedWords: [],
       };
 
       setStories((prev) => [newStory, ...prev]);
@@ -751,7 +756,7 @@ function StudentSidebar({ profile, activeWordId, onSelectWord, wordStatuses }: S
       <div className="rounded-3xl bg-gradient-to-br from-primary/90 via-primary to-primary/80 p-6 text-white shadow-lg">
         <div className="flex items-center gap-3">
           <Avatar className="border-white/40">
-            <AvatarImage src={profile.avatarUrl} alt={profile.name} />
+            <AvatarImage src={profile.avatarUrl ?? undefined} alt={profile.name} />
             <AvatarFallback>{profile.name.slice(0, 2)}</AvatarFallback>
           </Avatar>
           <div>
