@@ -71,6 +71,7 @@ const schema = a.schema({
       words: a.hasMany('Word', 'studentId'),
       stories: a.hasMany('Story', 'studentId'),
       achievements: a.hasMany('Achievement', 'studentId'),
+      submissions: a.hasMany('SubmissionSummary', 'studentId'),
     })
     .authorization((allow) => [allow.authenticated()]),
   TeacherProfile: a
@@ -79,6 +80,9 @@ const schema = a.schema({
       email: a.email().required(),
       school: a.string(),
       classes: a.hasMany('ClassSummary', 'teacherId'),
+      stories: a.hasMany('Story', 'teacherId'),
+      assignments: a.hasMany('Assignment', 'teacherId'),
+      submissions: a.hasMany('SubmissionSummary', 'teacherId'),
     })
     .authorization((allow) => [allow.authenticated()]),
   ClassSummary: a
@@ -104,6 +108,7 @@ const schema = a.schema({
       requiredWords: a.string().array(),
       excludedWords: a.string().array(),
       createdAt: a.datetime().required(),
+      submissions: a.hasMany('SubmissionSummary', 'assignmentId'),
     })
     .authorization((allow) => [allow.authenticated()])
     .secondaryIndexes((index) => [
