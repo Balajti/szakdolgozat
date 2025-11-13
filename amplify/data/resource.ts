@@ -244,28 +244,6 @@ const schema = a.schema({
     submissions: a.ref('SubmissionSummaryView').array(),
     classes: a.ref('ClassSummaryView').array(),
   }),
-  StoryGenerationInput: a.customType({
-    level: a.string(),
-    age: a.integer(),
-    knownWords: a.string().array(),
-    unknownWords: a.string().array(),
-    requiredWords: a.string().array(),
-    excludedWords: a.string().array(),
-    mode: a.ref('StoryGenerationMode'),
-  }),
-  UpdateWordMasteryInput: a.customType({
-    studentId: a.id(),
-    wordId: a.id(),
-    mastery: a.ref('WordMastery'),
-  }),
-  CreateAssignmentInput: a.customType({
-    teacherId: a.id(),
-    title: a.string(),
-    dueDate: a.date(),
-    level: a.string(),
-    requiredWords: a.string().array(),
-    excludedWords: a.string().array(),
-  }),
   StoryGenerationPayload: a.customType({
     story: a.ref('StoryView'),
     newWords: a.ref('WordView').array(),
@@ -300,19 +278,38 @@ const schema = a.schema({
     .handler(a.handler.function(listAssignments)),
   generateStory: a
     .mutation()
-    .arguments({ input: a.ref('StoryGenerationInput') })
+    .arguments({
+      level: a.string().required(),
+      age: a.integer().required(),
+      knownWords: a.string().array().required(),
+      unknownWords: a.string().array().required(),
+      requiredWords: a.string().array(),
+      excludedWords: a.string().array(),
+      mode: a.ref('StoryGenerationMode').required(),
+    })
     .returns(a.ref('StoryGenerationPayload'))
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(generateStory)),
   updateWordMastery: a
     .mutation()
-    .arguments({ input: a.ref('UpdateWordMasteryInput') })
+    .arguments({
+      studentId: a.id().required(),
+      wordId: a.id().required(),
+      mastery: a.ref('WordMastery').required(),
+    })
     .returns(a.ref('Word'))
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(updateWordMastery)),
   createTeacherAssignment: a
     .mutation()
-    .arguments({ input: a.ref('CreateAssignmentInput') })
+    .arguments({
+      teacherId: a.id().required(),
+      title: a.string().required(),
+      dueDate: a.date().required(),
+      level: a.string().required(),
+      requiredWords: a.string().array(),
+      excludedWords: a.string().array(),
+    })
     .returns(a.ref('Assignment'))
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(createAssignment)),

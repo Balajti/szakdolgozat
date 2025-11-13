@@ -9,12 +9,7 @@ type Handler = Schema["createTeacherAssignment"]["functionHandler"];
 const DEFAULT_STATUS: AssignmentModel["status"] = "draft";
 
 export const handler: Handler = async (event) => {
-  const { input } = event.arguments;
-  if (!input) {
-    throw new Error("input is required");
-  }
-
-  const { teacherId, title, dueDate, level, requiredWords, excludedWords } = input;
+  const { teacherId, title, dueDate, level, requiredWords, excludedWords } = event.arguments;
   if (!teacherId || !title || !dueDate || !level) {
     throw new Error("teacherId, title, dueDate, and level are required");
   }

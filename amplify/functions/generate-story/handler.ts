@@ -15,18 +15,22 @@ type Handler = Schema["generateStory"]["functionHandler"];
 type StoryModel = Schema["Story"]["type"];
 type WordModel = Schema["Word"]["type"];
 type StudentProfileModel = Schema["StudentProfile"]["type"];
-type StoryGenerationInputModel = Schema["StoryGenerationInput"]["type"];
 type StoryGenerationPayload = Schema["generateStory"]["returnType"];
 type StoryView = Schema["StoryView"]["type"];
 type WordView = Schema["WordView"]["type"];
 type ListResult<T> = GraphQLResult<T[]> & { nextToken?: string | null };
 type Identity = AppSyncIdentityCognito & { sub: string };
 
-type SanitizedInput = Omit<StoryGenerationInputModel, "knownWords" | "unknownWords" | "requiredWords" | "excludedWords"> & {
+type GenerationMode = "placement" | "personalized" | "teacher";
+
+type SanitizedInput = {
+  level: string;
+  age: number;
   knownWords: string[];
   unknownWords: string[];
   requiredWords: string[];
   excludedWords: string[];
+  mode: GenerationMode;
 };
 
 function normalizeWordList(list?: (string | null | undefined)[] | null): string[] {
@@ -41,7 +45,7 @@ function normalizeWordList(list?: (string | null | undefined)[] | null): string[
 
 function resolveOwner(
   event: Parameters<Handler>[0],
-  mode: StoryGenerationInputModel["mode"],
+  mode: GenerationMode,
 ): { studentId?: string; teacherId?: string } {
   const identity = event.identity as Identity | undefined;
   if (!identity) {
@@ -111,17 +115,26 @@ const toWordView = (word: WordModel): WordView => {
 };
 
 export const handler: Handler = async (event) => {
-  const rawInput = event.arguments.input;
-  if (!rawInput) {
-    throw new Error("input is required");
+  const { level, age, mode, knownWords, unknownWords, requiredWords, excludedWords } = event.arguments as {
+    level: string; age: number; mode: GenerationMode;
+    knownWords: (string | null | undefined)[] | null | undefined;
+    unknownWords: (string | null | undefined)[] | null | undefined;
+    requiredWords?: (string | null | undefined)[] | null | undefined;
+    excludedWords?: (string | null | undefined)[] | null | undefined;
+  };
+
+  if (!level || !age || !mode) {
+    throw new Error("level, age, and mode are required");
   }
 
   const sanitized: SanitizedInput = {
-    ...rawInput,
-    knownWords: normalizeWordList(rawInput.knownWords as (string | null | undefined)[] | null | undefined),
-    unknownWords: normalizeWordList(rawInput.unknownWords as (string | null | undefined)[] | null | undefined),
-    requiredWords: normalizeWordList(rawInput.requiredWords as (string | null | undefined)[] | null | undefined),
-    excludedWords: normalizeWordList(rawInput.excludedWords as (string | null | undefined)[] | null | undefined),
+    level,
+    age,
+    mode,
+    knownWords: normalizeWordList(knownWords),
+    unknownWords: normalizeWordList(unknownWords),
+    requiredWords: normalizeWordList(requiredWords),
+    excludedWords: normalizeWordList(excludedWords),
   };
 
   const ownership = resolveOwner(event, sanitized.mode);

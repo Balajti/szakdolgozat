@@ -12,9 +12,9 @@ type Query {
 }
 
 type Mutation {
-  generateStory(input: StoryGenerationInput!): StoryGenerationPayload!
-  updateWordMastery(input: UpdateWordMasteryInput!): Word!
-  createTeacherAssignment(input: CreateAssignmentInput!): Assignment!
+  generateStory(level: String!, age: Int!, knownWords: [String!]!, unknownWords: [String!]!, requiredWords: [String!], excludedWords: [String!], mode: StoryGenerationMode!): StoryGenerationPayload!
+  updateWordMastery(studentId: ID!, wordId: ID!, mastery: WordMastery!): Word!
+  createTeacherAssignment(teacherId: ID!, title: String!, dueDate: AWSDate!, level: String!, requiredWords: [String!], excludedWords: [String!]): Assignment!
 }
 
 type StudentDashboardPayload {
@@ -259,15 +259,6 @@ type SubmissionSummary {
   updatedAt: AWSDateTime!
 }
 
-type StoryGenerationInput {
-  level: String!
-  age: Int!
-  knownWords: [String!]!
-  unknownWords: [String!]!
-  requiredWords: [String!]
-  excludedWords: [String!]
-  mode: StoryGenerationMode!
-}
 
 enum StoryGenerationMode {
   placement
@@ -275,17 +266,4 @@ enum StoryGenerationMode {
   teacher
 }
 
-input UpdateWordMasteryInput {
-  studentId: ID!
-  wordId: ID!
-  mastery: WordMastery!
-}
 
-input CreateAssignmentInput {
-  teacherId: ID!
-  title: String!
-  dueDate: AWSDate!
-  level: String!
-  requiredWords: [String!]
-  excludedWords: [String!]
-}

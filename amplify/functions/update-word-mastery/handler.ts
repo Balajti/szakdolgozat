@@ -6,12 +6,7 @@ type StudentProfileModel = Schema["StudentProfile"]["type"];
 type ListResult<T> = GraphQLResult<T[]> & { nextToken?: string | null };
 
 export const handler: Schema["updateWordMastery"]["functionHandler"] = async (event) => {
-  const { input } = event.arguments;
-  if (!input) {
-    throw new Error("input is required");
-  }
-
-  const { studentId, wordId, mastery } = input;
+  const { studentId, wordId, mastery } = event.arguments;
   if (!studentId || !wordId || !mastery) {
     throw new Error("studentId, wordId, and mastery are required");
   }

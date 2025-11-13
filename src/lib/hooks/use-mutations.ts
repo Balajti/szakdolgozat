@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { generateStory, updateWordMastery, type GenerateStoryInput, type GenerateStoryResult, type UpdateWordMasteryInput } from "@/lib/api/mutations";
+import { generateStory, updateWordMastery, type GenerateStoryArgs, type GenerateStoryResult, type UpdateWordMasteryArgs } from "@/lib/api/mutations";
 import type { Word } from "@/lib/types";
 
 interface UpdateWordMasteryOptions {
@@ -12,15 +12,18 @@ interface UpdateWordMasteryOptions {
 export function useUpdateWordMastery(options?: UpdateWordMasteryOptions) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: UpdateWordMasteryInput) => updateWordMastery(input),
+    mutationFn: (input: UpdateWordMasteryArgs) => updateWordMastery(input),
     onMutate: async (input) => {
       const updated: Word = {
         id: input.wordId,
-        text: "", // Unknown locally; caller can merge
+        studentId: input.studentId,
+        text: "", // Unknown locally; caller can merge later
         translation: "",
         mastery: input.mastery,
         exampleSentence: undefined,
         lastReviewedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
       options?.onOptimistic?.(updated);
     },
@@ -37,7 +40,7 @@ export function useUpdateWordMastery(options?: UpdateWordMasteryOptions) {
 
 export function useGenerateStory() {
   const queryClient = useQueryClient();
-  return useMutation<GenerateStoryResult, unknown, GenerateStoryInput>({
+  return useMutation<GenerateStoryResult, unknown, GenerateStoryArgs>({
     mutationFn: (input) => generateStory(input),
     onSuccess: (result) => {
       // Refresh student dashboard; teacher dashboard may benefit if assignments use stories later.

@@ -13,25 +13,25 @@ const client = () => {
   return generateClient({});
 };
 
-export interface UpdateWordMasteryInput {
+export interface UpdateWordMasteryArgs {
   studentId: string;
   wordId: string;
   mastery: Word["mastery"];
 }
 
-export async function updateWordMastery(input: UpdateWordMasteryInput): Promise<Word> {
+export async function updateWordMastery({ studentId, wordId, mastery }: UpdateWordMasteryArgs): Promise<Word> {
   if (fetchMode === "mock") {
     // Return updated mock word
-    const word = mockWords.find((w) => w.id === input.wordId);
+    const word = mockWords.find((w) => w.id === wordId);
     if (!word) throw new Error("Word not found in mock data");
-    return { ...word, mastery: input.mastery, lastReviewedAt: new Date().toISOString() };
+    return { ...word, mastery, lastReviewedAt: new Date().toISOString() };
   }
 
   const gql = client();
   type UpdateWordMasteryResult = { updateWordMastery: Word };
   const response = await gql.graphql<UpdateWordMasteryResult>({
     query: updateWordMasteryMutation,
-    variables: { input },
+    variables: { studentId, wordId, mastery },
   });
 
   if (!response || !("data" in response) || !response.data) {
@@ -40,7 +40,7 @@ export async function updateWordMastery(input: UpdateWordMasteryInput): Promise<
   return response.data.updateWordMastery;
 }
 
-export interface GenerateStoryInput {
+export interface GenerateStoryArgs {
   level: string;
   age: number;
   knownWords: string[];
@@ -56,7 +56,7 @@ export interface GenerateStoryResult {
   source: FetchMode;
 }
 
-export async function generateStory(input: GenerateStoryInput): Promise<GenerateStoryResult> {
+export async function generateStory(args: GenerateStoryArgs): Promise<GenerateStoryResult> {
   if (fetchMode === "mock") {
     // Simple local synthesis mirroring existing student portal logic
     const wordsPool = mockStudentProfile.words;
@@ -65,12 +65,12 @@ export async function generateStory(input: GenerateStoryInput): Promise<Generate
       id: `local-${now.getTime()}`,
       studentId: mockStudentProfile.id,
       teacherId: null,
-      title: `AI Story (${input.mode})`,
-      content: `This is a locally generated mock story for ${input.level} level containing ${wordsPool.length} words to practice.`,
+      title: `AI Story (${args.mode})`,
+      content: `This is a locally generated mock story for ${args.level} level containing ${wordsPool.length} words to practice.`,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
-      level: input.level,
-      mode: input.mode,
+      level: args.level,
+      mode: args.mode,
       unknownWordIds: wordsPool.filter((w) => w.mastery !== "known").map((w) => w.id),
       highlightedWords: [],
     };
@@ -79,9 +79,10 @@ export async function generateStory(input: GenerateStoryInput): Promise<Generate
 
   const gql = client();
   type GenerateStoryResult = { generateStory: { story: Story; newWords: Word[] } };
+  const { level, age, knownWords, unknownWords, requiredWords, excludedWords, mode } = args;
   const response = await gql.graphql<GenerateStoryResult>({
     query: generateStoryMutation,
-    variables: { input },
+    variables: { level, age, knownWords, unknownWords, requiredWords, excludedWords, mode },
   });
   if (!response || !("data" in response) || !response.data) {
     throw new Error("Missing data in generateStory response");
