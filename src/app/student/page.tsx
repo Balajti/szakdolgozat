@@ -12,6 +12,13 @@ import {
   Sparkles,
   Target,
   Volume2,
+  TrendingUp,
+  Clock,
+  Calendar,
+  Award,
+  Activity,
+  BarChart,
+  Zap,
 } from "lucide-react";
 
 import { PortalShell } from "@/components/layout/portal-shell";
@@ -68,19 +75,7 @@ export default function StudentPortalPage() {
   const [stories, setStories] = useState<Story[]>([]);
   const [selectedStoryId, setSelectedStoryId] = useState<string>("");
   const [wordStatuses, setWordStatuses] = useState<Record<string, Word["mastery"]>>({});
-  const [activeWordId, setActiveWordId] = useState<string | null>(() => {
-    const initialStory = stories[0];
-    if (!initialStory) {
-      return profile.words[0]?.id ?? null;
-    }
-
-    return (
-      initialStory.unknownWordIds.find((id) => wordStatuses[id] !== "known") ??
-      initialStory.unknownWordIds[0] ??
-      profile.words[0]?.id ??
-      null
-    );
-  });
+  const [activeWordId, setActiveWordId] = useState<string | null>(null);
   const [isStoryDialogOpen, setStoryDialogOpen] = useState(false);
   const [generatedStory, setGeneratedStory] = useState<Story | null>(null);
   const [isGeneratingStory, setIsGeneratingStory] = useState(false);
@@ -432,17 +427,54 @@ export default function StudentPortalPage() {
             />
           ) : null}
 
-          <Tabs value={selectedStoryId} onValueChange={handleStoryChange}>
+          <Tabs defaultValue="stories" className="space-y-6">
             <TabsList>
-              {stories.map((story) => (
-                <TabsTrigger key={story.id} value={story.id} className="gap-2">
-                  <BookOpen className="size-4" />
-                  {story.title}
-                </TabsTrigger>
-              ))}
+              <TabsTrigger value="stories" className="gap-2">
+                <BookOpen className="size-4" />
+                Történetek
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="gap-2">
+                <BarChart className="size-4" />
+                Statisztikák
+              </TabsTrigger>
+              <TabsTrigger value="activity" className="gap-2">
+                <Activity className="size-4" />
+                Aktivitás
+              </TabsTrigger>
             </TabsList>
 
-            <TabsContent value={selectedStoryId} className="bg-white/80">
+            {/* Stories Tab */}
+            <TabsContent value="stories" className="space-y-6">
+              {stories.length === 0 ? (
+                <Card className="border-border/40 bg-white">
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <BookOpen className="size-12 text-muted-foreground/40" />
+                    <h3 className="mt-4 text-lg font-semibold text-foreground">Még nincs történeted</h3>
+                    <p className="mt-2 text-center text-sm text-muted-foreground">
+                      Kezdj el egy új történetet az AI segítségével!
+                    </p>
+                    <Button className="mt-6 gap-2" onClick={handleGenerateStory} disabled={isGeneratingStory}>
+                      {isGeneratingStory ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="size-4" />
+                      )}
+                      {isGeneratingStory ? "AI történet készítése..." : "Új AI történet"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Tabs value={selectedStoryId} onValueChange={handleStoryChange}>
+                  <TabsList>
+                    {stories.map((story) => (
+                      <TabsTrigger key={story.id} value={story.id} className="gap-2">
+                        <BookOpen className="size-4" />
+                        {story.title}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+
+                <TabsContent value={selectedStoryId} className="bg-white/80">
               <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
                 <Card className="overflow-hidden border border-border/40 bg-gradient-to-br from-white/90 via-white to-primary/5">
                   <CardHeader className="flex flex-row items-start justify-between">
@@ -602,6 +634,274 @@ export default function StudentPortalPage() {
                     </CardContent>
                   </Card>
                 </div>
+              </div>
+                </TabsContent>
+              </Tabs>
+              )}
+            </TabsContent>
+
+            {/* Analytics Tab */}
+            <TabsContent value="analytics" className="space-y-6">
+              <div className="grid gap-6 lg:grid-cols-4">
+                <Card className="border-border/40 bg-gradient-to-br from-emerald-50 to-white">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Heti haladás
+                    </CardTitle>
+                    <TrendingUp className="size-4 text-emerald-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">+{masteryCounts.known}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {Math.round((masteryCounts.known / Math.max(profile.words.length, 1)) * 100)}% ismert szó
+                    </p>
+                    <Progress 
+                      value={(masteryCounts.known / Math.max(profile.words.length, 1)) * 100} 
+                      className="mt-3 h-2 bg-emerald-100"
+                    />
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border/40 bg-gradient-to-br from-sky-50 to-white">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Olvasási idő
+                    </CardTitle>
+                    <Clock className="size-4 text-sky-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">24 perc</div>
+                    <p className="text-xs text-muted-foreground">
+                      Ezen a héten
+                    </p>
+                    <div className="mt-3 flex gap-1">
+                      {[3, 5, 2, 7, 4, 8, 6].map((height, i) => (
+                        <div
+                          key={i}
+                          className="flex-1 rounded-sm bg-sky-200"
+                          style={{ height: `${height * 4}px` }}
+                        />
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border/40 bg-gradient-to-br from-amber-50 to-white">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Aktív napok
+                    </CardTitle>
+                    <Calendar className="size-4 text-amber-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">{profile.streak} / 7</div>
+                    <p className="text-xs text-muted-foreground">
+                      Sorozat fenntartva
+                    </p>
+                    <div className="mt-3 flex gap-1">
+                      {[true, true, true, false, true, true, true].map((active, i) => (
+                        <div
+                          key={i}
+                          className={`size-4 rounded-full ${
+                            active ? "bg-amber-400" : "bg-muted"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border/40 bg-gradient-to-br from-purple-50 to-white">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Kitüntetések
+                    </CardTitle>
+                    <Award className="size-4 text-purple-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">{achievements.length}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Elért eredmények
+                    </p>
+                    <div className="mt-3 flex gap-1">
+                      {achievements.map((achievement, i) => (
+                        <span key={i} className="text-lg">
+                          {achievement.icon}
+                        </span>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="border-border/40 bg-white">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart className="size-5 text-primary" />
+                    Szókincs elsajátítás
+                  </CardTitle>
+                  <CardDescription>
+                    Kövesd nyomon, hogyan fejlődik a szókincsed idővel
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-6 md:grid-cols-3">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-emerald-700">Ismert szavak</span>
+                        <span className="text-2xl font-bold text-emerald-700">{masteryCounts.known}</span>
+                      </div>
+                      <Progress value={(masteryCounts.known / Math.max(profile.words.length, 1)) * 100} className="h-2 bg-emerald-100" />
+                      <p className="text-xs text-muted-foreground">
+                        {Math.round((masteryCounts.known / Math.max(profile.words.length, 1)) * 100)}% az összes szóból
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-sky-700">Tanulás alatt</span>
+                        <span className="text-2xl font-bold text-sky-700">{masteryCounts.learning}</span>
+                      </div>
+                      <Progress value={(masteryCounts.learning / Math.max(profile.words.length, 1)) * 100} className="h-2 bg-sky-100" />
+                      <p className="text-xs text-muted-foreground">
+                        Folyamatban lévő szavak
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-amber-700">Ismeretlen</span>
+                        <span className="text-2xl font-bold text-amber-700">{masteryCounts.unknown}</span>
+                      </div>
+                      <Progress value={(masteryCounts.unknown / Math.max(profile.words.length, 1)) * 100} className="h-2 bg-amber-100" />
+                      <p className="text-xs text-muted-foreground">
+                        Még feldolgozandó
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Activity Tab */}
+            <TabsContent value="activity" className="space-y-6">
+              <div className="grid gap-6 lg:grid-cols-2">
+                <Card className="border-border/40 bg-white">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Activity className="size-5 text-primary" />
+                      Legutóbbi aktivitás
+                    </CardTitle>
+                    <CardDescription>
+                      Az elmúlt napok eseményei
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ScrollArea className="h-[420px] pr-4">
+                      <div className="space-y-4">
+                        {stories.slice(0, 5).map((story) => (
+                          <div key={story.id} className="flex gap-3 rounded-lg border border-border/50 bg-muted/30 p-3">
+                            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                              <BookOpen className="size-5 text-primary" />
+                            </div>
+                            <div className="flex-1 space-y-1">
+                              <p className="text-sm font-medium text-foreground">
+                                Elolvastam: {story.title}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {format(new Date(story.createdAt), "yyyy. MMM d. HH:mm", { locale: hu })}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                        {profile.words.slice(0, 3).map((word) => (
+                          <div key={word.id} className="flex gap-3 rounded-lg border border-border/50 bg-muted/30 p-3">
+                            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+                              <Zap className="size-5 text-emerald-700" />
+                            </div>
+                            <div className="flex-1 space-y-1">
+                              <p className="text-sm font-medium text-foreground">
+                                Új szó megtanulva: {word.text}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {word.lastReviewedAt ? format(new Date(word.lastReviewedAt), "yyyy. MMM d. HH:mm", { locale: hu }) : "Még nem ismételt"}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border/40 bg-gradient-to-br from-primary/5 to-white">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Lightbulb className="size-5 text-primary" />
+                      Személyre szabott javaslatok
+                    </CardTitle>
+                    <CardDescription>
+                      Következő lépések a fejlődésedhez
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="rounded-lg border border-primary/20 bg-white p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                            <Target className="size-4 text-primary" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm font-semibold text-foreground">
+                              Ismételd át a tanulás alatti szavakat
+                            </h4>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {masteryCounts.learning} szó vár rád. Napi 5 perc ismétlés sokat segíthet!
+                            </p>
+                            <Button size="sm" variant="outline" className="mt-3">
+                              Kezdés
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-sky-200 bg-sky-50/50 p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sky-100">
+                            <BookOpen className="size-4 text-sky-700" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm font-semibold text-foreground">
+                              Olvasd el a következő történetet
+                            </h4>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              A szintednek megfelelő új tartalom vár rád.
+                            </p>
+                            <Button size="sm" variant="outline" className="mt-3" onClick={handleGenerateStory}>
+                              Új történet generálása
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-100">
+                            <Flame className="size-4 text-amber-700" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm font-semibold text-foreground">
+                              Tartsd fenn a sorozatod!
+                            </h4>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {profile.streak} napos sorozatod van. Ne hagyd megszakadni!
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </TabsContent>
           </Tabs>
