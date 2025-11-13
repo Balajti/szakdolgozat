@@ -8,7 +8,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Loader2, Lock, LogIn, Mail, Sparkles } from "lucide-react";
 
-import { loginSchema, type LoginInput, mockLogin, mockUsers } from "@/lib/auth-client";
+import { loginSchema, type LoginInput, mockUsers } from "@/lib/auth-client";
+import { signIn } from "aws-amplify/auth";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,11 +34,10 @@ export default function LoginPage() {
     setStatus("loading");
     setErrorMessage(null);
     try {
-      const result = await mockLogin(values);
+      await signIn({ username: values.email, password: values.password });
       setStatus("success");
-
-      const redirectPath = result.role === "teacher" ? "/teacher" : "/student";
-      router.push(redirectPath);
+      // Default to student dashboard; adjust if you add role routing
+      router.push("/student");
     } catch (error) {
       console.error(error);
       setStatus("error");
@@ -120,42 +120,7 @@ export default function LoginPage() {
         </Link>
       </div>
 
-      <div className="space-y-3 rounded-3xl border border-primary/40 bg-primary/5 p-5 text-sm text-primary">
-        <p className="flex items-center gap-2 font-semibold text-primary">
-          <Sparkles className="size-4" /> Demó belépési adatok
-        </p>
-        <p className="text-primary/80">
-          Az alábbi teszt felhasználókkal AWS fiók nélkül is kipróbálhatod a WordNestet:
-        </p>
-        <ul className="space-y-2">
-          {mockUsers.map((user) => (
-            <li key={user.email} className="rounded-2xl border border-primary/30 bg-white/80 p-3 text-sm text-foreground shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-semibold text-foreground">
-                  {user.role === "teacher" ? "Tanári demó" : "Diák demó"}
-                </span>
-                <span className="rounded-full bg-primary/10 px-3 py-1 text-xs uppercase tracking-wide text-primary">
-                  {user.role}
-                </span>
-              </div>
-              <dl className="mt-2 space-y-1 text-muted-foreground">
-                <div className="flex flex-wrap items-center gap-1">
-                  <dt className="font-medium">E-mail:</dt>
-                  <dd>
-                    <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{user.email}</code>
-                  </dd>
-                </div>
-                <div className="flex flex-wrap items-center gap-1">
-                  <dt className="font-medium">Jelszó:</dt>
-                  <dd>
-                    <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{user.password}</code>
-                  </dd>
-                </div>
-              </dl>
-            </li>
-          ))}
-        </ul>
-      </div>
+      {/* Demo credential helper removed */}
     </motion.div>
   );
 }

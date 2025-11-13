@@ -55,7 +55,7 @@ export default function TeacherPortalPage() {
   const assignments: Assignment[] = data?.assignments ?? mockAssignments;
   const submissions = data?.submissions ?? mockSubmissions;
   const classes: ClassSummary[] = data?.classes ?? mockClassSummaries;
-  const isUsingMockData = (data?.source ?? "mock") === "mock";
+  
   const lastSyncedAt = data?.lastSyncedAt;
 
   const [selectedClassId, setSelectedClassId] = useState<string>(
@@ -176,13 +176,7 @@ export default function TeacherPortalPage() {
           />
         )}
 
-        {isUsingMockData ? (
-          <Alert
-            variant="warning"
-            title="Demó mód"
-            description="Amíg az AWS Amplify backend nincs konfigurálva, a nézet mintadatokkal működik."
-          />
-        ) : null}
+        {/* Demo mode alert removed */}
 
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList>

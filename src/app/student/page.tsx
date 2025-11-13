@@ -36,8 +36,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useStudentDashboard } from "@/lib/hooks/use-student-dashboard";
-// For live backend: useGenerateStory, useUpdateWordMastery hooks
-// import { useGenerateStory, useUpdateWordMastery } from "@/lib/hooks/use-mutations";
+import { useGenerateStory, useUpdateWordMastery } from "@/lib/hooks/use-mutations";
 import { mockStudentProfile } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import type { Story, StudentProfile, Word } from "@/lib/types";
@@ -63,7 +62,6 @@ const masteryBadgeAccent: Record<Word["mastery"], string> = {
 export default function StudentPortalPage() {
   const { data, isLoading, isFetching } = useStudentDashboard();
   const profile = data?.profile ?? mockStudentProfile;
-  const isUsingMockData = (data?.source ?? "mock") === "mock";
 
   const [stories, setStories] = useState<Story[]>(() => profile.stories);
   const [selectedStoryId, setSelectedStoryId] = useState<string>(
@@ -88,6 +86,9 @@ export default function StudentPortalPage() {
   const [isStoryDialogOpen, setStoryDialogOpen] = useState(false);
   const [generatedStory, setGeneratedStory] = useState<Story | null>(null);
   const [isGeneratingStory, setIsGeneratingStory] = useState(false);
+    const updateWordMasteryMutation = useUpdateWordMastery();
+    const generateStoryMutation = useGenerateStory();
+
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
   const [isReadingAloud, setIsReadingAloud] = useState(false);
   const [readingError, setReadingError] = useState<string | null>(null);
@@ -227,66 +228,7 @@ export default function StudentPortalPage() {
     speechRef.current = null;
   }, []);
 
-  const buildGeneratedStoryText = (words: Word[]): string => {
-    if (!words.length) {
-      return "A WordNest AI ma egy rövid bemelegítő történetet ajánl, hogy átismételj néhány korábban tanult kifejezést.";
-    }
-
-    const heroName = profile.name.split(" ")[0] ?? "A diák";
-    const describeWord = (word: Word) =>
-      word.translation
-        ? `a „${word.text}” (${word.translation}) kifejezést`
-        : `a „${word.text}” kifejezést`;
-
-    const preview = words
-      .slice(0, Math.min(3, words.length))
-      .map((word) => `„${word.text}”`)
-      .join(", ");
-
-    const intro = preview
-      ? `${heroName} ma egy hosszabb WordNest kalandba kezdett, ahol a ${preview} kifejezések egy mágikus térképen világítottak.`
-      : `${heroName} ma egy hosszabb WordNest kalandba kezdett, és minden megtalált kifejezést gondosan feljegyzett.`;
-
-    const coreSentences: string[] = [intro];
-
-    for (let index = 0; index < words.length; index += 2) {
-      const current = words[index];
-      const next = words[index + 1];
-
-      if (!current) {
-        continue;
-      }
-
-      if (next) {
-        coreSentences.push(
-          `${heroName} egy szerepjátékos párbeszéd során ${describeWord(current)} gyakorolta, majd azonnal összekötötte ${describeWord(next)} egy új történetben.`,
-        );
-      } else {
-        coreSentences.push(
-          `${heroName} nyugodtan elmélyült ${describeWord(current)} ismételgetésében, hogy legközelebb is magabiztosan használja.`,
-        );
-      }
-    }
-
-    const closing = `A nap végén ${heroName} feljegyezte a WordNest naplójába, hogy ma ${words.length} új kifejezést fedezett fel, és mindet sikerült értelmes mondatokba szőnie.`;
-
-    const storySentences = [...coreSentences, closing];
-    let storyText = storySentences.join(" ");
-    let wordCount = storyText.split(/\s+/).filter(Boolean).length;
-    let reinforcementIndex = 0;
-
-    while (wordCount < 100) {
-      const focusWord = words[reinforcementIndex % words.length];
-      storySentences.push(
-        `${heroName} ismét felolvasta a „${focusWord.text}” szót, és elképzelte, hogyan magyarázná el egy osztálytársának, hogy az is könnyedén megértse.`,
-      );
-      reinforcementIndex += 1;
-      storyText = storySentences.join(" ");
-      wordCount = storyText.split(/\s+/).filter(Boolean).length;
-    }
-
-    return storyText;
-  };
+  // removed local story synthesis; using backend generateStory
 
   const handleGenerateStory = async () => {
     if (isGeneratingStory) {
@@ -297,53 +239,28 @@ export default function StudentPortalPage() {
     setReadingError(null);
 
     try {
-      const baseWordPool = profile.words.length ? profile.words : mockStudentProfile.words;
-      const supplementalWords = baseWordPool.length >= 10
-        ? []
-        : mockStudentProfile.words.filter(
-            (mockWord) => !baseWordPool.some((existing) => existing.id === mockWord.id),
-          );
-      const wordPoolCandidate = [...baseWordPool, ...supplementalWords];
-      const wordPool = wordPoolCandidate.length ? wordPoolCandidate : mockStudentProfile.words;
-      const minTarget = 10;
-      const maxTarget = Math.min(20, wordPool.length);
-      const targetCount =
-        wordPool.length >= minTarget
-          ? Math.floor(Math.random() * (maxTarget - minTarget + 1)) + minTarget
-          : Math.min(minTarget, wordPool.length);
-      const shuffledWords = [...wordPool].sort(() => Math.random() - 0.5);
-      const focusWords = shuffledWords.slice(0, targetCount);
-      const uniqueFocusWords = focusWords.filter(
-        (word, index, self) => self.findIndex((candidate) => candidate.id === word.id) === index,
-      );
-      const now = new Date();
+      const birthdayYear = profile.birthday ? new Date(profile.birthday).getFullYear() : undefined;
+      const currentYear = new Date().getFullYear();
+      const age = birthdayYear ? Math.max(5, Math.min(18, currentYear - birthdayYear)) : 12;
 
-      const newStory: Story = {
-        id: `ai-story-${now.getTime()}`,
-        studentId: profile.id,
-        teacherId: null,
-        title: `AI történet #${stories.length + 1}`,
-        content: buildGeneratedStoryText(uniqueFocusWords),
-        createdAt: now.toISOString(),
-        updatedAt: now.toISOString(),
+      const knownWords = profile.words.filter((w) => w.mastery === "known").map((w) => w.text);
+      const practiceWords = profile.words.filter((w) => w.mastery !== "known").map((w) => w.text);
+
+      const result = await generateStoryMutation.mutateAsync({
         level: profile.level,
+        age,
+        knownWords: knownWords.slice(0, 50),
+        unknownWords: practiceWords.slice(0, 25),
+        requiredWords: [],
+        excludedWords: [],
         mode: "personalized",
-        unknownWordIds: uniqueFocusWords.map((word) => word.id),
-        highlightedWords: [],
-      };
-
-      setStories((prev) => [newStory, ...prev]);
-      setWordStatuses((prev) => {
-        const updated = { ...prev };
-        newStory.unknownWordIds.forEach((wordId) => {
-          updated[wordId] = "learning";
-        });
-        return updated;
       });
+
+      const newStory = result.story;
+      setStories((prev) => [newStory, ...prev]);
       setGeneratedStory(newStory);
       setSelectedStoryId(newStory.id);
-      const fallbackWord = newStory.unknownWordIds[0] ?? focusWords[0]?.id ?? null;
-      setActiveWordId(fallbackWord);
+      setActiveWordId(newStory.unknownWordIds[0] ?? null);
       setStoryDialogOpen(true);
     } finally {
       setIsGeneratingStory(false);
@@ -405,11 +322,14 @@ export default function StudentPortalPage() {
     setActiveWordId(fallbackWordId);
   };
 
-  const handleMasteryUpdate = (wordId: string, mastery: Word["mastery"]) => {
-    setWordStatuses((prev) => ({
-      ...prev,
-      [wordId]: mastery,
-    }));
+  const handleMasteryUpdate = async (wordId: string, mastery: Word["mastery"]) => {
+    setWordStatuses((prev) => ({ ...prev, [wordId]: mastery }));
+    try {
+      await updateWordMasteryMutation.mutateAsync({ studentId: profile.id, wordId, mastery });
+    } catch {
+      // Revert on error
+      setWordStatuses((prev) => ({ ...prev, [wordId]: (profile.words.find((w) => w.id === wordId)?.mastery ?? prev[wordId]) }));
+    }
   };
 
   return (
@@ -489,13 +409,7 @@ export default function StudentPortalPage() {
             />
           )}
 
-          {isUsingMockData ? (
-            <Alert
-              variant="warning"
-              title="Demó mód"
-              description="Amíg az AWS Amplify backend nincs konfigurálva, a nézet mintadatokkal működik."
-            />
-          ) : null}
+          {/* Demo mode alert removed */}
 
           {readingError ? (
             <Alert

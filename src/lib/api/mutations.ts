@@ -6,7 +6,7 @@ import { mockStudentProfile, mockWords } from "@/lib/mock-data";
 import type { Story, Word } from "@/lib/types";
 
 type FetchMode = "mock" | "amplify";
-const fetchMode: FetchMode = (process.env.NEXT_PUBLIC_WORDNEST_API_MODE as FetchMode | undefined) ?? "mock";
+const fetchMode: FetchMode = (process.env.NEXT_PUBLIC_WORDNEST_API_MODE as FetchMode | undefined) ?? "amplify";
 
 const client = () => {
   ensureAmplifyConfigured();
