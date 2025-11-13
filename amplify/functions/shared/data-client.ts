@@ -17,7 +17,8 @@ let configurePromise: Promise<void> | undefined;
 async function ensureAmplifyConfigured(): Promise<void> {
   if (!configurePromise) {
     configurePromise = (async () => {
-  const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(process.env as DataClientEnv);
+      const env = process.env as unknown as DataClientEnv;
+      const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(env);
       Amplify.configure(resourceConfig, libraryOptions);
     })();
   }
