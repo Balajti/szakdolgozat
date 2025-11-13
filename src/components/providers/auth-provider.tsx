@@ -35,10 +35,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
 
   const buildUser = useCallback((current: Awaited<ReturnType<typeof getCurrentUser>>): AuthUser => {
+    const withId = current as { userId?: string };
+    const withDetails = current as { signInDetails?: { loginId?: string | null } };
     return {
-      userId: (current as any)?.userId, // Amplify v6 current user shape
+      userId: withId.userId,
       username: current?.username,
-      email: (current as any)?.signInDetails?.loginId || null,
+      email: withDetails.signInDetails?.loginId ?? null,
     };
   }, []);
 
@@ -69,7 +71,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(null);
         setStatus("unauthenticated");
         queryClient.clear();
-      } else if (event === "sessionExpired") {
+      } else if (event === "tokenRefresh_failure") {
         setStatus("unauthenticated");
         setUser(null);
       }
