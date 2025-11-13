@@ -24,7 +24,7 @@ export const handler: Schema["getTeacherDashboard"]["functionHandler"] = async (
   const profileResult = (await client.models.TeacherProfile.get({ id: teacherId })) as GraphQLResult<TeacherProfileModel>;
   const existingProfile = unwrapOptionalResult<TeacherProfileModel>(profileResult);
 
-  const profileRecord: TeacherProfileModel = existingProfile
+  let profileRecord: TeacherProfileModel = existingProfile
     ?? unwrapResult<TeacherProfileModel>(
       await client.models.TeacherProfile.create({
         id: teacherId,
@@ -33,6 +33,22 @@ export const handler: Schema["getTeacherDashboard"]["functionHandler"] = async (
       }),
       "Failed to create teacher profile",
     );
+
+  if (!profileRecord.email) {
+    profileRecord = unwrapResult<TeacherProfileModel>(
+      await client.models.TeacherProfile.update({
+        id: teacherId,
+        email: fallbackTeacherEmail(teacherId),
+      }),
+      "Failed to backfill teacher email",
+    );
+  }
+
+  const normalizedProfile: TeacherProfileModel = {
+    ...profileRecord,
+    email: profileRecord.email ?? fallbackTeacherEmail(teacherId),
+    school: profileRecord.school ?? null,
+  };
 
   const assignmentsResult = (await client.models.Assignment.list({
     filter: { teacherId: { eq: teacherId } },
@@ -55,15 +71,7 @@ export const handler: Schema["getTeacherDashboard"]["functionHandler"] = async (
   const classes = unwrapListResult<ClassSummaryModel>(classesResult).items as ClassSummaryModel[];
 
   const payload: TeacherDashboardPayload = {
-    profile: {
-      id: profileRecord.id,
-      name: profileRecord.name,
-      email: profileRecord.email ?? fallbackTeacherEmail(teacherId),
-      school: profileRecord.school ?? null,
-      classes: profileRecord.classes ?? null,
-      createdAt: profileRecord.createdAt,
-      updatedAt: profileRecord.updatedAt
-    },
+    profile: normalizedProfile,
     assignments,
     submissions,
     classes,

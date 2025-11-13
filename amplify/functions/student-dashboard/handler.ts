@@ -5,7 +5,6 @@ const DEFAULT_LEVEL = "A1";
 const DEFAULT_STREAK = 0;
 
 type StudentProfileModel = Schema["StudentProfile"]["type"];
-type AchievementModel = Schema["Achievement"]["type"];
 type WordModel = Schema["Word"]["type"];
 type StoryModel = Schema["Story"]["type"];
 type StudentDashboardPayload = Schema["getStudentDashboard"]["returnType"];
@@ -46,13 +45,6 @@ export const handler: Schema["getStudentDashboard"]["functionHandler"] = async (
   })) as ListResult<WordModel>;
   const { items: wordItems } = unwrapListResult<WordModel>(wordsResult);
   const words = wordItems as WordModel[];
-
-  const achievementsResult = (await client.models.Achievement.list({
-    filter: { studentId: { eq: studentId } },
-    limit: 100,
-  })) as ListResult<AchievementModel>;
-  const { items: achievementItems } = unwrapListResult<AchievementModel>(achievementsResult);
-  const achievements = achievementItems as AchievementModel[];
 
   const storiesResult = (await client.models.Story.list({
     filter: { studentId: { eq: studentId } },
