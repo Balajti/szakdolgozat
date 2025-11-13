@@ -318,14 +318,5 @@ export const data = defineData({
   schema,
   authorizationModes: {
     defaultAuthorizationMode: 'userPool',
-  },
-  functions: {
-    getStudentDashboard: studentDashboard,
-    getTeacherDashboard: teacherDashboard,
-    listStories,
-    listAssignments,
-    generateStory,
-    updateWordMastery,
-    createAssignment,
-  },
+  }
 });
