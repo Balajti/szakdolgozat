@@ -10,6 +10,7 @@ import { Loader2, Lock, LogIn, Mail, Sparkles } from "lucide-react";
 
 import { loginSchema, type LoginInput, mockUsers } from "@/lib/auth-client";
 import { signIn } from "aws-amplify/auth";
+import { ensureAmplifyConfigured } from "@/lib/api/config";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,9 @@ export default function LoginPage() {
       password: "",
     },
   });
+
+  // Configure Amplify once when the component is used
+  ensureAmplifyConfigured();
 
   const onSubmit = async (values: LoginInput) => {
     setStatus("loading");
