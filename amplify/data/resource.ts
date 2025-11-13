@@ -33,8 +33,8 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.authenticated()])
     .secondaryIndexes((index) => [
-      index('studentId').sortKeys(['createdAt']),
-      index('teacherId').sortKeys(['createdAt']),
+      index('studentId'),
+      index('teacherId'),
     ]),
   Word: a
     .model({
@@ -47,7 +47,9 @@ const schema = a.schema({
       lastReviewedAt: a.datetime(),
     })
     .authorization((allow) => [allow.authenticated()])
-    .secondaryIndexes((index) => [index('studentId')]),
+    .secondaryIndexes((index) => [
+    index('studentId'),
+  ]),
   Achievement: a
     .model({
       studentId: a.id().required(),
@@ -58,7 +60,9 @@ const schema = a.schema({
       achievedAt: a.date().required(),
     })
     .authorization((allow) => [allow.authenticated()])
-    .secondaryIndexes((index) => [index('studentId')]),
+    .secondaryIndexes((index) => [
+    index('studentId'),
+  ]),
   StudentProfile: a
     .model({
       name: a.string().required(),
@@ -96,7 +100,9 @@ const schema = a.schema({
       mostChallengingWord: a.string(),
     })
     .authorization((allow) => [allow.authenticated()])
-    .secondaryIndexes((index) => [index('teacherId')]),
+    .secondaryIndexes((index) => [
+    index('teacherId'),
+  ]),
   Assignment: a
     .model({
       teacherId: a.id().required(),
@@ -112,8 +118,8 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.authenticated()])
     .secondaryIndexes((index) => [
-      index('teacherId').sortKeys(['dueDate']),
-    ]),
+    index('teacherId'),
+  ]),
   SubmissionSummary: a
     .model({
       assignmentId: a.id().required(),
@@ -129,9 +135,9 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.authenticated()])
     .secondaryIndexes((index) => [
-      index('teacherId').sortKeys(['assignmentId']),
-      index('assignmentId').sortKeys(['submittedAt']),
-    ]),
+    index('teacherId'),
+    index('assignmentId'),
+  ]),
   StoryView: a.customType({
     id: a.id().required(),
     studentId: a.id(),
