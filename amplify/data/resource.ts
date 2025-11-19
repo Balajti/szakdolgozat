@@ -48,8 +48,8 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool')])
     .secondaryIndexes((index) => [
-    index('studentId'),
-  ]),
+      index('studentId'),
+    ]),
   Achievement: a
     .model({
       studentId: a.id().required(),
@@ -61,8 +61,8 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool')])
     .secondaryIndexes((index) => [
-    index('studentId'),
-  ]),
+      index('studentId'),
+    ]),
   StudentProfile: a
     .model({
       name: a.string().required(),
@@ -101,8 +101,8 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool')])
     .secondaryIndexes((index) => [
-    index('teacherId'),
-  ]),
+      index('teacherId'),
+    ]),
   Assignment: a
     .model({
       teacherId: a.id().required(),
@@ -118,8 +118,8 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool')])
     .secondaryIndexes((index) => [
-    index('teacherId'),
-  ]),
+      index('teacherId'),
+    ]),
   SubmissionSummary: a
     .model({
       assignmentId: a.id().required(),
@@ -135,9 +135,9 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool')])
     .secondaryIndexes((index) => [
-    index('teacherId'),
-    index('assignmentId'),
-  ]),
+      index('teacherId'),
+      index('assignmentId'),
+    ]),
   StoryView: a.customType({
     id: a.id().required(),
     studentId: a.id(),

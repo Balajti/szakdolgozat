@@ -217,7 +217,6 @@ function StudentPortalPageInner() {
     speechRef.current = null;
   }, []);
 
-  // removed local story synthesis; using backend generateStory
 
   const handleGenerateStory = async () => {
     if (isGeneratingStory) {
@@ -389,7 +388,7 @@ function StudentPortalPageInner() {
                 Szia, {profile.name.split(" ")[0]}! Folytassuk a történetolvasást.
               </h1>
               <p className="text-muted-foreground">
-                A mai célod: legalább 10 perc olvasás és 3 új szó felfedezése.
+                A mai célod: legalább 10 perc olvasás és 10 új szó felfedezése.
               </p>
             </div>
             <div className="flex gap-3">
@@ -415,8 +414,6 @@ function StudentPortalPageInner() {
               <Alert variant="info" title="Adatok frissítése" description="A legfrissebb adataidat töltjük be." />
             )}
           </div>
-
-          {/* Demo mode alert removed */}
 
           {readingError ? (
             <Alert

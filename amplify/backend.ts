@@ -1,5 +1,4 @@
 import { defineBackend } from '@aws-amplify/backend';
-import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { auth } from './auth/resource';
 import { data } from './data/resource';
 import { createAssignment } from './functions/create-assignment/resource';
@@ -25,18 +24,7 @@ export const backend = defineBackend({
   createAssignment,
 });
 
-type AmplifyFunctionResource = typeof backend.studentDashboard;
-
-const addAppSyncGraphqlPolicy = (resource: AmplifyFunctionResource): void => {
-  resource.resources.lambda.addToRolePolicy(
-    new PolicyStatement({
-      actions: ['appsync:GraphQL'],
-      resources: ['*'],
-    }),
-  );
-};
-
-[
+const functions = [
   backend.studentDashboard,
   backend.teacherDashboard,
   backend.listStories,
@@ -44,4 +32,9 @@ const addAppSyncGraphqlPolicy = (resource: AmplifyFunctionResource): void => {
   backend.generateStory,
   backend.updateWordMastery,
   backend.createAssignment,
-].forEach(addAppSyncGraphqlPolicy);
+];
+
+functions.forEach((fn) => {
+  backend.data.resources.graphqlApi.grantQuery(fn.resources.lambda);
+  backend.data.resources.graphqlApi.grantMutation(fn.resources.lambda);
+});
