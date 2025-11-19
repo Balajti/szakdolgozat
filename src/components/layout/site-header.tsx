@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
-import { LogIn, Sparkles } from "lucide-react";
+import { ArrowRight, LogIn, Sparkles } from "lucide-react";
 import { LogoutButton } from "@/components/ui/logout-button";
 import { useAuth } from "@/components/providers/auth-provider";
 
@@ -21,6 +21,7 @@ export function SiteHeader() {
   const pathname = usePathname();
 
   const { isAuthenticated } = useAuth();
+  const dashboardHref = pathname?.startsWith("/teacher") ? "/teacher" : "/student";
 
   return (
     <motion.header
@@ -47,7 +48,14 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-3">
           {isAuthenticated ? (
-            <LogoutButton />
+            <>
+              <Button variant="secondary" size="sm" className="rounded-full px-5" asChild>
+                <Link href={dashboardHref}>
+                  Vezérlőpult <ArrowRight className="ml-2 size-4" />
+                </Link>
+              </Button>
+              <LogoutButton />
+            </>
           ) : (
             <>
               <Button variant="ghost" asChild>

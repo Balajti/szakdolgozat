@@ -370,19 +370,21 @@ function RegisterPageContent() {
               {resendMessage ? (
                 <Alert variant="success" title={resendMessage} />
               ) : null}
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-col">
                 <Input
                   placeholder="Megerősítő kód"
                   value={confirmationCode}
                   onChange={(e) => setConfirmationCode(e.target.value.trim())}
                   className="flex-1"
                 />
-                <Button type="button" onClick={handleConfirm} disabled={!confirmationCode || isConfirming}>
-                  Megerősítés
-                </Button>
-                <Button type="button" variant="secondary" onClick={handleResend} disabled={isResending || resendCooldown > 0}>
-                  {resendCooldown > 0 ? `Kód újraküldése (${resendCooldown}s)` : "Kód újraküldése"}
-                </Button>
+                <div className="flex gap-3 items-center justify-center">
+                  <Button type="button" onClick={handleConfirm} disabled={!confirmationCode || isConfirming}>
+                    Megerősítés
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={handleResend} disabled={isResending || resendCooldown > 0}>
+                    {resendCooldown > 0 ? `Kód újraküldése (${resendCooldown}s)` : "Kód újraküldése"}
+                  </Button>
+                </div>
               </div>
             </div>
           ) : null}

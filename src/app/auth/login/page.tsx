@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Loader2, Lock, LogIn, Mail, Sparkles } from "lucide-react";
@@ -32,10 +32,12 @@ export default function LoginPage() {
 
   const { isAuthenticated, status: authStatus, signIn } = useAuth();
 
-  // If already authenticated, redirect immediately
-  if (isAuthenticated) {
-    router.replace("/student");
-  }
+  // Redirect after auth state resolves, not during render to avoid React warning
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace("/student");
+    }
+  }, [isAuthenticated, router]);
 
   const onSubmit = async (values: LoginInput) => {
     setStatus("loading");
@@ -114,7 +116,7 @@ export default function LoginPage() {
             </Alert>
           ) : null}
 
-          <Button type="submit" size="lg" className="w-full" disabled={status === "loading" || isAuthenticated}>
+          <Button type="submit" size="lg" className="w-full" disabled={status === "loading" || isAuthenticated || authStatus === "loading"}>
             {status === "loading" ? <Loader2 className="mr-2 size-5 animate-spin" /> : <LogIn className="mr-2 size-5" />} Belépés
           </Button>
         </form>
