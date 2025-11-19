@@ -31,7 +31,7 @@ const schema = a.schema({
       highlightedWords: a.ref('HighlightedWord').array(),
       mode: a.ref('StoryGenerationMode'),
     })
-    .authorization((allow) => [allow.authenticated()])
+    .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool')])
     .secondaryIndexes((index) => [
       index('studentId'),
       index('teacherId'),
@@ -46,7 +46,7 @@ const schema = a.schema({
       mastery: a.ref('WordMastery').required(),
       lastReviewedAt: a.datetime(),
     })
-    .authorization((allow) => [allow.authenticated()])
+    .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool')])
     .secondaryIndexes((index) => [
     index('studentId'),
   ]),
@@ -59,7 +59,7 @@ const schema = a.schema({
       icon: a.string().required(),
       achievedAt: a.date().required(),
     })
-    .authorization((allow) => [allow.authenticated()])
+    .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool')])
     .secondaryIndexes((index) => [
     index('studentId'),
   ]),
@@ -77,7 +77,7 @@ const schema = a.schema({
       achievements: a.hasMany('Achievement', 'studentId'),
       submissions: a.hasMany('SubmissionSummary', 'studentId'),
     })
-    .authorization((allow) => [allow.authenticated()]),
+    .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool')]),
   TeacherProfile: a
     .model({
       name: a.string().required(),
@@ -88,7 +88,7 @@ const schema = a.schema({
       assignments: a.hasMany('Assignment', 'teacherId'),
       submissions: a.hasMany('SubmissionSummary', 'teacherId'),
     })
-    .authorization((allow) => [allow.authenticated()]),
+    .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool')]),
   ClassSummary: a
     .model({
       teacherId: a.id().required(),
@@ -99,7 +99,7 @@ const schema = a.schema({
       completionRate: a.float().required(),
       mostChallengingWord: a.string(),
     })
-    .authorization((allow) => [allow.authenticated()])
+    .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool')])
     .secondaryIndexes((index) => [
     index('teacherId'),
   ]),
@@ -116,7 +116,7 @@ const schema = a.schema({
       createdAt: a.datetime().required(),
       submissions: a.hasMany('SubmissionSummary', 'assignmentId'),
     })
-    .authorization((allow) => [allow.authenticated()])
+    .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool')])
     .secondaryIndexes((index) => [
     index('teacherId'),
   ]),
@@ -133,7 +133,7 @@ const schema = a.schema({
       score: a.integer(),
       unknownWords: a.string().array().required(),
     })
-    .authorization((allow) => [allow.authenticated()])
+    .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool')])
     .secondaryIndexes((index) => [
     index('teacherId'),
     index('assignmentId'),
@@ -252,13 +252,13 @@ const schema = a.schema({
     .query()
     .arguments({ id: a.id() })
     .returns(a.ref('StudentDashboardPayload'))
-    .authorization((allow) => [allow.authenticated()])
+    .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool')])
     .handler(a.handler.function(studentDashboard)),
   getTeacherDashboard: a
     .query()
     .arguments({ id: a.id() })
     .returns(a.ref('TeacherDashboardPayload'))
-    .authorization((allow) => [allow.authenticated()])
+    .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool')])
     .handler(a.handler.function(teacherDashboard)),
   listStudentStories: a
     .query()
@@ -268,13 +268,13 @@ const schema = a.schema({
       nextToken: a.string(),
     })
     .returns(a.ref('StoryConnection'))
-    .authorization((allow) => [allow.authenticated()])
+    .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool')])
     .handler(a.handler.function(listStories)),
   listTeacherAssignments: a
     .query()
     .arguments({ teacherId: a.id() })
     .returns(a.ref('AssignmentView').array())
-    .authorization((allow) => [allow.authenticated()])
+    .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool')])
     .handler(a.handler.function(listAssignments)),
   generateStory: a
     .mutation()
@@ -288,7 +288,7 @@ const schema = a.schema({
       mode: a.ref('StoryGenerationMode').required(),
     })
     .returns(a.ref('StoryGenerationPayload'))
-    .authorization((allow) => [allow.authenticated()])
+    .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool')])
     .handler(a.handler.function(generateStory)),
   updateWordMastery: a
     .mutation()
@@ -298,7 +298,7 @@ const schema = a.schema({
       mastery: a.ref('WordMastery').required(),
     })
     .returns(a.ref('Word'))
-    .authorization((allow) => [allow.authenticated()])
+    .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool')])
     .handler(a.handler.function(updateWordMastery)),
   createTeacherAssignment: a
     .mutation()
@@ -311,7 +311,7 @@ const schema = a.schema({
       excludedWords: a.string().array(),
     })
     .returns(a.ref('Assignment'))
-    .authorization((allow) => [allow.authenticated()])
+    .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool')])
     .handler(a.handler.function(createAssignment)),
 });
 
@@ -321,6 +321,5 @@ export const data = defineData({
   schema,
   authorizationModes: {
     defaultAuthorizationMode: 'userPool',
-    additionalAuthorizationModes: ['iam'],
   },
 });
