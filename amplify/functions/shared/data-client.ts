@@ -74,31 +74,26 @@ async function getGraphQLConfig(): Promise<GraphQLConfig> {
 async function callGraphQL<T>(query: string, variables: Record<string, unknown>): Promise<GraphQLResult<T>> {
   const { endpoint, region } = await getGraphQLConfig();
   const url = new URL(endpoint);
+  const signer = new SignatureV4({
+    credentials: defaultProvider(),
+    region,
+    service: "appsync",
+    sha256: Sha256,
+  });
   const normalizedVariables = variables ?? {};
   const body = JSON.stringify({ query, variables: normalizedVariables });
 
-  const request = new HttpRequest({
+  const httpRequest = new HttpRequest({
     method: "POST",
-    protocol: url.protocol,
-    hostname: url.hostname,
-    path: `${url.pathname || "/graphql"}${url.search || ""}`,
-    headers: {
-      "content-type": "application/json",
-      host: url.hostname,
-    },
+    headers: { "Content-Type": "application/json", host: url.host },
+    hostname: url.host,
+    path: url.pathname,
     body,
   });
 
-  const signer = new SignatureV4({
-    service: "appsync",
-    region,
-    sha256: Sha256,
-    credentials: defaultProvider(),
-  });
-
-  const signed = await signer.sign(request);
+  const signed = await signer.sign(httpRequest);
   const response = await fetch(endpoint, {
-    method: signed.method,
+    method: "POST",
     headers: signed.headers as Record<string, string>,
     body,
   });
