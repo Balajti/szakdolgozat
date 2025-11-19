@@ -1,26 +1,13 @@
 import { randomUUID } from "node:crypto";
-
 import type { AppSyncIdentityCognito } from "aws-lambda";
-
 import type { Schema } from "../../data/resource";
-import {
-  getDataClient,
-  unwrapListResult,
-  unwrapOptionalResult,
-  unwrapResult,
-  type GraphQLResult,
-} from "../shared/data-client";
+import { getDBClient, queryByIndex, type DynamoDBItem } from "../shared/dynamodb-client";
 
 type Handler = Schema["generateStory"]["functionHandler"];
-type StoryModel = Schema["Story"]["type"];
-type WordModel = Schema["Word"]["type"];
-type StudentProfileModel = Schema["StudentProfile"]["type"];
 type StoryGenerationPayload = Schema["generateStory"]["returnType"];
 type StoryView = Schema["StoryView"]["type"];
 type WordView = Schema["WordView"]["type"];
-type ListResult<T> = GraphQLResult<T[]> & { nextToken?: string | null };
 type Identity = AppSyncIdentityCognito & { sub: string };
-
 type GenerationMode = "placement" | "personalized" | "teacher";
 
 type SanitizedInput = {
@@ -34,10 +21,7 @@ type SanitizedInput = {
 };
 
 function normalizeWordList(list?: (string | null | undefined)[] | null): string[] {
-  if (!list) {
-    return [];
-  }
-
+  if (!list) return [];
   return list
     .map((token) => token?.trim())
     .filter((token): token is string => Boolean(token && token.length > 0));
@@ -48,10 +32,7 @@ function resolveOwner(
   mode: GenerationMode,
 ): { studentId?: string; teacherId?: string } {
   const identity = event.identity as Identity | undefined;
-  if (!identity) {
-    return {};
-  }
-
+  if (!identity) return {};
   return mode === "teacher"
     ? { teacherId: identity.sub }
     : { studentId: identity.sub };
@@ -80,37 +61,35 @@ function synthesizeStory(input: SanitizedInput): { title: string; content: strin
   };
 }
 
-const toStoryView = (story: StoryModel): StoryView => {
+const toStoryView = (story: DynamoDBItem): StoryView => {
   const fallbackTimestamp = new Date().toISOString();
-
   return {
-    id: story.id,
-    studentId: story.studentId ?? null,
-    teacherId: story.teacherId ?? null,
-    title: story.title,
-    content: story.content,
-    level: story.level,
-    createdAt: story.createdAt ?? fallbackTimestamp,
-    updatedAt: story.updatedAt ?? story.createdAt ?? fallbackTimestamp,
-    mode: story.mode ?? null,
-    unknownWordIds: story.unknownWordIds ?? [],
-    highlightedWords: story.highlightedWords ?? [],
+    id: String(story.id),
+    studentId: story.studentId ? String(story.studentId) : null,
+    teacherId: story.teacherId ? String(story.teacherId) : null,
+    title: String(story.title),
+    content: String(story.content),
+    level: String(story.level),
+    createdAt: String(story.createdAt ?? fallbackTimestamp),
+    updatedAt: String(story.updatedAt ?? story.createdAt ?? fallbackTimestamp),
+    mode: story.mode ? (String(story.mode) as GenerationMode) : null,
+    unknownWordIds: Array.isArray(story.unknownWordIds) ? story.unknownWordIds.map(String) : [],
+    highlightedWords: Array.isArray(story.highlightedWords) ? story.highlightedWords : [],
   };
 };
 
-const toWordView = (word: WordModel): WordView => {
+const toWordView = (word: DynamoDBItem): WordView => {
   const fallbackTimestamp = new Date().toISOString();
-
   return {
-    id: word.id,
-    studentId: word.studentId,
-    text: word.text,
-    translation: word.translation,
-    exampleSentence: word.exampleSentence ?? null,
-    mastery: word.mastery,
-    lastReviewedAt: word.lastReviewedAt ?? null,
-    createdAt: word.createdAt ?? fallbackTimestamp,
-    updatedAt: word.updatedAt ?? word.createdAt ?? fallbackTimestamp,
+    id: String(word.id),
+    studentId: String(word.studentId),
+    text: String(word.text),
+    translation: String(word.translation),
+    exampleSentence: word.exampleSentence ? String(word.exampleSentence) : null,
+    mastery: String(word.mastery) as "known" | "learning" | "unknown",
+    lastReviewedAt: word.lastReviewedAt ? String(word.lastReviewedAt) : null,
+    createdAt: String(word.createdAt ?? fallbackTimestamp),
+    updatedAt: String(word.updatedAt ?? word.createdAt ?? fallbackTimestamp),
   };
 };
 
@@ -138,13 +117,12 @@ export const handler: Handler = async (event) => {
   };
 
   const ownership = resolveOwner(event, sanitized.mode);
-  const client = await getDataClient();
+  const db = getDBClient();
 
   if (ownership.studentId) {
-    const profileResult = (await client.models.StudentProfile.get({ id: ownership.studentId })) as GraphQLResult<StudentProfileModel>;
-    const profile = unwrapOptionalResult<StudentProfileModel>(profileResult);
+    const profile = await db.get("StudentProfile", ownership.studentId);
     if (!profile) {
-      await client.models.StudentProfile.create({
+      await db.put("StudentProfile", {
         id: ownership.studentId,
         name: "New Learner",
         email: `${ownership.studentId}@students.wordnest.local`,
@@ -158,73 +136,58 @@ export const handler: Handler = async (event) => {
   const storyDraft = synthesizeStory(sanitized);
   const timestamp = new Date().toISOString();
 
-  const newWords: WordModel[] = [];
+  const newWords: DynamoDBItem[] = [];
   const unknownWordIds: string[] = [];
 
   if (ownership.studentId) {
-    const existingWordsResult = (await client.models.Word.list({
-      filter: { studentId: { eq: ownership.studentId } },
-      limit: 500,
-    })) as ListResult<WordModel>;
-    const existingWords = unwrapListResult<WordModel>(existingWordsResult).items as WordModel[];
-    const byText = new Map(existingWords.map((word) => [word.text.toLowerCase(), word]));
+    const existingWords = await queryByIndex("Word", "byStudentId", "studentId", ownership.studentId, 500);
+    const byText = new Map(existingWords.map((word) => [String(word.text).toLowerCase(), word]));
 
     for (const token of sanitized.unknownWords) {
       const normalized = token.toLowerCase();
       const matched = byText.get(normalized);
       if (matched) {
-        unknownWordIds.push(matched.id);
+        unknownWordIds.push(String(matched.id));
         continue;
       }
 
-      const created = unwrapResult<WordModel>(
-        (await client.models.Word.create({
-          studentId: ownership.studentId,
-          text: token,
-          translation: token,
-          exampleSentence: `Try using the word \"${token}\" in a sentence about your day.`,
-          mastery: "unknown",
-        })) as GraphQLResult<WordModel>,
-        `Failed to create vocabulary entry for ${token}`,
-      );
+      const created = await db.put("Word", {
+        id: randomUUID(),
+        studentId: ownership.studentId,
+        text: token,
+        translation: token,
+        exampleSentence: `Try using the word "${token}" in a sentence about your day.`,
+        mastery: "unknown",
+      });
 
       byText.set(normalized, created);
-      unknownWordIds.push(created.id);
+      unknownWordIds.push(String(created.id));
       newWords.push(created);
     }
 
-    const wordsResult = (await client.models.Word.list({
-      filter: { studentId: { eq: ownership.studentId } },
-      limit: 500,
-    })) as ListResult<WordModel>;
-    const words = unwrapListResult<WordModel>(wordsResult).items as WordModel[];
+    const words = await queryByIndex("Word", "byStudentId", "studentId", ownership.studentId, 500);
     const masteredCount = words.filter((word) => word.mastery !== "unknown").length;
 
-    const profileResult = (await client.models.StudentProfile.get({ id: ownership.studentId })) as GraphQLResult<StudentProfileModel>;
-    const profile = unwrapOptionalResult<StudentProfileModel>(profileResult);
-    if (profile && profile.vocabularyCount !== masteredCount) {
-      await client.models.StudentProfile.update({
-        id: ownership.studentId,
+    const profile = await db.get("StudentProfile", ownership.studentId);
+    if (profile && Number(profile.vocabularyCount) !== masteredCount) {
+      await db.update("StudentProfile", ownership.studentId, {
         vocabularyCount: masteredCount,
       });
     }
   }
 
-  const story = unwrapResult<StoryModel>(
-    (await client.models.Story.create({
-      id: randomUUID(),
-      studentId: ownership.studentId,
-      teacherId: ownership.teacherId,
-      title: storyDraft.title,
-      content: storyDraft.content,
-      level: sanitized.level ?? "A1",
-      mode: sanitized.mode,
-      createdAt: timestamp,
-      unknownWordIds,
-      highlightedWords: [],
-    })) as GraphQLResult<StoryModel>,
-    "Failed to store generated story",
-  );
+  const story = await db.put("Story", {
+    id: randomUUID(),
+    studentId: ownership.studentId,
+    teacherId: ownership.teacherId,
+    title: storyDraft.title,
+    content: storyDraft.content,
+    level: sanitized.level ?? "A1",
+    mode: sanitized.mode,
+    createdAt: timestamp,
+    unknownWordIds,
+    highlightedWords: [],
+  });
 
   const payload: StoryGenerationPayload = {
     story: toStoryView(story),

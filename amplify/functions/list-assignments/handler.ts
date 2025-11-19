@@ -1,10 +1,7 @@
 import type { Schema } from "../../data/resource";
-import { getDataClient, unwrapListResult, type GraphQLResult } from "../shared/data-client";
+import { queryByIndex, type DynamoDBItem } from "../shared/dynamodb-client";
 
-type AssignmentModel = Schema["Assignment"]["type"];
 type AssignmentView = Schema["AssignmentView"]["type"];
-type ListResult<T> = GraphQLResult<T[]> & { nextToken?: string | null };
-
 type Handler = Schema["listTeacherAssignments"]["functionHandler"];
 
 export const handler: Handler = async (event) => {
@@ -13,32 +10,26 @@ export const handler: Handler = async (event) => {
     throw new Error("teacherId is required");
   }
 
-  const client = await getDataClient();
-  const assignmentsResult = (await client.models.Assignment.list({
-    filter: { teacherId: { eq: teacherId } },
-    limit: 200,
-  })) as ListResult<AssignmentModel>;
+  const assignments = await queryByIndex("Assignment", "byTeacherId", "teacherId", teacherId, 200);
+  const sorted = assignments.sort((a, b) => Date.parse(String(a.dueDate)) - Date.parse(String(b.dueDate)));
 
-  const assignments = unwrapListResult<AssignmentModel>(assignmentsResult).items as AssignmentModel[];
-  const sorted = assignments.sort((a, b) => Date.parse(a.dueDate) - Date.parse(b.dueDate));
-
-  const toAssignmentView = (assignment: AssignmentModel): AssignmentView => {
+  const toAssignmentView = (assignment: DynamoDBItem): AssignmentView => {
     const teacherIdValue = assignment.teacherId;
     if (!teacherIdValue) {
       throw new Error("Assignment record is missing teacherId");
     }
 
     return {
-      id: assignment.id,
-      teacherId: teacherIdValue,
-      title: assignment.title,
-      dueDate: assignment.dueDate,
-      level: assignment.level,
-      status: assignment.status,
-      requiredWords: assignment.requiredWords ?? [],
-      excludedWords: assignment.excludedWords ?? [],
-      createdAt: assignment.createdAt,
-      updatedAt: assignment.updatedAt,
+      id: String(assignment.id),
+      teacherId: String(teacherIdValue),
+      title: String(assignment.title),
+      dueDate: String(assignment.dueDate),
+      level: String(assignment.level),
+      status: String(assignment.status) as "draft" | "sent" | "submitted" | "graded",
+      requiredWords: Array.isArray(assignment.requiredWords) ? assignment.requiredWords.map(String) : [],
+      excludedWords: Array.isArray(assignment.excludedWords) ? assignment.excludedWords.map(String) : [],
+      createdAt: String(assignment.createdAt),
+      updatedAt: String(assignment.updatedAt),
     };
   };
 

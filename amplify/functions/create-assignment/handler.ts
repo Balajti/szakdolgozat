@@ -1,12 +1,10 @@
 import type { Schema } from "../../data/resource";
-import { getDataClient, unwrapOptionalResult, unwrapResult, type GraphQLResult } from "../shared/data-client";
-
-type AssignmentModel = Schema["Assignment"]["type"];
-type TeacherProfileModel = Schema["TeacherProfile"]["type"];
+import { getDBClient } from "../shared/dynamodb-client";
+import { randomUUID } from "crypto";
 
 type Handler = Schema["createTeacherAssignment"]["functionHandler"];
 
-const DEFAULT_STATUS: AssignmentModel["status"] = "draft";
+const DEFAULT_STATUS = "draft";
 
 export const handler: Handler = async (event) => {
   const { teacherId, title, dueDate, level, requiredWords, excludedWords } = event.arguments;
@@ -14,27 +12,23 @@ export const handler: Handler = async (event) => {
     throw new Error("teacherId, title, dueDate, and level are required");
   }
 
-  const client = await getDataClient();
+  const db = getDBClient();
 
-  const teacherProfileResult = (await client.models.TeacherProfile.get({ id: teacherId })) as GraphQLResult<TeacherProfileModel>;
-  const teacherProfile = unwrapOptionalResult<TeacherProfileModel>(teacherProfileResult);
+  const teacherProfile = await db.get("TeacherProfile", teacherId);
   if (!teacherProfile) {
     throw new Error("Teacher profile not found");
   }
 
-  const assignment = unwrapResult<AssignmentModel>(
-    (await client.models.Assignment.create({
-      teacherId,
-      title,
-      dueDate,
-      level,
-      status: DEFAULT_STATUS,
-      requiredWords: requiredWords ?? [],
-      excludedWords: excludedWords ?? [],
-      createdAt: new Date().toISOString(),
-    })) as GraphQLResult<AssignmentModel>,
-    "Failed to create assignment",
-  );
+  const assignment = await db.put("Assignment", {
+    id: randomUUID(),
+    teacherId,
+    title,
+    dueDate,
+    level,
+    status: DEFAULT_STATUS,
+    requiredWords: requiredWords ?? [],
+    excludedWords: excludedWords ?? [],
+  });
 
-  return assignment;
+  return assignment as Schema["Assignment"]["type"];
 };
