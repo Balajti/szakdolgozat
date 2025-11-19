@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
 import {
@@ -23,6 +24,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MetricCard } from "@/components/ui/metric-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ensureAmplifyConfigured } from "@/lib/api/config";
+import { getCurrentUser } from "aws-amplify/auth";
 
 const teacherHighlights = [
   {
@@ -58,6 +61,28 @@ const studentSteps = [
 ];
 
 export default function Home() {
+  useEffect(() => {
+    let mounted = true;
+
+    const logCurrentUser = async () => {
+      try {
+        ensureAmplifyConfigured();
+        const currentUser = await getCurrentUser();
+        if (!mounted) return;
+        console.log("Home: user authenticated", currentUser);
+      } catch (error) {
+        if (!mounted) return;
+        console.log("Home: unauthenticated", error);
+      }
+    };
+
+    void logCurrentUser();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-background/80">
       <SiteHeader />

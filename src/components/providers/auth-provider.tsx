@@ -50,11 +50,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       await fetchAuthSession();
       const current = await getCurrentUser();
-      setUser(buildUser(current));
+      const builtUser = buildUser(current);
+      setUser(builtUser);
       setStatus("authenticated");
+      console.log("AuthProvider: user authenticated", builtUser);
     } catch (err) {
       setUser(null);
       setStatus("unauthenticated");
+      console.log("AuthProvider: unauthenticated", err);
     }
   }, [buildUser]);
 
