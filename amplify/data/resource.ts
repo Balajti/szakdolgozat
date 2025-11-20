@@ -17,52 +17,95 @@ const schema = a.schema({
     offset: a.integer(),
     length: a.integer(),
   }),
-  Story: a
-    .model({
-      title: a.string().required(),
-      content: a.string().required(),
-      level: a.string().required(),
-      createdAt: a.datetime().required(),
-      studentId: a.id(),
-      student: a.belongsTo('StudentProfile', 'studentId'),
-      teacherId: a.id(),
-      teacher: a.belongsTo('TeacherProfile', 'teacherId'),
-      unknownWordIds: a.string().array(),
-      highlightedWords: a.ref('HighlightedWord').array(),
-      mode: a.ref('StoryGenerationMode'),
-    })
-    .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
-    .secondaryIndexes((index) => [
-      index('studentId'),
-      index('teacherId'),
-    ]),
   Word: a
     .model({
       studentId: a.id().required(),
-      student: a.belongsTo('StudentProfile', 'studentId'),
       text: a.string().required(),
       translation: a.string().required(),
       exampleSentence: a.string(),
-      mastery: a.ref('WordMastery').required(),
+      mastery: a.ref('WordMastery'),
       lastReviewedAt: a.datetime(),
+      studentProfile: a.belongsTo('StudentProfile', 'studentId'),
     })
-    .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
     .secondaryIndexes((index) => [
-      index('studentId'),
-    ]),
+      index('studentId').name('byStudentId').queryField('listWordsByStudent'),
+    ])
+    .authorization((allow) => [allow.authenticated()]),
+  Story: a
+    .model({
+      studentId: a.id(),
+      teacherId: a.id(),
+      title: a.string().required(),
+      content: a.string().required(),
+      level: a.string().required(),
+      mode: a.ref('StoryGenerationMode'),
+      unknownWordIds: a.string().array(),
+      highlightedWords: a.json(),
+      studentProfile: a.belongsTo('StudentProfile', 'studentId'),
+      teacherProfile: a.belongsTo('TeacherProfile', 'teacherId'),
+    })
+    .secondaryIndexes((index) => [
+      index('studentId').name('byStudentId').queryField('listStoriesByStudent'),
+    ])
+    .authorization((allow) => [allow.authenticated()]),
   Achievement: a
     .model({
       studentId: a.id().required(),
-      student: a.belongsTo('StudentProfile', 'studentId'),
       title: a.string().required(),
       description: a.string().required(),
       icon: a.string().required(),
       achievedAt: a.date().required(),
+      studentProfile: a.belongsTo('StudentProfile', 'studentId'),
     })
-    .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
     .secondaryIndexes((index) => [
-      index('studentId'),
-    ]),
+      index('studentId').name('byStudentId').queryField('listAchievementsByStudent'),
+    ])
+    .authorization((allow) => [allow.authenticated()]),
+  Assignment: a
+    .model({
+      teacherId: a.id().required(),
+      title: a.string().required(),
+      dueDate: a.date().required(),
+      level: a.string().required(),
+      status: a.ref('AssignmentStatus'),
+      requiredWords: a.string().array(),
+      excludedWords: a.string().array(),
+      teacherProfile: a.belongsTo('TeacherProfile', 'teacherId'),
+    })
+    .secondaryIndexes((index) => [
+      index('teacherId').name('byTeacherId').queryField('listAssignmentsByTeacher'),
+    ])
+    .authorization((allow) => [allow.authenticated()]),
+  SubmissionSummary: a
+    .model({
+      assignmentId: a.id().required(),
+      teacherId: a.id().required(),
+      studentId: a.id().required(),
+      studentName: a.string().required(),
+      submittedAt: a.datetime().required(),
+      score: a.integer(),
+      unknownWords: a.string().array(),
+      teacherProfile: a.belongsTo('TeacherProfile', 'teacherId'),
+      studentProfile: a.belongsTo('StudentProfile', 'studentId'),
+    })
+    .secondaryIndexes((index) => [
+      index('teacherId').name('byTeacherId').queryField('listSubmissionsByTeacher'),
+    ])
+    .authorization((allow) => [allow.authenticated()]),
+  ClassSummary: a
+    .model({
+      teacherId: a.id().required(),
+      name: a.string().required(),
+      studentCount: a.integer().required(),
+      averageLevel: a.string().required(),
+      completionRate: a.float().required(),
+      mostChallengingWord: a.string(),
+      teacherProfile: a.belongsTo('TeacherProfile', 'teacherId'),
+    })
+    .secondaryIndexes((index) => [
+      index('teacherId').name('byTeacherId').queryField('listClassesByTeacher'),
+    ])
+    .authorization((allow) => [allow.authenticated()]),
   StudentProfile: a
     .model({
       name: a.string().required(),
@@ -89,55 +132,6 @@ const schema = a.schema({
       submissions: a.hasMany('SubmissionSummary', 'teacherId'),
     })
     .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')]),
-  ClassSummary: a
-    .model({
-      teacherId: a.id().required(),
-      teacher: a.belongsTo('TeacherProfile', 'teacherId'),
-      name: a.string().required(),
-      studentCount: a.integer().required(),
-      averageLevel: a.string().required(),
-      completionRate: a.float().required(),
-      mostChallengingWord: a.string(),
-    })
-    .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
-    .secondaryIndexes((index) => [
-      index('teacherId'),
-    ]),
-  Assignment: a
-    .model({
-      teacherId: a.id().required(),
-      teacher: a.belongsTo('TeacherProfile', 'teacherId'),
-      title: a.string().required(),
-      dueDate: a.date().required(),
-      level: a.string().required(),
-      status: a.ref('AssignmentStatus').required(),
-      requiredWords: a.string().array(),
-      excludedWords: a.string().array(),
-      createdAt: a.datetime().required(),
-      submissions: a.hasMany('SubmissionSummary', 'assignmentId'),
-    })
-    .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
-    .secondaryIndexes((index) => [
-      index('teacherId'),
-    ]),
-  SubmissionSummary: a
-    .model({
-      assignmentId: a.id().required(),
-      assignment: a.belongsTo('Assignment', 'assignmentId'),
-      teacherId: a.id().required(),
-      teacher: a.belongsTo('TeacherProfile', 'teacherId'),
-      studentId: a.id().required(),
-      student: a.belongsTo('StudentProfile', 'studentId'),
-      studentName: a.string().required(),
-      submittedAt: a.datetime().required(),
-      score: a.integer(),
-      unknownWords: a.string().array().required(),
-    })
-    .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
-    .secondaryIndexes((index) => [
-      index('teacherId'),
-      index('assignmentId'),
-    ]),
   StoryView: a.customType({
     id: a.id().required(),
     studentId: a.id(),
