@@ -4,6 +4,7 @@ import {
   GetCommand,
   PutCommand,
   UpdateCommand,
+  DeleteCommand,
   QueryCommand,
   ScanCommand,
 } from "@aws-sdk/lib-dynamodb";
@@ -156,6 +157,17 @@ export class DynamoDBDataClient {
       items: result.Items as DynamoDBItem[],
       lastEvaluatedKey: result.LastEvaluatedKey,
     };
+  }
+
+  async delete(modelName: string, id: string): Promise<void> {
+    const tableName = getTableName(modelName);
+    
+    await docClient.send(
+      new DeleteCommand({
+        TableName: tableName,
+        Key: { id },
+      })
+    );
   }
 }
 

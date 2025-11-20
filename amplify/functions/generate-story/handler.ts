@@ -80,8 +80,9 @@ ${modeContext}
 **Requirements:**
 - Target audience: ${ageContext}
 - CEFR Level: ${level}
-- Story length: 200-300 words
-- Must naturally include these target words: ${targetWords.join(", ")}
+- Story length: 400-600 words (MINIMUM 400 words - this is critical)
+- Must naturally include these target words multiple times: ${targetWords.join(", ")}
+- Repeat each target word 2-3 times throughout the story in different contexts
 - Can use these known words: ${knownWords.slice(0, 30).join(", ")}${knownWords.length > 30 ? ` (and ${knownWords.length - 30} more)` : ""}
 ${avoidWords.length > 0 ? `- AVOID these words: ${avoidWords.join(", ")}` : ""}
 
@@ -89,20 +90,25 @@ ${avoidWords.length > 0 ? `- AVOID these words: ${avoidWords.join(", ")}` : ""}
 - Create an engaging narrative with a clear beginning, middle, and end
 - Use simple sentence structures appropriate for ${level} level
 - Make the story interesting and age-appropriate for a ${age}-year-old
-- Naturally weave target words into the story context
-- Include dialogue if appropriate
+- Naturally weave target words into the story context multiple times
+- Include dialogue to make the story more engaging
+- Add descriptive details to reach the minimum 400 words
 - End with a positive or thought-provoking conclusion
+- Focus on everyday situations, adventures, or relatable scenarios
 
 **Format your response as JSON:**
 {
   "title": "Engaging story title (5-7 words)",
-  "content": "The complete story text with proper paragraphs",
+  "content": "The complete story text with proper paragraphs (MINIMUM 400 words)",
   "highlightedWords": [
     {"word": "target word from the story", "offset": character_position, "length": word_length}
   ]
 }
 
-Important: In highlightedWords, only include the NEW/UNKNOWN words (${targetWords.join(", ")}). Find their exact positions in the content text.`;
+Important: 
+1. The story MUST be at least 400 words long
+2. In highlightedWords, include ALL occurrences of the NEW/UNKNOWN words (${targetWords.join(", ")})
+3. Find their exact positions in the content text for each occurrence`;
 
   try {
     const result = await model.generateContent(prompt);
@@ -140,11 +146,19 @@ function generateFallbackStory(input: SanitizedInput): GeneratedStory {
   const targetWords = [...new Set([...unknownWords, ...requiredWords])];
   
   const title = `Learning Adventure (${level})`;
-  const content = `Once upon a time, there was a curious learner who loved discovering new words.
+  const content = `Once upon a time, there was a curious learner who loved discovering new words and improving their English skills every single day.
 
-Every day, they practiced English by reading stories and talking with friends. They learned that ${targetWords.slice(0, 3).join(", ")} ${targetWords.length > 3 ? "and many other words" : ""} could help them express amazing ideas.
+Every morning, they would wake up excited to practice. They knew that learning ${targetWords.slice(0, 3).join(", ")} ${targetWords.length > 3 ? "and many other words" : ""} would help them communicate better. The learner understood that each word had its own special meaning and purpose.
 
-With patience and practice, the learner grew more confident. They realized that every new word was like a key, unlocking new ways to communicate and understand the world.
+During the day, they would read books, listen to stories, and talk with friends. When they encountered ${targetWords[0] || "new words"}, they would write them down in a special notebook. This notebook became their treasure chest of vocabulary.
+
+The learner discovered that using ${targetWords[1] || "these words"} in sentences made them easier to remember. They practiced speaking aloud, creating their own stories, and sharing them with others. Sometimes the stories were funny, and sometimes they were serious, but they were always interesting.
+
+As weeks passed, the learner noticed something wonderful. The words that once seemed difficult, like ${targetWords[2] || "challenging vocabulary"}, now felt natural. They could use them without thinking too hard. This progress made them feel proud and motivated to continue learning.
+
+Their teacher was impressed with how much they had improved. Their friends enjoyed listening to their stories. The learner realized that patience and daily practice were the keys to success. Every new word was like a stepping stone, helping them reach new heights in their language journey.
+
+With confidence growing stronger each day, the learner looked forward to discovering even more words and becoming an excellent English speaker.
 
 The end.`;
 

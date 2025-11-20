@@ -224,6 +224,27 @@
               "isRequired": true,
               "attributes": []
             },
+            "difficulty": {
+              "name": "difficulty",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "topic": {
+              "name": "topic",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "readCount": {
+              "name": "readCount",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
             "mode": {
               "name": "mode",
               "isArray": false,
@@ -243,6 +264,13 @@
             },
             "highlightedWords": {
               "name": "highlightedWords",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "blankPositions": {
+              "name": "blankPositions",
               "isArray": false,
               "type": "AWSJSON",
               "isRequired": false,
@@ -309,6 +337,503 @@
                 "queryField": "listStoriesByStudent",
                 "fields": [
                   "studentId"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "Badge": {
+          "name": "Badge",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "studentId": {
+              "name": "studentId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "type": {
+              "name": "type",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "title": {
+              "name": "title",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "description": {
+              "name": "description",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "icon": {
+              "name": "icon",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "progress": {
+              "name": "progress",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "target": {
+              "name": "target",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "achievedAt": {
+              "name": "achievedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "isUnlocked": {
+              "name": "isUnlocked",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": true,
+              "attributes": []
+            },
+            "studentProfile": {
+              "name": "studentProfile",
+              "isArray": false,
+              "type": {
+                "model": "StudentProfile"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "association": {
+                "connectionType": "BELONGS_TO",
+                "targetNames": [
+                  "studentId"
+                ]
+              }
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "Badges",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "byStudentId",
+                "queryField": "listBadgesByStudent",
+                "fields": [
+                  "studentId"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "QuizQuestion": {
+          "name": "QuizQuestion",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "storyId": {
+              "name": "storyId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "question": {
+              "name": "question",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "options": {
+              "name": "options",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": false
+            },
+            "correctAnswer": {
+              "name": "correctAnswer",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "explanation": {
+              "name": "explanation",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "difficulty": {
+              "name": "difficulty",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "QuizQuestions",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "byStoryId",
+                "queryField": "listQuestionsByStory",
+                "fields": [
+                  "storyId"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "VocabularyProgress": {
+          "name": "VocabularyProgress",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "studentId": {
+              "name": "studentId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "date": {
+              "name": "date",
+              "isArray": false,
+              "type": "AWSDate",
+              "isRequired": true,
+              "attributes": []
+            },
+            "knownWords": {
+              "name": "knownWords",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "learningWords": {
+              "name": "learningWords",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "unknownWords": {
+              "name": "unknownWords",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "newWordsToday": {
+              "name": "newWordsToday",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "studentProfile": {
+              "name": "studentProfile",
+              "isArray": false,
+              "type": {
+                "model": "StudentProfile"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "association": {
+                "connectionType": "BELONGS_TO",
+                "targetNames": [
+                  "studentId"
+                ]
+              }
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "VocabularyProgresses",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "byStudentId",
+                "queryField": "listProgressByStudent",
+                "fields": [
+                  "studentId"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "ClassGroup": {
+          "name": "ClassGroup",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "teacherId": {
+              "name": "teacherId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "name": {
+              "name": "name",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "description": {
+              "name": "description",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "studentIds": {
+              "name": "studentIds",
+              "isArray": true,
+              "type": "ID",
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true
+            },
+            "color": {
+              "name": "color",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "teacherProfile": {
+              "name": "teacherProfile",
+              "isArray": false,
+              "type": {
+                "model": "TeacherProfile"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "association": {
+                "connectionType": "BELONGS_TO",
+                "targetNames": [
+                  "teacherId"
+                ]
+              }
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "ClassGroups",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "byTeacherId",
+                "queryField": "listGroupsByTeacher",
+                "fields": [
+                  "teacherId"
                 ]
               }
             },
@@ -499,6 +1024,15 @@
               "isRequired": false,
               "attributes": []
             },
+            "assignmentType": {
+              "name": "assignmentType",
+              "isArray": false,
+              "type": {
+                "enum": "AssignmentType"
+              },
+              "isRequired": false,
+              "attributes": []
+            },
             "requiredWords": {
               "name": "requiredWords",
               "isArray": true,
@@ -514,6 +1048,56 @@
               "isRequired": false,
               "attributes": [],
               "isArrayNullable": true
+            },
+            "blankPositions": {
+              "name": "blankPositions",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "matchingWords": {
+              "name": "matchingWords",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true
+            },
+            "storyContent": {
+              "name": "storyContent",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "isTemplate": {
+              "name": "isTemplate",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "originalAssignmentId": {
+              "name": "originalAssignmentId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": false,
+              "attributes": []
+            },
+            "usageCount": {
+              "name": "usageCount",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "classGroup": {
+              "name": "classGroup",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
             },
             "teacherProfile": {
               "name": "teacherProfile",
@@ -561,6 +1145,185 @@
                 "queryField": "listAssignmentsByTeacher",
                 "fields": [
                   "teacherId"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "AssignmentSubmission": {
+          "name": "AssignmentSubmission",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "assignmentId": {
+              "name": "assignmentId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "studentId": {
+              "name": "studentId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "teacherId": {
+              "name": "teacherId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "assignmentType": {
+              "name": "assignmentType",
+              "isArray": false,
+              "type": {
+                "enum": "AssignmentType"
+              },
+              "isRequired": true,
+              "attributes": []
+            },
+            "answers": {
+              "name": "answers",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": true,
+              "attributes": []
+            },
+            "score": {
+              "name": "score",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "maxScore": {
+              "name": "maxScore",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "submittedAt": {
+              "name": "submittedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "feedback": {
+              "name": "feedback",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "timeSpentSeconds": {
+              "name": "timeSpentSeconds",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "studentProfile": {
+              "name": "studentProfile",
+              "isArray": false,
+              "type": {
+                "model": "StudentProfile"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "association": {
+                "connectionType": "BELONGS_TO",
+                "targetNames": [
+                  "studentId"
+                ]
+              }
+            },
+            "teacherProfile": {
+              "name": "teacherProfile",
+              "isArray": false,
+              "type": {
+                "model": "TeacherProfile"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "association": {
+                "connectionType": "BELONGS_TO",
+                "targetNames": [
+                  "teacherId"
+                ]
+              }
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "AssignmentSubmissions",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "byAssignmentId",
+                "queryField": "listSubmissionsByAssignment",
+                "fields": [
+                  "assignmentId"
+                ]
+              }
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "byStudentId",
+                "queryField": "listSubmissionsByStudent",
+                "fields": [
+                  "studentId"
                 ]
               }
             },
@@ -858,6 +1621,270 @@
             "sortKeyFieldNames": []
           }
         },
+        "StudentClass": {
+          "name": "StudentClass",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "studentId": {
+              "name": "studentId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "teacherId": {
+              "name": "teacherId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "classId": {
+              "name": "classId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "className": {
+              "name": "className",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "joinedAt": {
+              "name": "joinedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "studentProfile": {
+              "name": "studentProfile",
+              "isArray": false,
+              "type": {
+                "model": "StudentProfile"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "association": {
+                "connectionType": "BELONGS_TO",
+                "targetNames": [
+                  "studentId"
+                ]
+              }
+            },
+            "teacherProfile": {
+              "name": "teacherProfile",
+              "isArray": false,
+              "type": {
+                "model": "TeacherProfile"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "association": {
+                "connectionType": "BELONGS_TO",
+                "targetNames": [
+                  "teacherId"
+                ]
+              }
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "StudentClasses",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "byStudentId",
+                "queryField": "listClassesByStudent",
+                "fields": [
+                  "studentId"
+                ]
+              }
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "byTeacherId",
+                "queryField": "listStudentsByTeacher",
+                "fields": [
+                  "teacherId"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "Notification": {
+          "name": "Notification",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "recipientId": {
+              "name": "recipientId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "senderId": {
+              "name": "senderId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "senderName": {
+              "name": "senderName",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "type": {
+              "name": "type",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "title": {
+              "name": "title",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "message": {
+              "name": "message",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "assignmentId": {
+              "name": "assignmentId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": false,
+              "attributes": []
+            },
+            "isRead": {
+              "name": "isRead",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": true,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "Notifications",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "byRecipientId",
+                "queryField": "listNotificationsByRecipient",
+                "fields": [
+                  "recipientId"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
         "StudentProfile": {
           "name": "StudentProfile",
           "fields": {
@@ -903,6 +1930,20 @@
               "isRequired": true,
               "attributes": []
             },
+            "preferredLevel": {
+              "name": "preferredLevel",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "preferredAge": {
+              "name": "preferredAge",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
             "streak": {
               "name": "streak",
               "isArray": false,
@@ -915,6 +1956,56 @@
               "isArray": false,
               "type": "Int",
               "isRequired": true,
+              "attributes": []
+            },
+            "preferredDifficulty": {
+              "name": "preferredDifficulty",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "preferredTopics": {
+              "name": "preferredTopics",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true
+            },
+            "useRandomTopics": {
+              "name": "useRandomTopics",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "currentStreak": {
+              "name": "currentStreak",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "longestStreak": {
+              "name": "longestStreak",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "lastActiveDate": {
+              "name": "lastActiveDate",
+              "isArray": false,
+              "type": "AWSDate",
+              "isRequired": false,
+              "attributes": []
+            },
+            "totalStoriesRead": {
+              "name": "totalStoriesRead",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
               "attributes": []
             },
             "words": {
@@ -954,6 +2045,70 @@
               "isArray": true,
               "type": {
                 "model": "Achievement"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true,
+              "association": {
+                "connectionType": "HAS_MANY",
+                "associatedWith": [
+                  "studentId"
+                ]
+              }
+            },
+            "badges": {
+              "name": "badges",
+              "isArray": true,
+              "type": {
+                "model": "Badge"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true,
+              "association": {
+                "connectionType": "HAS_MANY",
+                "associatedWith": [
+                  "studentId"
+                ]
+              }
+            },
+            "vocabularyProgress": {
+              "name": "vocabularyProgress",
+              "isArray": true,
+              "type": {
+                "model": "VocabularyProgress"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true,
+              "association": {
+                "connectionType": "HAS_MANY",
+                "associatedWith": [
+                  "studentId"
+                ]
+              }
+            },
+            "assignmentSubmissions": {
+              "name": "assignmentSubmissions",
+              "isArray": true,
+              "type": {
+                "model": "AssignmentSubmission"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true,
+              "association": {
+                "connectionType": "HAS_MANY",
+                "associatedWith": [
+                  "studentId"
+                ]
+              }
+            },
+            "studentClasses": {
+              "name": "studentClasses",
+              "isArray": true,
+              "type": {
+                "model": "StudentClass"
               },
               "isRequired": false,
               "attributes": [],
@@ -1079,6 +2234,36 @@
               "isRequired": false,
               "attributes": []
             },
+            "preferredLevel": {
+              "name": "preferredLevel",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "preferredAge": {
+              "name": "preferredAge",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "classGroups": {
+              "name": "classGroups",
+              "isArray": true,
+              "type": {
+                "model": "ClassGroup"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true,
+              "association": {
+                "connectionType": "HAS_MANY",
+                "associatedWith": [
+                  "teacherId"
+                ]
+              }
+            },
             "classes": {
               "name": "classes",
               "isArray": true,
@@ -1116,6 +2301,38 @@
               "isArray": true,
               "type": {
                 "model": "Assignment"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true,
+              "association": {
+                "connectionType": "HAS_MANY",
+                "associatedWith": [
+                  "teacherId"
+                ]
+              }
+            },
+            "assignmentSubmissions": {
+              "name": "assignmentSubmissions",
+              "isArray": true,
+              "type": {
+                "model": "AssignmentSubmission"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true,
+              "association": {
+                "connectionType": "HAS_MANY",
+                "associatedWith": [
+                  "teacherId"
+                ]
+              }
+            },
+            "studentClasses": {
+              "name": "studentClasses",
+              "isArray": true,
+              "type": {
+                "model": "StudentClass"
               },
               "isRequired": false,
               "attributes": [],
@@ -1235,6 +2452,15 @@
             "placement",
             "personalized",
             "teacher"
+          ]
+        },
+        "AssignmentType": {
+          "name": "AssignmentType",
+          "values": [
+            "basic",
+            "fill_blanks",
+            "word_matching",
+            "custom_words"
           ]
         }
       },
@@ -1972,9 +3198,471 @@
               "isArrayNullable": true
             }
           }
+        },
+        "WordTranslation": {
+          "name": "WordTranslation",
+          "fields": {
+            "word": {
+              "name": "word",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "translation": {
+              "name": "translation",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "sourceLanguage": {
+              "name": "sourceLanguage",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "targetLanguage": {
+              "name": "targetLanguage",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "exampleSentence": {
+              "name": "exampleSentence",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "phonetic": {
+              "name": "phonetic",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            }
+          }
+        },
+        "GetAssignmentAnalyticsReturnType": {
+          "name": "GetAssignmentAnalyticsReturnType",
+          "fields": {
+            "assignmentId": {
+              "name": "assignmentId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "totalSubmissions": {
+              "name": "totalSubmissions",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "completionRate": {
+              "name": "completionRate",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "averageScore": {
+              "name": "averageScore",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "passRate": {
+              "name": "passRate",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "averageTimeMinutes": {
+              "name": "averageTimeMinutes",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "strugglingStudentIds": {
+              "name": "strugglingStudentIds",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": false
+            },
+            "topPerformerIds": {
+              "name": "topPerformerIds",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": false
+            },
+            "mostChallengingWords": {
+              "name": "mostChallengingWords",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": false
+            },
+            "excellentCount": {
+              "name": "excellentCount",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "goodCount": {
+              "name": "goodCount",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "needsImprovementCount": {
+              "name": "needsImprovementCount",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            }
+          }
+        },
+        "GenerateTeacherAssignmentReturnType": {
+          "name": "GenerateTeacherAssignmentReturnType",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "teacherId": {
+              "name": "teacherId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "title": {
+              "name": "title",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "assignmentType": {
+              "name": "assignmentType",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "dueDate": {
+              "name": "dueDate",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "level": {
+              "name": "level",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "storyContent": {
+              "name": "storyContent",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "requiredWords": {
+              "name": "requiredWords",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true
+            },
+            "blankPositions": {
+              "name": "blankPositions",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "matchingWords": {
+              "name": "matchingWords",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            }
+          }
+        },
+        "DistributeAssignmentReturnType": {
+          "name": "DistributeAssignmentReturnType",
+          "fields": {
+            "success": {
+              "name": "success",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": true,
+              "attributes": []
+            },
+            "assignmentId": {
+              "name": "assignmentId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "recipientCount": {
+              "name": "recipientCount",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "notificationIds": {
+              "name": "notificationIds",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true
+            }
+          }
+        },
+        "SubmitAssignmentReturnType": {
+          "name": "SubmitAssignmentReturnType",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "assignmentId": {
+              "name": "assignmentId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "studentId": {
+              "name": "studentId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "score": {
+              "name": "score",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "maxScore": {
+              "name": "maxScore",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "percentage": {
+              "name": "percentage",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "feedback": {
+              "name": "feedback",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "submittedAt": {
+              "name": "submittedAt",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "passed": {
+              "name": "passed",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": true,
+              "attributes": []
+            }
+          }
+        },
+        "GenerateQuizReturnType": {
+          "name": "GenerateQuizReturnType",
+          "fields": {
+            "quizId": {
+              "name": "quizId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "questions": {
+              "name": "questions",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": true,
+              "attributes": []
+            }
+          }
+        },
+        "CheckBadgesReturnType": {
+          "name": "CheckBadgesReturnType",
+          "fields": {
+            "newBadges": {
+              "name": "newBadges",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": true,
+              "attributes": []
+            },
+            "allBadges": {
+              "name": "allBadges",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": true,
+              "attributes": []
+            }
+          }
+        },
+        "AdjustDifficultyReturnType": {
+          "name": "AdjustDifficultyReturnType",
+          "fields": {
+            "adjustedText": {
+              "name": "adjustedText",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            }
+          }
+        },
+        "TrackVocabularyProgressReturnType": {
+          "name": "TrackVocabularyProgressReturnType",
+          "fields": {
+            "date": {
+              "name": "date",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "knownWords": {
+              "name": "knownWords",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "learningWords": {
+              "name": "learningWords",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "unknownWords": {
+              "name": "unknownWords",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "newWordsToday": {
+              "name": "newWordsToday",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            }
+          }
+        },
+        "CleanupOldStoriesReturnType": {
+          "name": "CleanupOldStoriesReturnType",
+          "fields": {
+            "deletedCount": {
+              "name": "deletedCount",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            }
+          }
         }
       },
       "queries": {
+        "translateWord": {
+          "name": "translateWord",
+          "isArray": false,
+          "type": {
+            "nonModel": "WordTranslation"
+          },
+          "isRequired": false,
+          "arguments": {
+            "word": {
+              "name": "word",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "sourceLanguage": {
+              "name": "sourceLanguage",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "targetLanguage": {
+              "name": "targetLanguage",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        },
         "getStudentDashboard": {
           "name": "getStudentDashboard",
           "isArray": false,
@@ -2049,6 +3737,28 @@
               "isArray": false,
               "type": "ID",
               "isRequired": false
+            }
+          }
+        },
+        "getAssignmentAnalytics": {
+          "name": "getAssignmentAnalytics",
+          "isArray": false,
+          "type": {
+            "nonModel": "GetAssignmentAnalyticsReturnType"
+          },
+          "isRequired": false,
+          "arguments": {
+            "assignmentId": {
+              "name": "assignmentId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true
+            },
+            "teacherId": {
+              "name": "teacherId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true
             }
           }
         }
@@ -2187,6 +3897,241 @@
               "type": "String",
               "isRequired": false,
               "isArrayNullable": true
+            }
+          }
+        },
+        "generateTeacherAssignment": {
+          "name": "generateTeacherAssignment",
+          "isArray": false,
+          "type": {
+            "nonModel": "GenerateTeacherAssignmentReturnType"
+          },
+          "isRequired": false,
+          "arguments": {
+            "teacherId": {
+              "name": "teacherId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true
+            },
+            "title": {
+              "name": "title",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "assignmentType": {
+              "name": "assignmentType",
+              "isArray": false,
+              "type": {
+                "enum": "AssignmentType"
+              },
+              "isRequired": true
+            },
+            "level": {
+              "name": "level",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "dueDate": {
+              "name": "dueDate",
+              "isArray": false,
+              "type": "AWSDate",
+              "isRequired": true
+            },
+            "storyId": {
+              "name": "storyId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": false
+            },
+            "wordsToRemove": {
+              "name": "wordsToRemove",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "isArrayNullable": true
+            },
+            "numberOfWords": {
+              "name": "numberOfWords",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false
+            },
+            "customWords": {
+              "name": "customWords",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "isArrayNullable": true
+            }
+          }
+        },
+        "distributeAssignment": {
+          "name": "distributeAssignment",
+          "isArray": false,
+          "type": {
+            "nonModel": "DistributeAssignmentReturnType"
+          },
+          "isRequired": false,
+          "arguments": {
+            "assignmentId": {
+              "name": "assignmentId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true
+            },
+            "teacherId": {
+              "name": "teacherId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true
+            },
+            "studentIds": {
+              "name": "studentIds",
+              "isArray": true,
+              "type": "ID",
+              "isRequired": false,
+              "isArrayNullable": true
+            },
+            "classId": {
+              "name": "classId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": false
+            },
+            "sendToAll": {
+              "name": "sendToAll",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false
+            }
+          }
+        },
+        "submitAssignment": {
+          "name": "submitAssignment",
+          "isArray": false,
+          "type": {
+            "nonModel": "SubmitAssignmentReturnType"
+          },
+          "isRequired": false,
+          "arguments": {
+            "assignmentId": {
+              "name": "assignmentId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true
+            },
+            "studentId": {
+              "name": "studentId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true
+            },
+            "answers": {
+              "name": "answers",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": true
+            },
+            "timeSpentSeconds": {
+              "name": "timeSpentSeconds",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false
+            }
+          }
+        },
+        "generateQuiz": {
+          "name": "generateQuiz",
+          "isArray": false,
+          "type": {
+            "nonModel": "GenerateQuizReturnType"
+          },
+          "isRequired": false,
+          "arguments": {
+            "storyId": {
+              "name": "storyId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true
+            }
+          }
+        },
+        "checkBadges": {
+          "name": "checkBadges",
+          "isArray": false,
+          "type": {
+            "nonModel": "CheckBadgesReturnType"
+          },
+          "isRequired": false,
+          "arguments": {
+            "studentId": {
+              "name": "studentId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true
+            }
+          }
+        },
+        "adjustDifficulty": {
+          "name": "adjustDifficulty",
+          "isArray": false,
+          "type": {
+            "nonModel": "AdjustDifficultyReturnType"
+          },
+          "isRequired": false,
+          "arguments": {
+            "text": {
+              "name": "text",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "currentLevel": {
+              "name": "currentLevel",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "targetLevel": {
+              "name": "targetLevel",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        },
+        "trackVocabularyProgress": {
+          "name": "trackVocabularyProgress",
+          "isArray": false,
+          "type": {
+            "nonModel": "TrackVocabularyProgressReturnType"
+          },
+          "isRequired": false,
+          "arguments": {
+            "studentId": {
+              "name": "studentId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true
+            }
+          }
+        },
+        "cleanupOldStories": {
+          "name": "cleanupOldStories",
+          "isArray": false,
+          "type": {
+            "nonModel": "CleanupOldStoriesReturnType"
+          },
+          "isRequired": false,
+          "arguments": {
+            "studentId": {
+              "name": "studentId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true
             }
           }
         }
