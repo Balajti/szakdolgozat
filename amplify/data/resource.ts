@@ -1,4 +1,21 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
+import { translateWord } from '../functions/translate-word/resource';
+import { studentDashboard } from '../functions/student-dashboard/resource';
+import { teacherDashboard } from '../functions/teacher-dashboard/resource';
+import { listStories } from '../functions/list-stories/resource';
+import { listAssignments } from '../functions/list-assignments/resource';
+import { getAssignmentAnalytics } from '../functions/get-assignment-analytics/resource';
+import { generateStory } from '../functions/generate-story/resource';
+import { updateWordMastery } from '../functions/update-word-mastery/resource';
+import { createAssignment } from '../functions/create-assignment/resource';
+import { generateTeacherAssignment } from '../functions/generate-teacher-assignment/resource';
+import { distributeAssignment } from '../functions/distribute-assignment/resource';
+import { submitAssignment } from '../functions/submit-assignment/resource';
+import { generateQuiz } from '../functions/generate-quiz/resource';
+import { checkBadges } from '../functions/check-badges/resource';
+import { adjustDifficulty } from '../functions/adjust-difficulty/resource';
+import { trackVocabularyProgress } from '../functions/track-vocabulary-progress/resource';
+import { cleanupOldStories } from '../functions/cleanup-old-stories/resource';
 
 const schema = a.schema({
   WordMastery: a.enum(['known', 'learning', 'unknown']),
@@ -390,19 +407,19 @@ const schema = a.schema({
     })
     .returns(a.ref('WordTranslation'))
     .authorization((allow) => [allow.authenticated(), allow.publicApiKey()])
-    .handler(a.handler.function('translateWord')),
+    .handler(a.handler.function(translateWord)),
   getStudentDashboard: a
     .query()
     .arguments({ id: a.id() })
     .returns(a.ref('StudentDashboardPayload'))
     .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
-    .handler(a.handler.function('studentDashboard')),
+    .handler(a.handler.function(studentDashboard)),
   getTeacherDashboard: a
     .query()
     .arguments({ id: a.id() })
     .returns(a.ref('TeacherDashboardPayload'))
     .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
-    .handler(a.handler.function('teacherDashboard')),
+    .handler(a.handler.function(teacherDashboard)),
   listStudentStories: a
     .query()
     .arguments({
@@ -412,13 +429,13 @@ const schema = a.schema({
     })
     .returns(a.ref('StoryConnection'))
     .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
-    .handler(a.handler.function('listStories')),
+    .handler(a.handler.function(listStories)),
   listTeacherAssignments: a
     .query()
     .arguments({ teacherId: a.id() })
     .returns(a.ref('AssignmentView').array())
     .authorization((allow) => [allow.authenticated(), allow.authenticated('identityPool'), allow.publicApiKey()])
-    .handler(a.handler.function('listAssignments')),
+    .handler(a.handler.function(listAssignments)),
   getAssignmentAnalytics: a
     .query()
     .arguments({
@@ -442,7 +459,7 @@ const schema = a.schema({
       })
     )
     .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
-    .handler(a.handler.function('getAssignmentAnalytics')),
+    .handler(a.handler.function(getAssignmentAnalytics)),
   generateStory: a
     .mutation()
     .arguments({
@@ -456,7 +473,7 @@ const schema = a.schema({
     })
     .returns(a.ref('StoryGenerationPayload'))
     .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
-    .handler(a.handler.function('generateStory')),
+    .handler(a.handler.function(generateStory)),
   updateWordMastery: a
     .mutation()
     .arguments({
@@ -466,7 +483,7 @@ const schema = a.schema({
     })
     .returns(a.ref('Word'))
     .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
-    .handler(a.handler.function('updateWordMastery')),
+    .handler(a.handler.function(updateWordMastery)),
   createTeacherAssignment: a
     .mutation()
     .arguments({
@@ -479,7 +496,7 @@ const schema = a.schema({
     })
     .returns(a.ref('Assignment'))
     .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
-    .handler(a.handler.function('createAssignment')),
+    .handler(a.handler.function(createAssignment)),
   generateTeacherAssignment: a
     .mutation()
     .arguments({
@@ -510,7 +527,7 @@ const schema = a.schema({
       })
     )
     .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
-    .handler(a.handler.function('generateTeacherAssignment')),
+    .handler(a.handler.function(generateTeacherAssignment)),
   distributeAssignment: a
     .mutation()
     .arguments({
@@ -529,7 +546,7 @@ const schema = a.schema({
       })
     )
     .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
-    .handler(a.handler.function('distributeAssignment')),
+    .handler(a.handler.function(distributeAssignment)),
   submitAssignment: a
     .mutation()
     .arguments({
@@ -552,7 +569,7 @@ const schema = a.schema({
       })
     )
     .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
-    .handler(a.handler.function('submitAssignment')),
+    .handler(a.handler.function(submitAssignment)),
   generateQuiz: a
     .mutation()
     .arguments({
@@ -565,7 +582,7 @@ const schema = a.schema({
       })
     )
     .authorization((allow) => [allow.authenticated()])
-    .handler(a.handler.function('generateQuiz')),
+    .handler(a.handler.function(generateQuiz)),
   checkBadges: a
     .mutation()
     .arguments({
@@ -578,7 +595,7 @@ const schema = a.schema({
       })
     )
     .authorization((allow) => [allow.authenticated()])
-    .handler(a.handler.function('checkBadges')),
+    .handler(a.handler.function(checkBadges)),
   adjustDifficulty: a
     .mutation()
     .arguments({
@@ -592,7 +609,7 @@ const schema = a.schema({
       })
     )
     .authorization((allow) => [allow.authenticated()])
-    .handler(a.handler.function('adjustDifficulty')),
+    .handler(a.handler.function(adjustDifficulty)),
   trackVocabularyProgress: a
     .mutation()
     .arguments({
@@ -608,7 +625,7 @@ const schema = a.schema({
       })
     )
     .authorization((allow) => [allow.authenticated()])
-    .handler(a.handler.function('trackVocabularyProgress')),
+    .handler(a.handler.function(trackVocabularyProgress)),
   cleanupOldStories: a
     .mutation()
     .arguments({
@@ -620,7 +637,7 @@ const schema = a.schema({
       })
     )
     .authorization((allow) => [allow.authenticated()])
-    .handler(a.handler.function('cleanupOldStories')),
+    .handler(a.handler.function(cleanupOldStories)),
 });
 
 export type Schema = ClientSchema<typeof schema>;
@@ -633,4 +650,5 @@ export const data = defineData({
       expiresInDays: 365,
     },
   },
+  name: 'amplifyData',
 });
