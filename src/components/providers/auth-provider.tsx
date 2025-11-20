@@ -12,6 +12,7 @@ interface AuthUser {
   userId?: string;
   username?: string;
   email?: string | null;
+  role?: "student" | "teacher" | null;
 }
 
 interface AuthContextValue {
@@ -34,13 +35,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [user, setUser] = useState<AuthUser | null>(null);
 
-  const buildUser = useCallback((current: Awaited<ReturnType<typeof getCurrentUser>>): AuthUser => {
+  const buildUser = useCallback(async (current: Awaited<ReturnType<typeof getCurrentUser>>): Promise<AuthUser> => {
     const withId = current as { userId?: string };
     const withDetails = current as { signInDetails?: { loginId?: string | null } };
+    
     return {
       userId: withId.userId,
       username: current?.username,
       email: withDetails.signInDetails?.loginId ?? null,
+      role: null, // Role will be determined by checking which profile exists in DynamoDB
     };
   }, []);
 
@@ -50,7 +53,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       await fetchAuthSession();
       const current = await getCurrentUser();
-      const builtUser = buildUser(current);
+      const builtUser = await buildUser(current);
       setUser(builtUser);
       setStatus("authenticated");
       console.log("AuthProvider: user authenticated", builtUser);

@@ -30,14 +30,15 @@ export default function LoginPage() {
     },
   });
 
-  const { isAuthenticated, status: authStatus, signIn } = useAuth();
+  const { isAuthenticated, user, status: authStatus, signIn } = useAuth();
 
   // Redirect after auth state resolves, not during render to avoid React warning
   useEffect(() => {
-    if (isAuthenticated) {
-      router.replace("/student");
+    if (isAuthenticated && user) {
+      const redirectPath = user.role === "teacher" ? "/teacher" : "/student";
+      router.replace(redirectPath);
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, user, router]);
 
   const onSubmit = async (values: LoginInput) => {
     setStatus("loading");
@@ -45,8 +46,7 @@ export default function LoginPage() {
     try {
       await signIn(values.email, values.password);
       setStatus("success");
-      // Default to student dashboard; adjust if you add role routing
-      router.push("/student");
+      // Redirect happens in useEffect after auth context updates with user role
     } catch (error) {
       console.error(error);
       setStatus("error");

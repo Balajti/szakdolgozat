@@ -35,6 +35,9 @@ const functions = [
   backend.createAssignment,
 ];
 
+// Add Gemini API key to generate-story function
+backend.generateStory.addEnvironment('GEMINI_API_KEY', process.env.GEMINI_API_KEY || '');
+
 // Add table name environment variables to all functions
 functions.forEach((fn) => {
   fn.addEnvironment('AMPLIFY_DATA_STUDENTPROFILE_TABLE_NAME', backend.data.resources.tables['StudentProfile'].tableName);

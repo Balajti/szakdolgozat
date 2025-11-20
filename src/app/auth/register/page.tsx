@@ -7,12 +7,13 @@ import { Suspense, useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { CalendarDays, Loader2, Lock, Mail, Sparkles, UserPlus, CheckCircle2, Circle } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import {
   registerSchema,
   type RegisterInput,
 } from "@/lib/auth-client";
-import { signUp, confirmSignUp, resendSignUpCode } from "aws-amplify/auth";
+import { signUp, confirmSignUp, resendSignUpCode, signIn, fetchUserAttributes } from "aws-amplify/auth";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 function RegisterPageContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const preselectedRole = (searchParams.get("role") as RegisterInput["role"]) ?? "student";
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "confirm" | "confirmed" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -112,12 +114,28 @@ function RegisterPageContent() {
     setErrorMessage(null);
     try {
       const email = form.getValues("email");
+      const password = form.getValues("password");
+
+      // Confirm the sign up
       const result = await confirmSignUp({
         username: email,
         confirmationCode,
       });
+
       if (result.isSignUpComplete) {
-        setStatus("confirmed");
+        // Auto sign in the user
+        try {
+          await signIn({
+            username: email,
+            password: password,
+          });
+
+          // Default to student dashboard - they can switch role later
+          router.push("/student");
+        } catch (signInError) {
+          console.error("Auto sign-in failed", signInError);
+          setStatus("confirmed");
+        }
       } else {
         setStatus("success");
       }

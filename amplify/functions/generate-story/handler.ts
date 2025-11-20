@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { AppSyncIdentityCognito } from "aws-lambda";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { Schema } from "../../data/resource";
 import { getDBClient, queryByIndex, type DynamoDBItem } from "../shared/dynamodb-client";
 
@@ -20,6 +21,12 @@ type SanitizedInput = {
   mode: GenerationMode;
 };
 
+interface GeneratedStory {
+  title: string;
+  content: string;
+  highlightedWords: Array<{ word: string; offset: number; length: number }>;
+}
+
 function normalizeWordList(list?: (string | null | undefined)[] | null): string[] {
   if (!list) return [];
   return list
@@ -38,27 +45,116 @@ function resolveOwner(
     : { studentId: identity.sub };
 }
 
-function synthesizeStory(input: SanitizedInput): { title: string; content: string } {
-  const { level, age, knownWords, unknownWords, requiredWords, mode } = input;
-  const focusWords = [...new Set([...requiredWords, ...unknownWords])];
-  const vocabulary = [...new Set([...knownWords, ...focusWords])];
+async function generateStoryWithAI(input: SanitizedInput): Promise<GeneratedStory> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY environment variable not set");
+  }
 
-  const title = mode === "teacher" ? `Assignment Story (${level})` : `Personalized Story (${level})`;
-  const intro = `This story is tailored for a ${age}-year-old ${mode} session at level ${level}.`;
-  const vocabularyLine = vocabulary.length > 0
-    ? `It uses these focus words: ${vocabulary.join(", ")}.`
-    : "It reinforces previously mastered vocabulary.";
-  const challengeLine = focusWords.length > 0
-    ? `Pay extra attention to practicing ${focusWords.join(", ")}.`
-    : "There are no new challenge words this time.";
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-  const body = `Once upon a time, a curious learner explored English through playful moments. Each sentence wove known words with exciting surprises, building confidence step by step.`;
-  const conclusion = `By the end of the story, our learner felt proud and ready to use these words in real conversations.`;
+  const { level, age, knownWords, unknownWords, requiredWords, excludedWords, mode } = input;
+  
+  // Build vocabulary constraints
+  const targetWords = [...new Set([...unknownWords, ...requiredWords])];
+  const avoidWords = excludedWords.length > 0 ? excludedWords : [];
+  
+  // Create age-appropriate context
+  const ageContext = age <= 10 
+    ? "a young child who loves adventures, animals, and fantasy"
+    : age <= 14
+    ? "a pre-teen interested in friendship, school life, and discovery"
+    : "a teenager curious about real-world issues, technology, and personal growth";
 
-  return {
-    title,
-    content: [intro, vocabularyLine, challengeLine, "", body, conclusion].join("\n"),
-  };
+  const modeContext = mode === "placement"
+    ? "This is a placement test story to assess vocabulary level."
+    : mode === "teacher"
+    ? "This is a teacher-assigned story for classroom learning."
+    : "This is a personalized story matching the student's interests and vocabulary.";
+
+  const prompt = `You are an expert English language teacher creating an engaging story for a ${age}-year-old student at CEFR level ${level}.
+
+${modeContext}
+
+**Requirements:**
+- Target audience: ${ageContext}
+- CEFR Level: ${level}
+- Story length: 200-300 words
+- Must naturally include these target words: ${targetWords.join(", ")}
+- Can use these known words: ${knownWords.slice(0, 30).join(", ")}${knownWords.length > 30 ? ` (and ${knownWords.length - 30} more)` : ""}
+${avoidWords.length > 0 ? `- AVOID these words: ${avoidWords.join(", ")}` : ""}
+
+**Story Guidelines:**
+- Create an engaging narrative with a clear beginning, middle, and end
+- Use simple sentence structures appropriate for ${level} level
+- Make the story interesting and age-appropriate for a ${age}-year-old
+- Naturally weave target words into the story context
+- Include dialogue if appropriate
+- End with a positive or thought-provoking conclusion
+
+**Format your response as JSON:**
+{
+  "title": "Engaging story title (5-7 words)",
+  "content": "The complete story text with proper paragraphs",
+  "highlightedWords": [
+    {"word": "target word from the story", "offset": character_position, "length": word_length}
+  ]
+}
+
+Important: In highlightedWords, only include the NEW/UNKNOWN words (${targetWords.join(", ")}). Find their exact positions in the content text.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const text = response.text();
+    
+    // Extract JSON from response (remove markdown code blocks if present)
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error("Failed to parse JSON from AI response");
+    }
+    
+    const parsed = JSON.parse(jsonMatch[0]) as GeneratedStory;
+    
+    // Validate response structure
+    if (!parsed.title || !parsed.content) {
+      throw new Error("Invalid story structure from AI");
+    }
+    
+    // Ensure highlightedWords is an array
+    if (!Array.isArray(parsed.highlightedWords)) {
+      parsed.highlightedWords = [];
+    }
+    
+    return parsed;
+  } catch (error) {
+    console.error("Gemini API error:", error);
+    // Fallback to simple story if AI fails
+    return generateFallbackStory(input);
+  }
+}
+
+function generateFallbackStory(input: SanitizedInput): GeneratedStory {
+  const { level, unknownWords, requiredWords } = input;
+  const targetWords = [...new Set([...unknownWords, ...requiredWords])];
+  
+  const title = `Learning Adventure (${level})`;
+  const content = `Once upon a time, there was a curious learner who loved discovering new words.
+
+Every day, they practiced English by reading stories and talking with friends. They learned that ${targetWords.slice(0, 3).join(", ")} ${targetWords.length > 3 ? "and many other words" : ""} could help them express amazing ideas.
+
+With patience and practice, the learner grew more confident. They realized that every new word was like a key, unlocking new ways to communicate and understand the world.
+
+The end.`;
+
+  // Calculate positions for highlighted words
+  const highlightedWords = targetWords.map(word => {
+    const offset = content.indexOf(word);
+    return offset >= 0 ? { word, offset, length: word.length } : null;
+  }).filter((h): h is { word: string; offset: number; length: number } => h !== null);
+
+  return { title, content, highlightedWords };
 }
 
 const toStoryView = (story: DynamoDBItem): StoryView => {
@@ -133,7 +229,7 @@ export const handler: Handler = async (event) => {
     }
   }
 
-  const storyDraft = synthesizeStory(sanitized);
+  const storyDraft = await generateStoryWithAI(sanitized);
   const timestamp = new Date().toISOString();
 
   const newWords: DynamoDBItem[] = [];
@@ -186,7 +282,7 @@ export const handler: Handler = async (event) => {
     mode: sanitized.mode,
     createdAt: timestamp,
     unknownWordIds,
-    highlightedWords: [],
+    highlightedWords: storyDraft.highlightedWords || [],
   });
 
   const payload: StoryGenerationPayload = {
