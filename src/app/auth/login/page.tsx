@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Loader2, Lock, LogIn, Mail, Sparkles } from "lucide-react";
+import { Loader2, Lock, LogIn, Mail } from "lucide-react";
 
 import { loginSchema, type LoginInput } from "@/lib/auth-client";
 import { useAuth } from "@/components/providers/auth-provider";

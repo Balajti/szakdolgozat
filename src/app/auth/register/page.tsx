@@ -13,7 +13,7 @@ import {
   registerSchema,
   type RegisterInput,
 } from "@/lib/auth-client";
-import { signUp, confirmSignUp, resendSignUpCode, signIn, fetchUserAttributes } from "aws-amplify/auth";
+import { signUp, confirmSignUp, resendSignUpCode, signIn } from "aws-amplify/auth";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
