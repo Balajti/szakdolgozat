@@ -33,7 +33,7 @@ interface InteractiveStoryReaderProps {
 export default function InteractiveStoryReader({
   content,
   highlightedWords,
-  unknownWords,
+  unknownWords: initialUnknownWords,
   learningWords,
   onMarkUnknown,
   targetLanguage = "hu" // Default to Hungarian
@@ -42,6 +42,10 @@ export default function InteractiveStoryReader({
   const [translation, setTranslation] = useState<WordTranslation | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [translationCache, setTranslationCache] = useState<Map<string, WordTranslation>>(new Map());
+  const [markedUnknown, setMarkedUnknown] = useState<Set<string>>(new Set(initialUnknownWords.map(w => w.toLowerCase())));
+  
+  const unknownWords = Array.from(markedUnknown);
 
   const handleWordClick = async (word: string) => {
     // Clean the word (remove punctuation)
@@ -49,30 +53,19 @@ export default function InteractiveStoryReader({
     
     setSelectedWord(cleanWord);
     setIsDialogOpen(true);
+    
+    // Check cache first
+    if (translationCache.has(cleanWord)) {
+      console.log('Using cached translation for:', cleanWord);
+      setTranslation(translationCache.get(cleanWord)!);
+      return;
+    }
+    
     setIsLoading(true);
     setTranslation(null);
 
     try {
-      // Call the comprehensive translation API
-      const response = await fetch('/api/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          word: cleanWord,
-          sourceLanguage: 'en',
-          targetLanguage,
-          includeGrammar: true,
-          includeExamples: true
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Translation failed');
-      }
-
-      const data = await response.json();
-      
-      // Enhance with AI-generated grammar information if available
+      // Call GraphQL translateWord query directly
       const { client } = await import('@/lib/amplify-client');
       
       const translateWordQuery = /* GraphQL */ `
@@ -80,8 +73,11 @@ export default function InteractiveStoryReader({
           translateWord(word: $word, targetLanguage: $targetLanguage) {
             word
             translation
+            sourceLanguage
+            targetLanguage
             exampleSentence
             exampleTranslation
+            phonetic
             partOfSpeech
             pastTense
             futureTense
@@ -91,42 +87,46 @@ export default function InteractiveStoryReader({
         }
       `;
 
-      try {
-        const graphqlResponse = await client.graphql({
-          query: translateWordQuery,
-          variables: { word: cleanWord, targetLanguage }
-        }) as { data: { translateWord: WordTranslation } };
-
-        if (graphqlResponse.data?.translateWord) {
-          setTranslation(graphqlResponse.data.translateWord);
-        } else {
-          setTranslation({
-            ...data,
-            word: cleanWord,
-            sourceLanguage: 'en',
-            targetLanguage
-          });
+      console.log('Translating word:', cleanWord);
+      
+      const graphqlResponse = await client.graphql({
+        query: translateWordQuery,
+        variables: { 
+          word: cleanWord, 
+          targetLanguage,
+          sourceLanguage: 'en'
         }
-      } catch (err) {
-        console.log('GraphQL translation fallback to basic API', err);
-        setTranslation({
-          ...data,
-          word: cleanWord,
-          sourceLanguage: 'en',
-          targetLanguage
-        });
+      }) as { data: { translateWord: WordTranslation } };
+
+      if (graphqlResponse.data?.translateWord) {
+        console.log('Translation successful:', graphqlResponse.data.translateWord.translation);
+        const translationData = graphqlResponse.data.translateWord;
+        setTranslation(translationData);
+        // Cache the translation
+        setTranslationCache(prev => new Map(prev).set(cleanWord, translationData));
+      } else {
+        throw new Error('No translation data received');
       }
     } catch (error) {
       console.error('Translation error:', error);
       // Show basic fallback
-      setTranslation({
+      const fallbackTranslation = {
         word: cleanWord,
-        translation: cleanWord,
+        translation: `[Fordítás: ${cleanWord}]`,
         sourceLanguage: 'en',
         targetLanguage,
-        exampleSentence: `This is how you use "${cleanWord}" in a sentence.`,
-        exampleTranslation: `Így használod a(z) "${cleanWord}" szót egy mondatban.`
-      });
+        exampleSentence: `The student learned the word "${cleanWord}" today.`,
+        exampleTranslation: `A diák megtanulta a(z) "${cleanWord}" szót ma.`,
+        phonetic: undefined,
+        partOfSpeech: undefined,
+        pastTense: undefined,
+        futureTense: undefined,
+        pluralForm: undefined,
+        usageNotes: 'Kérlek, ellenőrizd az internetkapcsolatod a részletes fordításhoz.'
+      };
+      setTranslation(fallbackTranslation);
+      // Cache fallback too
+      setTranslationCache(prev => new Map(prev).set(cleanWord, fallbackTranslation));
     } finally {
       setIsLoading(false);
     }
@@ -134,7 +134,82 @@ export default function InteractiveStoryReader({
 
   const handleMarkUnknown = async () => {
     if (selectedWord && onMarkUnknown) {
+      // Get the translation from cache
+      const wordTranslation = translationCache.get(selectedWord);
+      
+      if (wordTranslation) {
+        // Save to database with translation data
+        try {
+          const { client } = await import('@/lib/amplify-client');
+          const { fetchAuthSession } = await import('aws-amplify/auth');
+          
+          const session = await fetchAuthSession();
+          const studentId = session.userSub;
+          
+          if (studentId) {
+            // Check if word already exists
+            const listWordsQuery = /* GraphQL */ `
+              query ListWordsByStudent($studentId: ID!) {
+                listWordsByStudent(studentId: $studentId, filter: { text: { eq: "${selectedWord}" } }) {
+                  items {
+                    id
+                    text
+                  }
+                }
+              }
+            `;
+            
+            const existingWords = await client.graphql({
+              query: listWordsQuery,
+              variables: { studentId }
+            }) as { data: { listWordsByStudent: { items: Array<{ id: string; text: string }> } } };
+            
+            // Only create if word doesn't exist
+            if (!existingWords.data?.listWordsByStudent?.items?.length) {
+              const createWordMutation = /* GraphQL */ `
+                mutation CreateWord($input: CreateWordInput!) {
+                  createWord(input: $input) {
+                    id
+                    text
+                    translation
+                    mastery
+                  }
+                }
+              `;
+              
+              await client.graphql({
+                query: createWordMutation,
+                variables: {
+                  input: {
+                    studentId,
+                    text: selectedWord,
+                    translation: wordTranslation.translation,
+                    exampleSentence: wordTranslation.exampleSentence,
+                    exampleTranslation: wordTranslation.exampleTranslation,
+                    partOfSpeech: wordTranslation.partOfSpeech,
+                    pastTense: wordTranslation.pastTense,
+                    futureTense: wordTranslation.futureTense,
+                    pluralForm: wordTranslation.pluralForm,
+                    usageNotes: wordTranslation.usageNotes,
+                    mastery: 'unknown'
+                  }
+                }
+              });
+              
+              console.log('Word saved to database with translation:', selectedWord);
+            } else {
+              console.log('Word already exists in database:', selectedWord);
+            }
+          }
+        } catch (error) {
+          console.error('Error saving word to database:', error);
+        }
+      }
+      
+      // Call parent handler and update UI
       await onMarkUnknown(selectedWord);
+      // Add to marked unknown set for visual indication
+      setMarkedUnknown(prev => new Set(prev).add(selectedWord));
       setIsDialogOpen(false);
     }
   };
@@ -189,6 +264,33 @@ export default function InteractiveStoryReader({
   return (
     <>
       <div className="prose prose-lg dark:prose-invert max-w-none">
+        {/* Marked Unknown Words */}
+        {markedUnknown.size > 0 && (
+          <div className="mt-2 p-4 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-950/30">
+            <h3 className="text-sm font-semibold text-red-800 dark:text-red-300 mb-3">
+              🔖 Ismeretlen szavak ({markedUnknown.size})
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {Array.from(markedUnknown).map((word) => (
+                <Badge 
+                  key={word} 
+                  variant="outline"
+                  className="bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-300 dark:border-red-700 cursor-pointer hover:bg-red-200 dark:hover:bg-red-900/60"
+                  onClick={() => handleWordClick(word)}
+                >
+                  {word}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+      {/* Legend & Instructions */}
+        <div className="mt-4 mb-4 space-y-3">
+          <p className="text-sm text-muted-foreground italic">
+            Kattints bármely szóra a részletes fordításért, nyelvtani alakokért és példamondatokért
+          </p>
+        </div>
         <div className="leading-relaxed text-justify">
           {renderContent()}
         </div>
@@ -196,7 +298,7 @@ export default function InteractiveStoryReader({
 
       {/* Translation Modal */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md w-full h-[92vh] overflow-y-auto sm:max-w-lg sm:h-auto sm:max-h-[80vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span className="capitalize">{selectedWord}</span>
@@ -282,7 +384,9 @@ export default function InteractiveStoryReader({
                 {translation.usageNotes && (
                   <div className="bg-accent/10 rounded-lg p-3">
                     <p className="text-sm font-semibold text-foreground mb-1">Használati tippek</p>
-                    <p className="text-sm text-muted-foreground">{translation.usageNotes}</p>
+                    <p className="text-sm text-muted-foreground max-h-64 sm:max-h-40 overflow-y-auto pr-1">
+                      {translation.usageNotes}
+                    </p>
                   </div>
                 )}
 
@@ -314,27 +418,6 @@ export default function InteractiveStoryReader({
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Legend & Instructions */}
-      <div className="mt-8 space-y-3">
-        <p className="text-sm text-muted-foreground italic">
-          💡 Kattints bármely szóra a részletes fordításért, nyelvtani alakokért és példamondatokért
-        </p>
-        <div className="flex flex-wrap gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="w-4 h-4 bg-red-600 dark:bg-red-400 rounded"></span>
-            <span>Ismeretlen szavak</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-4 h-4 bg-amber-600 dark:bg-amber-400 rounded"></span>
-            <span>Tanulandó szavak</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-4 h-4 bg-blue-600 dark:bg-blue-400 rounded"></span>
-            <span>Kiemelt szavak</span>
-          </div>
-        </div>
-      </div>
     </>
   );
 }

@@ -64,8 +64,9 @@ const functions = [
   backend.cleanupOldStories
 ];
 
-// Add Gemini API key to generate-story function
+// Add Gemini API key to AI-powered functions
 backend.generateStory.addEnvironment('GEMINI_API_KEY', process.env.GEMINI_API_KEY || '');
+backend.translateWord.addEnvironment('GEMINI_API_KEY', process.env.GEMINI_API_KEY || '');
 
 // Add table name environment variables to all functions
 functions.forEach((fn) => {

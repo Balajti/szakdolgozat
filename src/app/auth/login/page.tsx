@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Loader2, Lock, LogIn, Mail } from "lucide-react";
+import { ArrowLeft, Loader2, Lock, LogIn, Mail } from "lucide-react";
 
 import { loginSchema, type LoginInput } from "@/lib/auth-client";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -56,6 +56,13 @@ export default function LoginPage() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      <Link
+        href="/"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground lg:hidden"
+      >
+        <ArrowLeft className="size-4" />
+        Vissza a főoldalra
+      </Link>
       <div className="space-y-4">
         <Badge variant="outline" className="w-fit bg-primary/10 text-primary">
           Bejelentkezés

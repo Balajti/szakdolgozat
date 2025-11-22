@@ -85,8 +85,8 @@ export function VocabularyChart({ studentId, days = 30 }: VocabularyChartProps) 
     return (
       <div className="flex items-center justify-center h-[300px] text-center">
         <div>
-          <p className="text-muted-foreground">Még nincsenek szókincs adatok.</p>
-          <p className="text-sm text-muted-foreground/70 mt-1">Olvass történeteket a fejlődés nyomon követéséhez!</p>
+          <p className="text-muted-foreground">Még nincs elegendő adat a grafikonhoz.</p>
+          <p className="text-sm text-muted-foreground/70 mt-1">Jelöld meg az ismeretlen szavakat vagy olvass új történeteket a statisztikához.</p>
         </div>
       </div>
     );

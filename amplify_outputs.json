@@ -91,6 +91,48 @@
               "isRequired": false,
               "attributes": []
             },
+            "exampleTranslation": {
+              "name": "exampleTranslation",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "partOfSpeech": {
+              "name": "partOfSpeech",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "pastTense": {
+              "name": "pastTense",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "futureTense": {
+              "name": "futureTense",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "pluralForm": {
+              "name": "pluralForm",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "usageNotes": {
+              "name": "usageNotes",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
             "mastery": {
               "name": "mastery",
               "isArray": false,
@@ -3237,8 +3279,50 @@
               "isRequired": false,
               "attributes": []
             },
+            "exampleTranslation": {
+              "name": "exampleTranslation",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
             "phonetic": {
               "name": "phonetic",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "partOfSpeech": {
+              "name": "partOfSpeech",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "pastTense": {
+              "name": "pastTense",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "futureTense": {
+              "name": "futureTense",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "pluralForm": {
+              "name": "pluralForm",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "usageNotes": {
+              "name": "usageNotes",
               "isArray": false,
               "type": "String",
               "isRequired": false,

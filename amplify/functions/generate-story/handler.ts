@@ -47,11 +47,14 @@ function resolveOwner(
 
 async function generateStoryWithAI(input: SanitizedInput): Promise<GeneratedStory> {
   const apiKey = process.env.GEMINI_API_KEY;
+  console.log("API Key exists:", !!apiKey, "Length:", apiKey?.length || 0);
+  
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY environment variable not set");
   }
 
   const ai = new GoogleGenAI({ apiKey });
+  console.log("Gemini client initialized, generating story...");
 
   const { level, age, knownWords, unknownWords, requiredWords, excludedWords, mode } = input;
   
@@ -111,6 +114,9 @@ Important:
 3. Find their exact positions in the content text for each occurrence`;
 
   try {
+    console.log("Calling Gemini API with model: gemini-2.5-flash");
+    const startTime = Date.now();
+    
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
@@ -122,14 +128,20 @@ Important:
       },
     });
     
+    const elapsed = Date.now() - startTime;
+    console.log(`Gemini API response received in ${elapsed}ms`);
+    
     const text = response.text;
     if (!text) {
       throw new Error("No text received from AI response");
     }
     
+    console.log("Response text length:", text.length);
+    
     // Extract JSON from response (remove markdown code blocks if present)
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
+      console.error("Failed to extract JSON from response:", text.substring(0, 200));
       throw new Error("Failed to parse JSON from AI response");
     }
     
@@ -140,6 +152,8 @@ Important:
       throw new Error("Invalid story structure from AI");
     }
     
+    console.log("Story generated successfully:", parsed.title);
+    
     // Ensure highlightedWords is an array
     if (!Array.isArray(parsed.highlightedWords)) {
       parsed.highlightedWords = [];
@@ -147,8 +161,13 @@ Important:
     
     return parsed;
   } catch (error) {
-    console.error("Gemini API error:", error);
+    console.error("Gemini API error details:", error);
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    }
     // Fallback to simple story if AI fails
+    console.log("Using fallback story generation");
     return generateFallbackStory(input);
   }
 }

@@ -25,16 +25,11 @@ function StoryReaderPageInner() {
   const { toast } = useToast();
   const [story, setStory] = useState<Story | null>(null);
   const [loading, setLoading] = useState(true);
-  const [studentId, setStudentId] = useState<string>("");
 
   useEffect(() => {
     async function loadStory() {
       try {
         const { client } = await import("@/lib/amplify-client");
-        const { getCurrentUser } = await import("aws-amplify/auth");
-
-        const user = await getCurrentUser();
-        setStudentId(user.userId);
 
         const getStoryQuery = /* GraphQL */ `
           query GetStory($id: ID!) {
@@ -85,43 +80,12 @@ function StoryReaderPageInner() {
   }, [params.id, router, toast]);
 
   const handleMarkUnknown = async (word: string) => {
-    try {
-      const { client } = await import("@/lib/amplify-client");
-
-      const createWordMutation = /* GraphQL */ `
-        mutation CreateWord($input: CreateWordInput!) {
-          createWord(input: $input) {
-            id
-            text
-            mastery
-          }
-        }
-      `;
-
-      await client.graphql({
-        query: createWordMutation,
-        variables: {
-          input: {
-            studentId,
-            text: word,
-            translation: word,
-            mastery: "unknown",
-          },
-        },
-      });
-
-      toast({
-        title: "Szó hozzáadva",
-        description: `"${word}" hozzáadva az ismeretlen szavakhoz.`,
-      });
-    } catch (error) {
-      console.error("Error marking word as unknown:", error);
-      toast({
-        title: "Hiba",
-        description: "Nem sikerült a szót hozzáadni.",
-        variant: "destructive",
-      });
-    }
+    // Word is already saved in interactive-story-reader with full translation
+    // Just show the toast confirmation
+    toast({
+      title: "Szó hozzáadva",
+      description: `"${word}" hozzáadva az ismeretlen szavakhoz.`,
+    });
   };
 
   if (loading) {
@@ -140,19 +104,19 @@ function StoryReaderPageInner() {
     <div className="min-h-screen bg-background">
       <div className="border-b border-border/40 bg-card">
         <div className="container max-w-6xl mx-auto px-6 py-4">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => router.push("/student")}
-              className="gap-2"
+              className="gap-2 self-start"
             >
               <ArrowLeft className="h-4 w-4" />
               Vissza
             </Button>
-            <div className="flex-1">
+            <div className="flex-1 w-full">
               <h1 className="text-2xl font-display font-bold">{story.title}</h1>
-              <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mt-1">
                 {story.level && <span>Szint: {story.level}</span>}
                 {story.difficulty && <span>• {story.difficulty}</span>}
                 {story.topic && <span>• {story.topic}</span>}

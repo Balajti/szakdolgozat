@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 import { Suspense, useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { CalendarDays, Loader2, Lock, Mail, Sparkles, UserPlus, CheckCircle2, Circle } from "lucide-react";
+import { ArrowLeft, CalendarDays, Loader2, Lock, Mail, UserPlus, CheckCircle2, Circle } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -194,6 +194,13 @@ function RegisterPageContent() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      <Link
+        href="/"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground lg:hidden"
+      >
+        <ArrowLeft className="size-4" />
+        Vissza a főoldalra
+      </Link>
       <div className="space-y-4 text-left">
         <Badge variant="outline" className="w-fit bg-primary/10 text-primary">
           Új WordNest fiók
@@ -430,17 +437,6 @@ function RegisterPageContent() {
         <Link href="/auth/login" className="font-semibold text-primary">
           Jelentkezz be itt.
         </Link>
-      </div>
-
-      <div className="space-y-3 rounded-3xl border border-primary/40 bg-primary/5 p-5 text-sm text-primary">
-        <p className="flex items-center gap-2 font-semibold text-primary">
-          <Sparkles className="size-4" /> Mi történik ezután?
-        </p>
-        <ul className="space-y-1 text-primary/90">
-          <li>1. Elküldjük a szintfelmérőt A1 szinten, rövid mondatokkal.</li>
-          <li>2. A megjelölt ismeretlen szavak bekerülnek a szótáradba.</li>
-          <li>3. Ezek alapján javaslunk személyre szabott történeteket.</li>
-        </ul>
       </div>
     </motion.div>
   );

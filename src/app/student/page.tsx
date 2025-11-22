@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { differenceInYears } from "date-fns";
 import {
@@ -20,21 +21,39 @@ import {
 import { Button } from "@/components/ui/button";
 import { useStudentDashboard } from "@/lib/hooks/use-student-dashboard";
 import { RequireAuth } from "@/components/providers/require-auth";
-import { VocabularyChart } from "@/components/student/vocabulary-chart";
+import { VocabularyQuickList } from "@/components/student/vocabulary-quick-list";
 import { RecentStories } from "@/components/student/recent-stories";
 import { BadgesDisplay } from "@/components/student/badges-display";
+import { VocabularyList } from "@/components/student/vocabulary-list";
 import { StoryPreferences } from "@/components/student/story-preferences";
 import { StoryGenerationModal } from "@/components/story/story-generation-modal";
 import { useToast } from "@/hooks/use-toast";
 import { LogoutButton } from "@/components/ui/logout-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
+
+const dashboardNavItems = [
+  { value: 'overview' as const, label: 'Áttekintés', icon: TrendingUp },
+  { value: 'library' as const, label: 'Könyvtár', icon: Library },
+  { value: 'vocabulary' as const, label: 'Szókincs', icon: BookOpen },
+  { value: 'achievements' as const, label: 'Eredmények', icon: Award },
+  { value: 'settings' as const, label: 'Beállítások', icon: Settings },
+];
+
+type DashboardView = typeof dashboardNavItems[number]['value'];
 
 function StudentPortalPageInner() {
   const router = useRouter();
   const { data, isLoading } = useStudentDashboard();
   const [isGenerationModalOpen, setIsGenerationModalOpen] = useState(false);
-  const [activeView, setActiveView] = useState<'overview' | 'library' | 'achievements' | 'settings'>('overview');
+  const [activeView, setActiveView] = useState<DashboardView>('overview');
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const { toast } = useToast();
+
+  const handleViewChange = (view: DashboardView) => {
+    setActiveView(view);
+    setIsMobileNavOpen(false);
+  };
 
   const handleGenerateStory = async (level: string) => {
     try {
@@ -143,63 +162,101 @@ function StudentPortalPageInner() {
       {/* Top Navigation */}
       <header className="border-b border-border/40 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-8">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
               <h1 className="text-2xl font-display font-bold text-foreground">WordNest</h1>
-              <nav className="hidden md:flex gap-1">
-                <Button 
-                  variant={activeView === 'overview' ? 'default' : 'ghost'}
-                  onClick={() => setActiveView('overview')}
-                  className="gap-2"
-                >
-                  <TrendingUp className="h-4 w-4" />
-                  Áttekintés
+              <nav className="hidden lg:flex flex-1 items-center justify-end gap-2">
+                {dashboardNavItems.map(({ value, label, icon: Icon }) => (
+                  <Button
+                    key={value}
+                    variant={activeView === value ? 'default' : 'ghost'}
+                    onClick={() => handleViewChange(value)}
+                    className="gap-2"
+                  >
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </Button>
+                ))}
+                <div className="mx-3 h-6 w-px bg-border/60" />
+                <Button onClick={() => setIsGenerationModalOpen(true)} size="sm" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Új történet
                 </Button>
-                <Button 
-                  variant={activeView === 'library' ? 'default' : 'ghost'}
-                  onClick={() => setActiveView('library')}
-                  className="gap-2"
-                >
-                  <Library className="h-4 w-4" />
-                  Könyvtár
-                </Button>
-                <Button 
-                  variant={activeView === 'achievements' ? 'default' : 'ghost'}
-                  onClick={() => setActiveView('achievements')}
-                  className="gap-2"
-                >
-                  <Award className="h-4 w-4" />
-                  Eredmények
-                </Button>
-                <Button 
-                  variant={activeView === 'settings' ? 'default' : 'ghost'}
-                  onClick={() => setActiveView('settings')}
-                  className="gap-2"
-                >
-                  <Settings className="h-4 w-4" />
-                  Beállítások
-                </Button>
+                <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-muted/50">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={profile?.avatarUrl || undefined} />
+                    <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                      {profile?.name?.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-medium">{profile?.name?.split(" ")[0]}</span>
+                </div>
+                <LogoutButton variant="secondary" size="sm" className="gap-2">
+                  <LogOut className="h-4 w-4" />
+                  Kilépés
+                </LogoutButton>
               </nav>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <Button onClick={() => setIsGenerationModalOpen(true)} size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Új történet
+              <Button
+                variant="outline"
+                size="icon"
+                className="lg:hidden"
+                onClick={() => setIsMobileNavOpen((prev) => !prev)}
+                aria-label="Navigáció megnyitása"
+              >
+                <HamburgerIcon open={isMobileNavOpen} />
               </Button>
-              <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-muted/50">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={profile?.avatarUrl || undefined} />
-                  <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                    {profile?.name?.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-sm font-medium hidden sm:block">{profile?.name?.split(" ")[0]}</span>
-              </div>
-              <LogoutButton variant="ghost" size="sm">
-                <LogOut className="h-4 w-4" />
-              </LogoutButton>
             </div>
+
+            <AnimatePresence initial={false}>
+              {isMobileNavOpen && (
+                <motion.nav
+                  key="mobile-nav"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  className="lg:hidden -mx-6 px-6 pb-4 border-t border-border/30 flex flex-col gap-2"
+                >
+                  {dashboardNavItems.map(({ value, label, icon: Icon }) => (
+                    <Button
+                      key={value}
+                      variant={activeView === value ? 'default' : 'ghost'}
+                      onClick={() => handleViewChange(value)}
+                      className="gap-3 justify-start w-full"
+                    >
+                      <Icon className="h-4 w-4" />
+                      {label}
+                    </Button>
+                  ))}
+                  <div className="pt-4 mt-2 border-t border-border/30 space-y-3">
+                    <Button onClick={() => setIsGenerationModalOpen(true)} className="w-full gap-2">
+                      <Plus className="h-4 w-4" />
+                      Új történet
+                    </Button>
+                    <div className="flex items-center gap-3 rounded-xl bg-muted/40 px-3 py-2">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={profile?.avatarUrl || undefined} />
+                        <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                          {profile?.name?.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{profile?.name}</p>
+                        <p className="text-xs text-muted-foreground">Tanuló</p>
+                      </div>
+                    </div>
+                    <LogoutButton
+                      size="default"
+                      className="w-full justify-center gap-2"
+                      variant="outline"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Kilépés
+                    </LogoutButton>
+                  </div>
+                </motion.nav>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </header>
@@ -288,8 +345,11 @@ function StudentPortalPageInner() {
             {/* Charts and Stories Grid */}
             <div className="grid lg:grid-cols-2 gap-8">
               <div className="bg-card rounded-2xl p-6 border border-border/40">
-                <h3 className="text-lg font-semibold mb-6">Szókincs fejlődés</h3>
-                <VocabularyChart studentId={profile?.id || ""} />
+                <h3 className="text-lg font-semibold mb-2">Szókincs gyorslista</h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  A legutóbb jelölt ismeretlen szavak és fordításaik.
+                </p>
+                <VocabularyQuickList studentId={profile?.id || ""} limit={6} />
               </div>
 
               <div className="bg-card rounded-2xl p-6 border border-border/40">
@@ -319,6 +379,18 @@ function StudentPortalPageInner() {
                 router.push(`/student/story/${story.id}`);
               }}
             />
+          </div>
+        )}
+
+        {activeView === 'vocabulary' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-3xl font-display font-bold mb-2">Szókincs</h2>
+              <p className="text-muted-foreground">
+                Tekintsd meg az ismeretlen és tanult szavaidat fordításokkal együtt.
+              </p>
+            </div>
+            <VocabularyList studentId={profile?.id || ""} />
           </div>
         )}
 
@@ -365,5 +437,32 @@ export default function StudentPortalPage() {
     <RequireAuth role="student">
       <StudentPortalPageInner />
     </RequireAuth>
+  );
+}
+
+function HamburgerIcon({ open }: { open: boolean }) {
+  const lineBase = "absolute left-0 h-0.5 w-full rounded-full bg-current transition-all duration-300";
+
+  return (
+    <span className="relative block h-4 w-5">
+      <span
+        className={cn(
+          lineBase,
+          open ? "top-1/2 -translate-y-1/2 rotate-45" : "top-0"
+        )}
+      />
+      <span
+        className={cn(
+          lineBase,
+          open ? "opacity-0" : "top-1/2 -translate-y-1/2"
+        )}
+      />
+      <span
+        className={cn(
+          lineBase,
+          open ? "top-1/2 -translate-y-1/2 -rotate-45" : "bottom-0"
+        )}
+      />
+    </span>
   );
 }
