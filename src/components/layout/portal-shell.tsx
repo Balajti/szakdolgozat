@@ -32,7 +32,7 @@ export function PortalShell({
     <div className={cn("relative min-h-screen bg-background", className)}>
       <div
         className={cn(
-          "pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(59,130,246,0.15),transparent_45%),radial-gradient(circle_at_85%_30%,rgba(16,185,129,0.12),transparent_40%),radial-gradient(circle_at_50%_80%,rgba(250,204,21,0.14),transparent_45%)]",
+          "pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(255,122,48,0.22),transparent_50%),radial-gradient(circle_at_85%_15%,rgba(70,92,136,0.18),transparent_46%),radial-gradient(circle_at_40%_85%,rgba(0,0,0,0.12),transparent_48%)]",
           backgroundClassName,
         )}
       />
@@ -41,7 +41,7 @@ export function PortalShell({
         <motion.aside
           initial={{ x: -40, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
-          className="hidden w-72 shrink-0 flex-col gap-6 rounded-3xl border border-border/60 bg-white/80 p-6 shadow-xl backdrop-blur-lg lg:flex"
+          className="hidden w-72 shrink-0 flex-col gap-6 rounded-[2.5rem] border border-transparent bg-gradient-to-b from-accent to-[#2c3854] p-6 text-white shadow-[0_30px_90px_-35px_rgba(0,0,0,0.9)] backdrop-blur-lg lg:flex"
         >
           <Link href="/" className="flex items-center gap-3">
             <Logo size="sm" />
@@ -63,7 +63,7 @@ export function PortalShell({
             </Button>
             {topActions}
           </div>
-          <div className="rounded-3xl border border-border/40 bg-white/80 p-6 shadow-xl backdrop-blur">
+          <div className="rounded-[2.75rem] border border-white/60 bg-white/80 p-8 shadow-[0_40px_120px_-60px_rgba(0,0,0,0.9)] backdrop-blur-xl">
             {children}
           </div>
         </motion.main>

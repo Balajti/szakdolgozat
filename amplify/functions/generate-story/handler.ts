@@ -65,36 +65,37 @@ async function generateStoryWithAI(input: SanitizedInput): Promise<GeneratedStor
     ? "a young child who loves adventures, animals, and fantasy"
     : age <= 14
     ? "a pre-teen interested in friendship, school life, and discovery"
-    : "a teenager curious about real-world issues, technology, and personal growth";
+    : "an adult or young adult interested in engaging, mature storytelling, life experiences, and interesting scenarios";
 
   const modeContext = mode === "placement"
     ? "This is a placement test story to assess vocabulary level."
     : mode === "teacher"
     ? "This is a teacher-assigned story for classroom learning."
-    : "This is a personalized story matching the student's interests and vocabulary.";
+    : "This is a personalized story for enjoyment and immersion.";
 
-  const prompt = `You are an expert English language teacher creating an engaging story for a ${age}-year-old student at CEFR level ${level}.
+  const prompt = `You are a creative storyteller writing a captivating bedtime story for a ${age}-year-old reader at CEFR level ${level}.
 
 ${modeContext}
 
 **Requirements:**
 - Target audience: ${ageContext}
 - CEFR Level: ${level}
-- Story length: 400-600 words (MINIMUM 400 words - this is critical)
+- Story length: 1000 words (MINIMUM 1000 words - this is critical for immersion)
 - Must naturally include these target words multiple times: ${targetWords.join(", ")}
 - Repeat each target word 2-3 times throughout the story in different contexts
 - Can use these known words: ${knownWords.slice(0, 30).join(", ")}${knownWords.length > 30 ? ` (and ${knownWords.length - 30} more)` : ""}
 ${avoidWords.length > 0 ? `- AVOID these words: ${avoidWords.join(", ")}` : ""}
 
 **Story Guidelines:**
-- Create an engaging narrative with a clear beginning, middle, and end
-- Use simple sentence structures appropriate for ${level} level
-- Make the story interesting and age-appropriate for a ${age}-year-old
-- Naturally weave target words into the story context multiple times
-- Include dialogue to make the story more engaging
-- Add descriptive details to reach the minimum 400 words
-- End with a positive or thought-provoking conclusion
-- Focus on everyday situations, adventures, or relatable scenarios
+- **Style:** Bedtime story / Fiction. NOT an educational text or lesson.
+- **Scenario:** Choose a completely RANDOM and CREATIVE scenario (e.g., sci-fi, mystery, fantasy, slice of life, historical). Do not default to "learning English" or "school" themes unless requested.
+- **Tone:** Relaxing, engaging, and immersive.
+- **Structure:** Create a rich narrative with a clear beginning, middle, and end.
+- **Age Appropriateness:** 
+    - If the user is an adult (>18), write a mature, interesting story suitable for adults (not explicit, but not childish).
+    - If the user is a child, keep it whimsical and fun.
+- **Vocabulary:** Naturally weave target words into the story context. Do not force them.
+- **Length:** You MUST write at least 1000 words. Expand on descriptions, dialogue, and setting to achieve this.
 
 **Format your response as JSON:**
 {

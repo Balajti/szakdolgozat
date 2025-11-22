@@ -29,34 +29,34 @@ import { getCurrentUser } from "aws-amplify/auth";
 
 const teacherHighlights = [
   {
-    title: "Okos osztálykezelés",
+    title: "AI történetgenerálás",
     description:
-      "Hívd meg a diákokat e-mailben, rendelj hozzájuk szintfelmérést, és kövesd a szókincs fejlődését egyetlen felületről.",
+      "Generálj egyedi történeteket percek alatt a diákoknak, különböző szinteken és témákban.",
   },
   {
-    title: "Sztori generátor",
+    title: "Feladatok és kvízek",
     description:
-      "Adj meg kötelező vagy tiltott szavakat, válaszd ki a szintet, és percek alatt készül el az óravázlatod.",
+      "Készíts automatikus kvízeket a történetekhez, oszd ki őket a diákoknak és kövesd a teljesítményüket.",
   },
   {
-    title: "Valós idejű analitika",
+    title: "Analitikai dashboard",
     description:
-      "Táblázatok, grafikonok és jelentések mutatják meg, hol akadnak el a tanulók és milyen szavak okoznak nehézséget.",
+      "Részletes statisztikák a diákok előrehaladásáról, szókincsfejlődésről és eredményekről.",
   },
 ];
 
 const studentSteps = [
   {
-    title: "Regisztráció és szintfelmérés",
-    copy: "Születési dátum alapján személyre szabott A1 teszt vár, amely felméri az induló szintet.",
+    title: "Regisztráció és bejelentkezés",
+    copy: "Hozd létre a fiókodat diákként, és azonnal hozzáférhetsz a személyre szabott tanulási élményhez.",
   },
   {
-    title: "Személyre szabott történetek",
-    copy: "A WordNest rövid, játékos történeteket készít a szintedhez igazodva, 5-10% új szókinccsel.",
+    title: "AI történetek olvasása",
+    copy: "Generálj és olvass korosztályodnak megfelelő angol történeteket, amelyek fejlesztik a szókincsedet.",
   },
   {
-    title: "Szókincs építése",
-    copy: "Az ismeretlen szavak egy kattintással a saját szótáradba kerülnek, magyar magyarázattal és példamondattal.",
+    title: "Fejlődés nyomon követése",
+    copy: "Gyűjts jelvényeket, építsd a napi sorozatod, és kövesd a szókincsfejlődésedet vizuális grafikonokon.",
   },
 ];
 
@@ -128,25 +128,25 @@ export default function Home() {
         </section>
         <div className="grid gap-3 sm:grid-cols-3">
               <MetricCard
-                title="Olvasási sorozat"
-                value="5 nap"
-                description="Átlagos diák aktivitás"
-                icon={<LineChart className="size-6" />}
-                trend={{ label: "+18%", direction: "up" }}
+                title="AI történetek"
+                value="Végtelen"
+                description="Generálható történetek"
+                icon={<BookOpen className="size-6" />}
+                trend={{ label: "A1-C2", direction: "neutral" }}
               />
               <MetricCard
-                title="Új szavak"
-                value="1 200+"
-                description="Magyar fordítással"
+                title="Szókincsfejlődés"
+                value="Követhető"
+                description="Vizuális grafikonokkal"
                 icon={<Brain className="size-6" />}
-                trend={{ label: "havonta", direction: "neutral" }}
+                trend={{ label: "napi", direction: "up" }}
               />
               <MetricCard
-                title="Tanári osztályok"
-                value="160"
-                description="Aktív WordNest csoport"
-                icon={<Users className="size-6" />}
-                trend={{ label: "+6 új", direction: "up" }}
+                title="Jelvények"
+                value="15+"
+                description="Elérhető achievement"
+                icon={<Sparkles className="size-6" />}
+                trend={{ label: "gyűjthető", direction: "neutral" }}
               />
             </div>
 
@@ -165,25 +165,25 @@ export default function Home() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             <FeatureCard
               icon={<BookOpen className="size-6" />}
-              title="Korosztályos történetek"
-              description="A születési dátum alapján korosztályra szabott sztorik érkeznek. Rövid mondatok, egyszerű nyelvtan, közben 5-10% új szó."
+              title="AI történetgenerálás"
+              description="Korosztályra szabott angol történetek percek alatt, A1-C2 szinteken, számos témában és stílusban."
             />
             <FeatureCard
-              icon={<ShieldCheck className="size-6" />}
-              title="Biztonságos tanulás"
-              description="Cognito védi a fiókokat, a DynamoDB tárolja a fejlődési adatokat, és minden érzékeny információ titkosított."
+              icon={<Brain className="size-6" />}
+              title="Szókincsfejlesztés"
+              description="Követhető szókincs-előrehaladás vizuális grafikonokon, ismert és ismeretlen szavak nyomon követésével."
               delay={0.05}
             />
             <FeatureCard
-              icon={<ChartBarBig className="size-6" />}
-              title="Valós idejű analitika"
-              description="A WordNest részletes jelentéseket készít a tanulók erősségeiről és elakadásairól, így a tanár gyorsan reagálhat."
+              icon={<Sparkles className="size-6" />}
+              title="Jelvények és streakek"
+              description="Motiváló achievement rendszer 15+ jelvénnyel, napi olvasási sorozatok és fejlődési mérföldkövek."
               delay={0.1}
             />
             <FeatureCard
-              icon={<Sparkles className="size-6" />}
-              title="Magyar fordítás egy kattintásra"
-              description="Glosbe API + dictionaryapi.dev biztosítja a megbízható magyar jelentést és példamondatot minden nehezebb szóra."
+              icon={<ShieldCheck className="size-6" />}
+              title="Biztonságos platform"
+              description="AWS Cognito autentikáció, titkosított adattárolás és biztonságos tanulási környezet gyerekeknek."
               delay={0.15}
             />
           </div>
@@ -197,74 +197,71 @@ export default function Home() {
             <h2 className="font-display text-3xl text-foreground">
               Három prompt, három tanulási mód.
             </h2>
-            <Tabs defaultValue="personalized">
+            <Tabs defaultValue="student">
               <TabsList>
-                <TabsTrigger value="placement">Szintfelmérés</TabsTrigger>
-                <TabsTrigger value="personalized">Személyre szabott</TabsTrigger>
-                <TabsTrigger value="teacher">Tanári</TabsTrigger>
+                <TabsTrigger value="student">Diák történetek</TabsTrigger>
+                <TabsTrigger value="teacher">Tanári feladatok</TabsTrigger>
+                <TabsTrigger value="quiz">Kvíz generálás</TabsTrigger>
               </TabsList>
-              <TabsContent value="placement" className="space-y-4 text-muted-foreground">
+              <TabsContent value="student" className="space-y-4 text-muted-foreground">
                 <p>
-                  80 szóból álló A1 történet. Maximum 8 szó/mondat, egyszerű igeidők, vegyes könnyű és közepesen nehéz szavak.
-                  A diák jelzi, mit nem ért – ezek azonnal bekerülnek a tanulási listába.
+                  A diák felületén személyre szabott angol történeteket generálhatsz, amelyek a korosztálynak és nyelvtudás szintnek megfelelő szókincset használnak. A rendszer figyelembe veszi a korábban tanult szavakat.
                 </p>
                 <Card className="border-dashed border-primary/40 bg-primary/5">
                   <CardHeader>
                     <CardTitle className="text-sm uppercase tracking-wide text-primary">
-                      Prompt részlet
+                      Funkciók
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="text-sm">
-                    Generate an 80-word A1 English story for a Hungarian 9-year-old learner. Use only short sentences (max 8 words). Blend basic and slightly harder vocabulary. Finish with an encouraging question.
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              <TabsContent value="personalized" className="space-y-4 text-muted-foreground">
-                <p>
-                  A mindenkori CEFR szintet tartja, de 5-10% új szót alkalmaz az ismeretlen listából. Segít finoman tágítani a
-                  szókincset, miközben motiváló történetet mesél.
-                </p>
-                <Card className="border-dashed border-accent/40 bg-accent/5">
-                  <CardHeader>
-                    <CardTitle className="text-sm uppercase tracking-wide text-accent">
-                      Prompt részlet
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm">
-                    Create a contextual story for a {"{level}"} learner aged {"{age}"}. Use mostly known words from the provided list and inject 5-10% new vocabulary drawn from unknownWords. Keep sentences short and grammar simple.
+                    A diák kiválaszthatja a témát (kaland, fantasy, sci-fi, humor), nyelvi szintet (A1-C2), és azonnal generál egy új történetet. A történet olvasása közben kattintással fordíthatja le az ismeretlen szavakat.
                   </CardContent>
                 </Card>
               </TabsContent>
               <TabsContent value="teacher" className="space-y-4 text-muted-foreground">
                 <p>
-                  A tanári felületen egy 100-200 szavas, célnyelvi témájú történet készül. Egyaránt kezeli a kötelező és tiltott
-                  szavakat, így könnyen illeszkedik az óratervhez.
+                  A tanári felületen egyedi feladatokat hozhatsz létre, amelyeket kiosztasz a diákoknak. Megadhatod a témát, nehézségi szintet, és specifikus szavakat is, amelyeket szeretnél, ha a történet tartalmazna.
+                </p>
+                <Card className="border-dashed border-accent/40 bg-accent/5">
+                  <CardHeader>
+                    <CardTitle className="text-sm uppercase tracking-wide text-accent">
+                      Funkciók
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm">
+                    Hozz létre célzott feladatokat specifikus szókinccsel, oszd ki őket a diákjaidnak, és kövesd nyomon a teljesítményüket. Automatikus kvíz generálás a történethez, átfogó analitika az eredményekről.
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              <TabsContent value="quiz" className="space-y-4 text-muted-foreground">
+                <p>
+                  Minden generált történethez automatikusan kvízt készíthetsz, amely teszteli a szövegértést és a szókincset. A kvíz kérdései a történet kulcsfontosságú részeiből generálódnak.
                 </p>
                 <Card className="border-dashed border-secondary/40 bg-secondary/10">
                   <CardHeader>
                     <CardTitle className="text-sm uppercase tracking-wide text-secondary-foreground">
-                      Prompt részlet
+                      Funkciók
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="text-sm">
-                    Generate a 120-word story for {"{level}"} learners aged {"{age}"}. Include all requiredWords and exclude forbiddenWords. Maintain an encouraging tone and ensure vocabulary appears multiple times in context.
+                    Az AI automatikusan készít feleletválasztós kérdéseket a történet alapján. A tanár láthatja a diákok válaszait, a helyes/helytelen arányokat, és azonosíthatja a problémás területeket.
                   </CardContent>
                 </Card>
               </TabsContent>
             </Tabs>
           </div>
           <div className="space-y-6">
-            <h3 className="font-display text-2xl text-foreground">Hogyan érkezik a fordítás?</h3>
+            <h3 className="font-display text-2xl text-foreground">Hogyan működik a platform?</h3>
             <Card className="border-none bg-muted/60">
               <CardContent className="space-y-4 p-6 text-sm text-muted-foreground">
                 <p>
-                  1. A WordNest először lekéri a Glosbe EN→HU fordítást. Ha nem érkezik találat, automatikusan használja a dictionaryapi.dev szolgáltatást.
+                  1. A diák bejelentkezik, kiválaszt egy témát és nehézségi szintet, majd az AI azonnal generál egy személyre szabott angol történetet.
                 </p>
                 <p>
-                  2. Az eredményhez példamondatot generál az AI, egyszerű igeidőkkel, magyar magyarázattal.
+                  2. Olvasás közben az ismeretlen szavakra kattintva magyar fordítást kap, és ezek automatikusan bekerülnek a szótárába.
                 </p>
                 <p>
-                  3. A diák egy kattintással elmentheti a szót „Ismeretlen” státusszal. A tanár a későbbi jelentésekben látja a gyakori nehézségeket.
+                  3. A rendszer nyomon követi a fejlődést: statisztikák, grafikonok, jelvények és napi olvasási sorozatok motiválják a tanulást.
                 </p>
               </CardContent>
             </Card>
@@ -283,10 +280,10 @@ export default function Home() {
             </CardHeader>
             <CardContent className="space-y-4 text-muted-foreground">
               <ul className="space-y-3 text-base">
-                <li>• Minimalista olvasó mód, ahol a fókusz a történeten van.</li>
-                <li>• Tooltip fordítások, „Nem tudom” gomb a szó rögzítéséhez.</li>
-                <li>• Oldalsáv szótár mentett szavakkal, magyar példamondatokkal.</li>
-                <li>• Napi streak, jelvények és fejlődési grafikonok.</li>
+                <li>• Történetgenerálás gombbal: téma, szint, és generálás másodpercek alatt.</li>
+                <li>• Szókincsfejlődés grafikon a tanult szavak nyomon követésére.</li>
+                <li>• 15+ elérhető jelvény és napi olvasási sorozatok.</li>
+                <li>• Könyvtár az elmentett történetek újraolvasásához.</li>
               </ul>
               <Button variant="secondary" asChild>
                 <Link href="/student">
@@ -362,33 +359,33 @@ export default function Home() {
           <div className="grid gap-10 md:grid-cols-[1.1fr_0.9fr]">
             <div className="space-y-4">
               <Badge variant="outline" className="bg-accent/30 text-accent">
-                Ingyenes bevezető időszak
+                WordNest Platform
               </Badge>
               <h2 className="font-display text-3xl text-foreground">
-                WordNest 2025-ben minden magyar iskola számára elérhető.
+                Teljes körű angoltanulási platform magyar gyerekeknek.
               </h2>
               <p className="text-lg text-muted-foreground">
-                A platform teljes funkcionalitása (AI-történetek, statisztikák, meghívók) ingyenes marad a public beta alatt. Későbbi fizetős funkcióink a tanárok adminisztrációját segítik majd – a diákoknak mindig díjmentes lesz.
+                A WordNest egyesíti az AI történetgenerálást, a szókincsfejlesztést és a fejlődés nyomon követését egyetlen platformon. Diákoknak és tanároknak egyaránt.
               </p>
               <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                <Badge variant="default">S3 történet cache</Badge>
-                <Badge variant="default">AppSync GraphQL</Badge>
-                <Badge variant="default">Cognito meghívók</Badge>
-                <Badge variant="default">DynamoDB statisztikák</Badge>
+                <Badge variant="default">AI történetgenerálás</Badge>
+                <Badge variant="default">Szókincsfejlesztés</Badge>
+                <Badge variant="default">Jelvények & Streakek</Badge>
+                <Badge variant="default">Analitikai dashboard</Badge>
               </div>
             </div>
             <Card className="border-none bg-white/90 shadow-xl">
               <CardHeader>
                 <CardTitle className="text-2xl text-foreground">
-                  Első lépések tanároknak
+                  Kezdj el tanárokként
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-muted-foreground">
                 <ol className="list-decimal space-y-3 pl-5">
-                  <li>Regisztrálj tanárként, és adj meg egy iskolai e-mail címet.</li>
-                  <li>Hívd meg a diákokat meghívó linkkel vagy e-mail küldéssel.</li>
-                  <li>Készíts szókincses történetet, majd küldd ki feladatként.</li>
-                  <li>Ellenőrizd a beérkező megoldásokat az analitikai nézetben.</li>
+                  <li>Regisztrálj tanári fiókkal a platformra.</li>
+                  <li>Generálj AI történeteket és készíts feladatokat.</li>
+                  <li>Oszd ki a feladatokat a diákjaidnak.</li>
+                  <li>Kövesd nyomon az eredményeket az analitikai dashboardon.</li>
                 </ol>
                 <Button variant="gradient" asChild>
                   <Link href="/auth/register?role=teacher">

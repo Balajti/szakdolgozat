@@ -88,17 +88,16 @@ export default function InteractiveStoryReader({
 
   // Split content into words and render with highlighting
   const renderContent = () => {
-    // Split by spaces but keep punctuation attached
-    const words = content.split(/(\s+)/);
+    // Match words (including accented characters) or non-word sequences (punctuation/spaces)
+    const tokens = content.match(/([a-zA-Z0-9À-ÿ]+|[^a-zA-Z0-9À-ÿ]+)/g) || [];
     
-    return words.map((segment, index) => {
-      // Skip whitespace segments
-      if (segment.match(/^\s+$/)) {
-        return segment;
+    return tokens.map((token, index) => {
+      // If it's just whitespace or punctuation, render as is
+      if (!/[a-zA-Z0-9À-ÿ]/.test(token)) {
+        return <span key={index}>{token}</span>;
       }
 
-      // Clean word for comparison (remove punctuation)
-      const cleanWord = segment.replace(/[.,!?;:"""''()]/g, "").toLowerCase();
+      const cleanWord = token.toLowerCase();
       
       // Check if this word should be highlighted
       const isHighlighted = highlightedWords.some(hw => 
@@ -112,7 +111,7 @@ export default function InteractiveStoryReader({
       );
 
       // Determine styling
-      let className = "cursor-pointer hover:underline transition-all";
+      let className = "cursor-pointer hover:underline transition-all inline-block";
       if (isUnknown) {
         className += " text-red-600 dark:text-red-400 font-semibold";
       } else if (isLearning) {
@@ -125,9 +124,9 @@ export default function InteractiveStoryReader({
         <span
           key={index}
           className={className}
-          onClick={() => handleWordClick(segment)}
+          onClick={() => handleWordClick(token)}
         >
-          {segment}
+          {token}
         </span>
       );
     });

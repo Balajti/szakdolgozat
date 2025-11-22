@@ -8,9 +8,10 @@ import { Loader2 } from "lucide-react";
 interface RequireAuthProps {
   children: ReactNode;
   redirectTo?: string;
+  role?: "student" | "teacher" | "admin";
 }
 
-export function RequireAuth({ children, redirectTo = "/auth/login" }: RequireAuthProps) {
+export function RequireAuth({ children, redirectTo = "/auth/login", role }: RequireAuthProps) {
   const { status, isAuthenticated } = useAuth();
   const router = useRouter();
 

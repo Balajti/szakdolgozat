@@ -1,29 +1,28 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 
 const TOPICS = [
-  'Daily Life',
-  'Travel',
-  'Food',
-  'Technology',
-  'Sports',
-  'Arts',
-  'Nature',
-  'History',
-  'Science',
-  'Business',
+  'Mindennapi élet',
+  'Utazás',
+  'Étel',
+  'Technológia',
+  'Sport',
+  'Művészet',
+  'Természet',
+  'Történelem',
+  'Tudomány',
+  'Üzlet',
 ];
 
 const DIFFICULTY_LEVELS = [
-  { value: 'beginner', label: 'Beginner (A1-A2)' },
-  { value: 'intermediate', label: 'Intermediate (B1-B2)' },
-  { value: 'advanced', label: 'Advanced (C1-C2)' },
+  { value: 'beginner', label: 'Kezdő (A1-A2)' },
+  { value: 'intermediate', label: 'Középhaladó (B1-B2)' },
+  { value: 'advanced', label: 'Haladó (C1-C2)' },
 ];
 
 interface StoryPreferencesProps {
@@ -40,11 +39,28 @@ export function StoryPreferences({ studentId, onSave }: StoryPreferencesProps) {
   const loadPreferences = useCallback(async () => {
     try {
       const { client } = await import('@/lib/amplify-client');
-      const profile = await client.models.StudentProfile.get({ id: studentId });
-      if (profile.data) {
-        setDifficulty(profile.data.preferredDifficulty || 'intermediate');
-        setSelectedTopics(profile.data.preferredTopics?.filter((t): t is string => t !== null) || []);
-        setUseRandom(profile.data.useRandomTopics || false);
+      
+      const getProfileQuery = /* GraphQL */ `
+        query GetStudentProfile($id: ID!) {
+          getStudentProfile(id: $id) {
+            id
+            preferredDifficulty
+            preferredTopics
+            useRandomTopics
+          }
+        }
+      `;
+      
+      const response = await client.graphql({
+        query: getProfileQuery,
+        variables: { id: studentId }
+      }) as { data: { getStudentProfile: { preferredDifficulty?: string; preferredTopics?: (string | null)[]; useRandomTopics?: boolean } } };
+      
+      if (response.data?.getStudentProfile) {
+        const profile = response.data.getStudentProfile;
+        setDifficulty(profile.preferredDifficulty || 'intermediate');
+        setSelectedTopics(profile.preferredTopics?.filter((t): t is string => t !== null) || []);
+        setUseRandom(profile.useRandomTopics || false);
       }
     } catch (error) {
       console.error('Error loading preferences:', error);
@@ -65,11 +81,28 @@ export function StoryPreferences({ studentId, onSave }: StoryPreferencesProps) {
     setSaving(true);
     try {
       const { client } = await import('@/lib/amplify-client');
-      await client.models.StudentProfile.update({
-        id: studentId,
-        preferredDifficulty: difficulty,
-        preferredTopics: selectedTopics,
-        useRandomTopics: useRandom,
+      
+      const updateProfileMutation = /* GraphQL */ `
+        mutation UpdateStudentProfile($input: UpdateStudentProfileInput!) {
+          updateStudentProfile(input: $input) {
+            id
+            preferredDifficulty
+            preferredTopics
+            useRandomTopics
+          }
+        }
+      `;
+      
+      await client.graphql({
+        query: updateProfileMutation,
+        variables: {
+          input: {
+            id: studentId,
+            preferredDifficulty: difficulty,
+            preferredTopics: selectedTopics,
+            useRandomTopics: useRandom,
+          }
+        }
       });
       onSave?.();
     } catch (error) {
@@ -80,15 +113,12 @@ export function StoryPreferences({ studentId, onSave }: StoryPreferencesProps) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Story Preferences</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <Label>Difficulty Level</Label>
+    <div className="max-w-2xl bg-card rounded-2xl border border-border/40 p-8">
+      <div className="space-y-8">
+        <div className="space-y-3">
+          <Label className="text-base font-semibold">Nehézségi szint</Label>
           <Select value={difficulty} onValueChange={setDifficulty}>
-            <SelectTrigger>
+            <SelectTrigger className="h-11">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -101,10 +131,10 @@ export function StoryPreferences({ studentId, onSave }: StoryPreferencesProps) {
           </Select>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label>Preferred Topics</Label>
-            <div className="flex items-center space-x-2">
+            <Label className="text-base font-semibold">Preferált témák</Label>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50">
               <Checkbox
                 id="random"
                 checked={useRandom}
@@ -112,17 +142,21 @@ export function StoryPreferences({ studentId, onSave }: StoryPreferencesProps) {
               />
               <label
                 htmlFor="random"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                className="text-sm font-medium cursor-pointer"
               >
-                Random topics
+                Véletlenszerű témák
               </label>
             </div>
           </div>
           
           {!useRandom && (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {TOPICS.map((topic) => (
-                <div key={topic} className="flex items-center space-x-2">
+                <div 
+                  key={topic} 
+                  className="flex items-center gap-2 px-4 py-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => handleToggleTopic(topic)}
+                >
                   <Checkbox
                     id={topic}
                     checked={selectedTopics.includes(topic)}
@@ -130,7 +164,7 @@ export function StoryPreferences({ studentId, onSave }: StoryPreferencesProps) {
                   />
                   <label
                     htmlFor={topic}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    className="text-sm font-medium cursor-pointer flex-1"
                   >
                     {topic}
                   </label>
@@ -140,10 +174,10 @@ export function StoryPreferences({ studentId, onSave }: StoryPreferencesProps) {
           )}
         </div>
 
-        <Button onClick={handleSave} disabled={saving} className="w-full">
-          {saving ? 'Saving...' : 'Save Preferences'}
+        <Button onClick={handleSave} disabled={saving} size="lg" className="w-full">
+          {saving ? 'Mentés...' : 'Beállítások mentése'}
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

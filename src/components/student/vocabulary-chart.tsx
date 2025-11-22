@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -37,20 +36,39 @@ export function VocabularyChart({ studentId, days = 30 }: VocabularyChartProps) 
   const loadProgressData = useCallback(async () => {
     try {
       const { client } = await import('@/lib/amplify-client');
-      const response = await client.models.VocabularyProgress.list({
-        filter: { studentId: { eq: studentId } }
-      });
-      if (response.data) {
-        // Take last N days as specified by the days parameter
-        const allData = response.data;
+      
+      const listProgressByStudent = /* GraphQL */ `
+        query ListProgressByStudent($studentId: ID!) {
+          listProgressByStudent(studentId: $studentId) {
+            items {
+              date
+              knownWords
+              learningWords
+              unknownWords
+              newWordsToday
+            }
+          }
+        }
+      `;
+
+      const response = await client.graphql({
+        query: listProgressByStudent,
+        variables: { studentId }
+      }) as { data: { listProgressByStudent: { items: VocabularyProgress[] } } };
+
+      if (response.data?.listProgressByStudent?.items) {
+        const allData = response.data.listProgressByStudent.items as VocabularyProgress[];
         const sorted = allData.sort((a, b) => 
           new Date(a.date).getTime() - new Date(b.date).getTime()
         ).slice(-days);
         setProgressData(sorted);
+      } else {
+        setProgressData([]);
       }
       setLoading(false);
     } catch (error) {
       console.error('Error loading vocabulary progress:', error);
+      setProgressData([]);
       setLoading(false);
     }
   }, [studentId, days]);
@@ -60,27 +78,33 @@ export function VocabularyChart({ studentId, days = 30 }: VocabularyChartProps) 
   }, [loadProgressData]);
 
   if (loading) {
-    return <div>Loading chart...</div>;
+    return <div className="flex items-center justify-center h-[300px] text-sm text-muted-foreground">Grafikon betöltése...</div>;
   }
 
-  // Sort by date and take last N days
-  const sortedData = [...progressData]
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(-days);
+  if (progressData.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-[300px] text-center">
+        <div>
+          <p className="text-muted-foreground">Még nincsenek szókincs adatok.</p>
+          <p className="text-sm text-muted-foreground/70 mt-1">Olvass történeteket a fejlődés nyomon követéséhez!</p>
+        </div>
+      </div>
+    );
+  }
 
   const chartData = {
-    labels: sortedData.map((d) => new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+    labels: progressData.map((d) => new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
     datasets: [
       {
-        label: 'Known Words',
-        data: sortedData.map((d) => d.knownWords),
+        label: 'Ismert szavak',
+        data: progressData.map((d) => d.knownWords),
         borderColor: 'rgb(34, 197, 94)',
         backgroundColor: 'rgba(34, 197, 94, 0.1)',
         tension: 0.3,
       },
       {
-        label: 'Learning Words',
-        data: sortedData.map((d) => d.learningWords),
+        label: 'Tanulás alatt',
+        data: progressData.map((d) => d.learningWords),
         borderColor: 'rgb(234, 179, 8)',
         backgroundColor: 'rgba(234, 179, 8, 0.1)',
         tension: 0.3,
@@ -114,16 +138,8 @@ export function VocabularyChart({ studentId, days = 30 }: VocabularyChartProps) 
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Vocabulary Growth</CardTitle>
-        <CardDescription>Track your progress over the last {days} days</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="h-[300px]">
-          <Line data={chartData} options={options} />
-        </div>
-      </CardContent>
-    </Card>
+    <div className="h-[300px]">
+      <Line data={chartData} options={options} />
+    </div>
   );
 }
