@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { differenceInYears } from "date-fns";
 import {
   BookOpen,
@@ -29,6 +30,7 @@ import { LogoutButton } from "@/components/ui/logout-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 function StudentPortalPageInner() {
+  const router = useRouter();
   const { data, isLoading } = useStudentDashboard();
   const [isGenerationModalOpen, setIsGenerationModalOpen] = useState(false);
   const [activeView, setActiveView] = useState<'overview' | 'library' | 'achievements' | 'settings'>('overview');
@@ -294,7 +296,9 @@ function StudentPortalPageInner() {
                 <h3 className="text-lg font-semibold mb-6">Legutóbbi történetek</h3>
                 <RecentStories
                   studentId={profile?.id || ""}
-                  onSelectStory={(story) => console.log("Selected story:", story.id)}
+                  onSelectStory={(story) => {
+                    router.push(`/student/story/${story.id}`);
+                  }}
                 />
               </div>
             </div>
@@ -311,7 +315,9 @@ function StudentPortalPageInner() {
             </div>
             <RecentStories
               studentId={profile?.id || ""}
-              onSelectStory={(story) => console.log("Selected story:", story.id)}
+              onSelectStory={(story) => {
+                router.push(`/student/story/${story.id}`);
+              }}
             />
           </div>
         )}

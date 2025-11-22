@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { AppSyncIdentityCognito } from "aws-lambda";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import type { Schema } from "../../data/resource";
 import { getDBClient, queryByIndex, type DynamoDBItem } from "../shared/dynamodb-client";
 
@@ -51,8 +51,7 @@ async function generateStoryWithAI(input: SanitizedInput): Promise<GeneratedStor
     throw new Error("GEMINI_API_KEY environment variable not set");
   }
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const ai = new GoogleGenAI({ apiKey });
 
   const { level, age, knownWords, unknownWords, requiredWords, excludedWords, mode } = input;
   
@@ -112,9 +111,21 @@ Important:
 3. Find their exact positions in the content text for each occurrence`;
 
   try {
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        temperature: 1.0,
+        topP: 0.95,
+        topK: 40,
+      },
+    });
+    
+    const text = response.text;
+    if (!text) {
+      throw new Error("No text received from AI response");
+    }
     
     // Extract JSON from response (remove markdown code blocks if present)
     const jsonMatch = text.match(/\{[\s\S]*\}/);

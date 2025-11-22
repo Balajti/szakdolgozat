@@ -16,6 +16,7 @@
     "@aws-sdk/lib-dynamodb": "^3.934.0",
     "@aws-sdk/protocol-http": "^3.374.0",
     "@aws-sdk/signature-v4": "^3.374.0",
+    "@google/genai": "^1.30.0",
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-avatar": "^1.1.1",
     "@radix-ui/react-checkbox": "^1.1.2",

@@ -12,7 +12,13 @@ interface WordTranslation {
   sourceLanguage: string;
   targetLanguage: string;
   exampleSentence?: string;
+  exampleTranslation?: string;
   phonetic?: string;
+  partOfSpeech?: string;
+  pastTense?: string;
+  futureTense?: string;
+  pluralForm?: string;
+  usageNotes?: string;
 }
 
 interface InteractiveStoryReaderProps {
@@ -47,14 +53,16 @@ export default function InteractiveStoryReader({
     setTranslation(null);
 
     try {
-      // Call the translateWord query
+      // Call the comprehensive translation API
       const response = await fetch('/api/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           word: cleanWord,
           sourceLanguage: 'en',
-          targetLanguage
+          targetLanguage,
+          includeGrammar: true,
+          includeExamples: true
         })
       });
 
@@ -63,7 +71,51 @@ export default function InteractiveStoryReader({
       }
 
       const data = await response.json();
-      setTranslation(data);
+      
+      // Enhance with AI-generated grammar information if available
+      const { client } = await import('@/lib/amplify-client');
+      
+      const translateWordQuery = /* GraphQL */ `
+        query TranslateWord($word: String!, $targetLanguage: String!) {
+          translateWord(word: $word, targetLanguage: $targetLanguage) {
+            word
+            translation
+            exampleSentence
+            exampleTranslation
+            partOfSpeech
+            pastTense
+            futureTense
+            pluralForm
+            usageNotes
+          }
+        }
+      `;
+
+      try {
+        const graphqlResponse = await client.graphql({
+          query: translateWordQuery,
+          variables: { word: cleanWord, targetLanguage }
+        }) as { data: { translateWord: WordTranslation } };
+
+        if (graphqlResponse.data?.translateWord) {
+          setTranslation(graphqlResponse.data.translateWord);
+        } else {
+          setTranslation({
+            ...data,
+            word: cleanWord,
+            sourceLanguage: 'en',
+            targetLanguage
+          });
+        }
+      } catch (err) {
+        console.log('GraphQL translation fallback to basic API', err);
+        setTranslation({
+          ...data,
+          word: cleanWord,
+          sourceLanguage: 'en',
+          targetLanguage
+        });
+      }
     } catch (error) {
       console.error('Translation error:', error);
       // Show basic fallback
@@ -72,7 +124,8 @@ export default function InteractiveStoryReader({
         translation: cleanWord,
         sourceLanguage: 'en',
         targetLanguage,
-        exampleSentence: `Example: This is how you use "${cleanWord}" in a sentence.`
+        exampleSentence: `This is how you use "${cleanWord}" in a sentence.`,
+        exampleTranslation: `Így használod a(z) "${cleanWord}" szót egy mondatban.`
       });
     } finally {
       setIsLoading(false);
@@ -110,14 +163,14 @@ export default function InteractiveStoryReader({
         lw.toLowerCase() === cleanWord
       );
 
-      // Determine styling
-      let className = "cursor-pointer hover:underline transition-all inline-block";
+      // Determine styling - ALL words are clickable
+      let className = "cursor-pointer hover:bg-primary/10 hover:underline transition-all inline-block px-0.5 rounded";
       if (isUnknown) {
-        className += " text-red-600 dark:text-red-400 font-semibold";
+        className += " text-red-600 dark:text-red-400 font-semibold bg-red-50 dark:bg-red-950/30";
       } else if (isLearning) {
-        className += " text-amber-600 dark:text-amber-400 font-medium";
+        className += " text-amber-600 dark:text-amber-400 font-medium bg-amber-50 dark:bg-amber-950/30";
       } else if (isHighlighted) {
-        className += " text-blue-600 dark:text-blue-400 font-medium";
+        className += " text-blue-600 dark:text-blue-400 font-medium bg-blue-50 dark:bg-blue-950/30";
       }
 
       return (
@@ -125,6 +178,7 @@ export default function InteractiveStoryReader({
           key={index}
           className={className}
           onClick={() => handleWordClick(token)}
+          title="Kattints a részletekért"
         >
           {token}
         </span>
@@ -158,72 +212,127 @@ export default function InteractiveStoryReader({
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-muted-foreground">Betöltés...</span>
               </div>
             ) : translation ? (
               <>
-                {/* Translation */}
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Translation</p>
-                  <p className="text-2xl font-semibold">{translation.translation}</p>
-                  {translation.phonetic && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      /{translation.phonetic}/
-                    </p>
-                  )}
+                {/* Translation & Part of Speech */}
+                <div className="bg-primary/5 rounded-lg p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground mb-1">Magyar fordítás</p>
+                      <p className="text-2xl font-semibold text-foreground">{translation.translation}</p>
+                      {translation.phonetic && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Kiejtés: /{translation.phonetic}/
+                        </p>
+                      )}
+                    </div>
+                    {translation.partOfSpeech && (
+                      <Badge variant="outline" className="ml-2">
+                        {translation.partOfSpeech}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
-                {/* Example Sentence */}
+                {/* Grammar Forms */}
+                {(translation.pastTense || translation.futureTense || translation.pluralForm) && (
+                  <div className="border rounded-lg p-4 space-y-2">
+                    <p className="text-sm font-semibold text-foreground mb-2">Nyelvtani alakok</p>
+                    {translation.pastTense && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Múlt idő:</span>
+                        <span className="font-medium">{translation.pastTense}</span>
+                      </div>
+                    )}
+                    {translation.futureTense && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Jövő idő:</span>
+                        <span className="font-medium">{translation.futureTense}</span>
+                      </div>
+                    )}
+                    {translation.pluralForm && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Többes szám:</span>
+                        <span className="font-medium">{translation.pluralForm}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Example Sentence with Translation */}
                 {translation.exampleSentence && (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Example</p>
-                    <p className="text-base italic border-l-2 border-primary pl-3">
-                      {translation.exampleSentence}
-                    </p>
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-foreground">Példamondat</p>
+                    <div className="border-l-4 border-primary/40 pl-4 space-y-2">
+                      <p className="text-base italic text-foreground">
+                        {translation.exampleSentence}
+                      </p>
+                      {translation.exampleTranslation && (
+                        <p className="text-sm text-muted-foreground">
+                          📖 {translation.exampleTranslation}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Usage Notes */}
+                {translation.usageNotes && (
+                  <div className="bg-accent/10 rounded-lg p-3">
+                    <p className="text-sm font-semibold text-foreground mb-1">Használati tippek</p>
+                    <p className="text-sm text-muted-foreground">{translation.usageNotes}</p>
                   </div>
                 )}
 
                 {/* Actions */}
                 {onMarkUnknown && (
-                  <div className="flex gap-2 pt-4">
+                  <div className="flex gap-2 pt-2">
                     <Button 
                       variant="outline" 
                       className="flex-1"
                       onClick={() => setIsDialogOpen(false)}
                     >
-                      Close
+                      Bezárás
                     </Button>
                     <Button 
-                      variant="default" 
+                      variant="destructive" 
                       className="flex-1"
                       onClick={handleMarkUnknown}
                     >
-                      Mark as Unknown
+                      Ismeretlen szó
                     </Button>
                   </div>
                 )}
               </>
             ) : (
               <p className="text-center text-muted-foreground py-4">
-                Failed to load translation
+                Nem sikerült betölteni a fordítást
               </p>
             )}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Legend */}
-      <div className="mt-6 flex flex-wrap gap-4 text-sm">
-        <div className="flex items-center gap-2">
-          <span className="w-4 h-4 bg-red-600 dark:bg-red-400 rounded"></span>
-          <span>Unknown words</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="w-4 h-4 bg-amber-600 dark:bg-amber-400 rounded"></span>
-          <span>Learning words</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="w-4 h-4 bg-blue-600 dark:bg-blue-400 rounded"></span>
-          <span>Highlighted words</span>
+      {/* Legend & Instructions */}
+      <div className="mt-8 space-y-3">
+        <p className="text-sm text-muted-foreground italic">
+          💡 Kattints bármely szóra a részletes fordításért, nyelvtani alakokért és példamondatokért
+        </p>
+        <div className="flex flex-wrap gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="w-4 h-4 bg-red-600 dark:bg-red-400 rounded"></span>
+            <span>Ismeretlen szavak</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-4 h-4 bg-amber-600 dark:bg-amber-400 rounded"></span>
+            <span>Tanulandó szavak</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-4 h-4 bg-blue-600 dark:bg-blue-400 rounded"></span>
+            <span>Kiemelt szavak</span>
+          </div>
         </div>
       </div>
     </>
