@@ -28,8 +28,7 @@ export function DifficultyAdjuster({ text: _text, currentLevel, onTextAdjusted: 
       const targetIndex = direction === 'simplify' ? currentLevelIndex - 1 : currentLevelIndex + 1;
       const targetLevel = LEVEL_ORDER[targetIndex];
 
-      const { generateClient } = await import('aws-amplify/api');
-      const client = generateClient();
+      const { client } = await import('@/lib/amplify-client');
       const response = await client.mutations.adjustDifficulty({
         text: _text,
         currentLevel,

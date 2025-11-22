@@ -28,11 +28,10 @@ export function BadgesDisplay({ studentId }: BadgesDisplayProps) {
 
   const loadBadges = useCallback(async () => {
     try {
-      const { generateClient } = await import('aws-amplify/api');
-      const client = generateClient();
+      const { client } = await import('@/lib/amplify-client');
       const response = await client.mutations.checkBadges({ studentId });
       if (response.data?.allBadges) {
-        const badgeData = JSON.parse(response.data.allBadges);
+        const badgeData = JSON.parse(response.data.allBadges as string);
         setBadges(badgeData);
       }
       setLoading(false);

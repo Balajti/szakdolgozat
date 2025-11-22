@@ -28,14 +28,13 @@ export function RecentStories({ studentId, onSelectStory }: RecentStoriesProps) 
 
   const loadStories = useCallback(async () => {
     try {
-      const { generateClient } = await import('aws-amplify/api');
-      const client = generateClient();
+      const { client } = await import('@/lib/amplify-client');
       const response = await client.queries.listStudentStories({
         studentId,
         limit: 30,
       });
-      if (response.data?.stories) {
-        const sortedStories = (response.data.stories as Story[]).sort((a, b) =>
+      if (response.data?.items) {
+        const sortedStories = (response.data.items as Story[]).sort((a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
         setStories(sortedStories);

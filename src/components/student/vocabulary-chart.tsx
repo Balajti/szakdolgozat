@@ -36,14 +36,13 @@ export function VocabularyChart({ studentId, days = 30 }: VocabularyChartProps) 
 
   const loadProgressData = useCallback(async () => {
     try {
-      const { generateClient } = await import('aws-amplify/api');
-      const client = generateClient();
+      const { client } = await import('@/lib/amplify-client');
       const response = await client.models.VocabularyProgress.list({
         filter: { studentId: { eq: studentId } }
       });
       if (response.data) {
         // Take last N days as specified by the days parameter
-        const allData = response.data as VocabularyProgress[];
+        const allData = response.data;
         const sorted = allData.sort((a, b) => 
           new Date(a.date).getTime() - new Date(b.date).getTime()
         ).slice(-days);

@@ -17,8 +17,7 @@ export function QuizGeneratorButton({ storyId: _storyId, onQuizGenerated: _onQui
   const handleGenerateQuiz = async () => {
     setGenerating(true);
     try {
-      const { generateClient } = await import('aws-amplify/api');
-      const client = generateClient();
+      const { client } = await import('@/lib/amplify-client');
       const response = await client.mutations.generateQuiz({ storyId: _storyId });
       
       toast({

@@ -31,8 +31,7 @@ export function AssignmentTemplates({ teacherId, onUseTemplate }: AssignmentTemp
 
   const loadTemplates = useCallback(async () => {
     try {
-      const { generateClient } = await import('aws-amplify/api');
-      const client = generateClient();
+      const { client } = await import('@/lib/amplify-client');
       const response = await client.models.Assignment.list({
         filter: {
           teacherId: { eq: teacherId },
@@ -40,7 +39,7 @@ export function AssignmentTemplates({ teacherId, onUseTemplate }: AssignmentTemp
         }
       });
       if (response.data) {
-        setTemplates(response.data as AssignmentTemplate[]);
+        setTemplates(response.data as unknown as AssignmentTemplate[]);
       }
       setLoading(false);
     } catch (error) {
@@ -56,8 +55,7 @@ export function AssignmentTemplates({ teacherId, onUseTemplate }: AssignmentTemp
   const handleUseTemplate = async (template: AssignmentTemplate) => {
     try {
       // Increment usage count
-      const { generateClient } = await import('aws-amplify/api');
-      const client = generateClient();
+      const { client } = await import('@/lib/amplify-client');
       await client.models.Assignment.update({
         id: template.id,
         usageCount: (template.usageCount || 0) + 1,
@@ -86,8 +84,7 @@ export function AssignmentTemplates({ teacherId, onUseTemplate }: AssignmentTemp
     }
 
     try {
-      const { generateClient } = await import('aws-amplify/api');
-      const client = generateClient();
+      const { client } = await import('@/lib/amplify-client');
       await client.models.Assignment.delete({ id: templateId });
       toast({
         title: 'Template Deleted',

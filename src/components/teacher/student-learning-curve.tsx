@@ -35,13 +35,12 @@ export function StudentLearningCurve({ studentId, studentName }: StudentLearning
 
   const loadSubmissions = useCallback(async () => {
     try {
-      const { generateClient } = await import('aws-amplify/api');
-      const client = generateClient();
+      const { client } = await import('@/lib/amplify-client');
       const response = await client.models.AssignmentSubmission.list({
         filter: { studentId: { eq: studentId } }
       });
       if (response.data) {
-        const sorted = (response.data as StudentSubmission[]).sort((a, b) =>
+        const sorted = (response.data as unknown as StudentSubmission[]).sort((a, b) =>
           new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime()
         );
         setSubmissions(sorted);

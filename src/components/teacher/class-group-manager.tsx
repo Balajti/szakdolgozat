@@ -39,13 +39,12 @@ export function ClassGroupManager({ teacherId }: ClassGroupManagerProps) {
 
   const loadGroups = useCallback(async () => {
     try {
-      const { generateClient } = await import('aws-amplify/api');
-      const client = generateClient();
+      const { client } = await import('@/lib/amplify-client');
       const response = await client.models.ClassGroup.list({
         filter: { teacherId: { eq: teacherId } }
       });
       if (response.data) {
-        setGroups(response.data as ClassGroup[]);
+        setGroups(response.data as unknown as ClassGroup[]);
       }
       setLoading(false);
     } catch (error) {
@@ -75,8 +74,7 @@ export function ClassGroupManager({ teacherId }: ClassGroupManagerProps) {
 
   const handleSave = async () => {
     try {
-      const { generateClient } = await import('aws-amplify/api');
-      const client = generateClient();
+      const { client } = await import('@/lib/amplify-client');
       
       if (editingGroup) {
         // Update existing group
@@ -118,8 +116,7 @@ export function ClassGroupManager({ teacherId }: ClassGroupManagerProps) {
     }
 
     try {
-      const { generateClient } = await import('aws-amplify/api');
-      const client = generateClient();
+      const { client } = await import('@/lib/amplify-client');
       await client.models.ClassGroup.delete({ id: groupId });
       toast({
         title: 'Group Deleted',

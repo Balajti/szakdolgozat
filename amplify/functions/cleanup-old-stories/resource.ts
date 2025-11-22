@@ -4,4 +4,5 @@ export const cleanupOldStories = defineFunction({
   name: 'cleanup-old-stories',
   entry: './handler.ts',
   timeoutSeconds: 60,
+  resourceGroupName: 'data',
 });

@@ -39,12 +39,11 @@ export function StoryPreferences({ studentId, onSave }: StoryPreferencesProps) {
 
   const loadPreferences = useCallback(async () => {
     try {
-      const { generateClient } = await import('aws-amplify/api');
-      const client = generateClient();
+      const { client } = await import('@/lib/amplify-client');
       const profile = await client.models.StudentProfile.get({ id: studentId });
       if (profile.data) {
         setDifficulty(profile.data.preferredDifficulty || 'intermediate');
-        setSelectedTopics(profile.data.preferredTopics || []);
+        setSelectedTopics(profile.data.preferredTopics?.filter((t): t is string => t !== null) || []);
         setUseRandom(profile.data.useRandomTopics || false);
       }
     } catch (error) {
@@ -65,8 +64,7 @@ export function StoryPreferences({ studentId, onSave }: StoryPreferencesProps) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { generateClient } = await import('aws-amplify/api');
-      const client = generateClient();
+      const { client } = await import('@/lib/amplify-client');
       await client.models.StudentProfile.update({
         id: studentId,
         preferredDifficulty: difficulty,
