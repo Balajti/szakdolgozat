@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { hu } from "date-fns/locale";
 import {
@@ -11,7 +12,6 @@ import {
   ChevronRight,
   GraduationCap,
   ListChecks,
-  ScrollText,
   Sparkles,
   Users,
   TrendingUp,
@@ -21,7 +21,7 @@ import {
 
 import { PortalShell } from "@/components/layout/portal-shell";
 import { Alert } from "@/components/ui/alert";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import type { Assignment, ClassSummary, TeacherProfile } from "@/lib/types";
 import { RequireAuth } from "@/components/providers/require-auth";
 import { LogoutButton } from "@/components/ui/logout-button";
+import { ClassesManagement } from "@/components/teacher/classes-management";
 
 const assignmentStatusLabels: Record<Assignment["status"], string> = {
   draft: "Piszkozat",
@@ -50,10 +51,16 @@ const assignmentStatusAccent: Record<Assignment["status"], string> = {
 };
 
 function TeacherSidebar({ profile }: { profile: TeacherProfile | undefined }) {
+  const router = useRouter();
+  
   return (
     <div className="flex h-full flex-col gap-6 text-white/85">
-      <div className="flex items-center gap-3 rounded-2xl border border-white/20 bg-white/5 p-4">
+      <button
+        onClick={() => router.push("/teacher/profile")}
+        className="flex items-center gap-3 rounded-2xl border border-white/20 bg-white/5 p-4 transition-all hover:bg-white/10 hover:border-white/30 cursor-pointer"
+      >
         <Avatar>
+          <AvatarImage src={profile?.avatarUrl || undefined} />
           <AvatarFallback className="bg-white/20 text-white">
             {profile?.name?.charAt(0)}
           </AvatarFallback>
@@ -62,7 +69,7 @@ function TeacherSidebar({ profile }: { profile: TeacherProfile | undefined }) {
           <p className="truncate text-lg font-semibold text-white">{profile?.name}</p>
           <p className="truncate text-xs uppercase tracking-widest text-white/60">Teacher</p>
         </div>
-      </div>
+      </button>
       <div className="space-y-3 text-sm">
         <div className="rounded-2xl border border-white/15 bg-white/5 p-4">
           <p className="text-xs uppercase tracking-[0.2em] text-white/60">Classes</p>
@@ -84,6 +91,7 @@ function TeacherSidebar({ profile }: { profile: TeacherProfile | undefined }) {
 }
 
 function TeacherPortalPageInner() {
+  const router = useRouter();
   const { data, isLoading, isFetching, error } = useTeacherDashboard();
 
   const assignments: Assignment[] = useMemo(() => data?.assignments ?? [], [data?.assignments]);
@@ -176,13 +184,13 @@ function TeacherPortalPageInner() {
               </p>
             ) : null}
             <div className="mt-8 flex flex-wrap gap-3">
-              <Button size="lg" variant="gradient" className="gap-2">
+              <Button size="lg" variant="gradient" className="gap-2" onClick={() => router.push('/teacher/assignment/create')}>
                 <Sparkles className="size-5" />
                 Új AI feladat
               </Button>
-              <Button size="lg" variant="outline" className="gap-2">
-                <ScrollText className="size-5" />
-                Szintfelmérő link
+              <Button size="lg" variant="outline" className="gap-2" onClick={() => router.push('/teacher/assignments')}>
+                <ListChecks className="size-5" />
+                Feladatok megtekintése
               </Button>
             </div>
           </div>
@@ -228,10 +236,14 @@ function TeacherPortalPageInner() {
         )}
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList>
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5">
             <TabsTrigger value="overview" className="gap-2">
               <BarChart3 className="size-4" />
               Áttekintés
+            </TabsTrigger>
+            <TabsTrigger value="classes" className="gap-2">
+              <Users className="size-4" />
+              Osztályok
             </TabsTrigger>
             <TabsTrigger value="analytics" className="gap-2">
               <TrendingUp className="size-4" />
@@ -246,6 +258,11 @@ function TeacherPortalPageInner() {
               Diákok
             </TabsTrigger>
           </TabsList>
+
+          {/* Classes Tab */}
+          <TabsContent value="classes">
+            <ClassesManagement teacherId={profile.id} />
+          </TabsContent>
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-8">

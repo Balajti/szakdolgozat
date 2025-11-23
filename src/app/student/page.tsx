@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { differenceInYears } from "date-fns";
 import {
   BookOpen,
@@ -26,6 +26,7 @@ import { RecentStories } from "@/components/student/recent-stories";
 import { BadgesDisplay } from "@/components/student/badges-display";
 import { VocabularyList } from "@/components/student/vocabulary-list";
 import { StoryPreferences } from "@/components/student/story-preferences";
+import { ProfileSettings } from "@/components/student/profile-settings";
 import { StoryGenerationModal } from "@/components/story/story-generation-modal";
 import { useToast } from "@/hooks/use-toast";
 import { LogoutButton } from "@/components/ui/logout-button";
@@ -44,11 +45,20 @@ type DashboardView = typeof dashboardNavItems[number]['value'];
 
 function StudentPortalPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data, isLoading } = useStudentDashboard();
   const [isGenerationModalOpen, setIsGenerationModalOpen] = useState(false);
   const [activeView, setActiveView] = useState<DashboardView>('overview');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const { toast } = useToast();
+
+  // Handle query parameter for view navigation
+  useEffect(() => {
+    const view = searchParams.get('view') as DashboardView;
+    if (view && dashboardNavItems.some(item => item.value === view)) {
+      setActiveView(view);
+    }
+  }, [searchParams]);
 
   const handleViewChange = (view: DashboardView) => {
     setActiveView(view);
@@ -182,15 +192,18 @@ function StudentPortalPageInner() {
                   <Plus className="h-4 w-4" />
                   Új történet
                 </Button>
-                <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-muted/50">
+                <button
+                  onClick={() => router.push('/student/profile')}
+                  className="flex items-center gap-3 px-3 py-2 rounded-xl bg-muted/50 transition-colors hover:bg-muted cursor-pointer"
+                >
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={profile?.avatarUrl || undefined} />
                     <AvatarFallback className="bg-primary/20 text-primary text-sm">
                       {profile?.name?.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-sm font-medium">{profile?.name?.split(" ")[0]}</span>
-                </div>
+                  <span className="text-sm font-medium">{profile?.name?.split(" ").pop()}</span>
+                </button>
                 <LogoutButton variant="secondary" size="sm" className="gap-2">
                   <LogOut className="h-4 w-4" />
                   Kilépés
@@ -233,18 +246,24 @@ function StudentPortalPageInner() {
                       <Plus className="h-4 w-4" />
                       Új történet
                     </Button>
-                    <div className="flex items-center gap-3 rounded-xl bg-muted/40 px-3 py-2">
+                    <button
+                      onClick={() => {
+                        router.push('/student/profile');
+                        setIsMobileNavOpen(false);
+                      }}
+                      className="flex w-full items-center gap-3 rounded-xl bg-muted/40 px-3 py-2 transition-colors hover:bg-muted/60 cursor-pointer"
+                    >
                       <Avatar className="h-10 w-10">
                         <AvatarImage src={profile?.avatarUrl || undefined} />
                         <AvatarFallback className="bg-primary/20 text-primary text-sm">
                           {profile?.name?.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
+                      <div className="text-left">
                         <p className="text-sm font-semibold text-foreground">{profile?.name}</p>
-                        <p className="text-xs text-muted-foreground">Tanuló</p>
+                        <p className="text-xs text-muted-foreground">Profil megtekintése</p>
                       </div>
-                    </div>
+                    </button>
                     <LogoutButton
                       size="default"
                       className="w-full justify-center gap-2"
@@ -266,7 +285,7 @@ function StudentPortalPageInner() {
         {activeView === 'overview' && (
           <div className="space-y-8">
             {/* Stats Bar */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-card rounded-2xl p-6 border border-border/40">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-2 rounded-lg bg-primary/10">
@@ -315,7 +334,7 @@ function StudentPortalPageInner() {
             {/* Welcome Section */}
             <div className="bg-gradient-to-br from-primary to-primary/80 rounded-3xl p-8 md:p-12 text-white">
               <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
-                Üdv újra, {profile?.name?.split(" ")[0]}!
+                Üdv újra, {profile?.name?.split(" ").pop()}!
               </h2>
               <p className="text-lg text-white/90 mb-8 max-w-2xl">
                 Készen állsz a nyelvtanulási utad folytatására? Generálj egy új történetet, vagy folytasd, ahol abbahagytad.
@@ -411,13 +430,19 @@ function StudentPortalPageInner() {
             <div>
               <h2 className="text-3xl font-display font-bold mb-2">Beállítások</h2>
               <p className="text-muted-foreground">
-                Szabd személyre a tanulási élményed és a történet preferenciáid.
+                Szabd személyre a fiókodat és a tanulási élményed.
               </p>
             </div>
-            <StoryPreferences 
-              studentId={profile?.id || ""} 
-              onSave={() => toast({ title: "Beállítások mentve" })} 
-            />
+            
+            <ProfileSettings studentId={profile?.id || ""} />
+            
+            <div className="pt-6">
+              <h3 className="text-xl font-semibold mb-4">Történet preferenciák</h3>
+              <StoryPreferences 
+                studentId={profile?.id || ""} 
+                onSave={() => toast({ title: "Beállítások mentve" })} 
+              />
+            </div>
           </div>
         )}
       </main>

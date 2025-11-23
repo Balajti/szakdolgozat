@@ -68,6 +68,8 @@ export interface TeacherProfile {
   name: string;
   email: string;
   school?: string | null;
+  bio?: string | null;
+  avatarUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,9 +1,9 @@
 {
   "auth": {
-    "user_pool_id": "eu-central-1_MeSOG4fdx",
+    "user_pool_id": "eu-central-1_XJJTfTKnS",
     "aws_region": "eu-central-1",
-    "user_pool_client_id": "6uhfgcoaki2ms8geqjbhfgomb3",
-    "identity_pool_id": "eu-central-1:7ee5d8cc-73ea-4cc0-89cc-d633f0e63400",
+    "user_pool_client_id": "5n80ue49m8pih5abj0utf8rfah",
+    "identity_pool_id": "eu-central-1:f737ae5c-825b-43c1-9fc8-9cc2bd04abd7",
     "mfa_methods": [],
     "standard_required_attributes": [
       "email"
@@ -42,9 +42,9 @@
     "unauthenticated_identities_enabled": true
   },
   "data": {
-    "url": "https://6ghx6xlocvawzo75gitomnuqha.appsync-api.eu-central-1.amazonaws.com/graphql",
+    "url": "https://bxvgcoblojbgzhn5yh5rcxfnxy.appsync-api.eu-central-1.amazonaws.com/graphql",
     "aws_region": "eu-central-1",
-    "api_key": "da2-on3ktougdne5pclo723fg7fdlu",
+    "api_key": "da2-7ln37bpnfzbvpi3hu3e5j66ixq",
     "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
     "authorization_types": [
       "API_KEY",
@@ -902,6 +902,171 @@
             "sortKeyFieldNames": []
           }
         },
+        "ClassInvite": {
+          "name": "ClassInvite",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "teacherId": {
+              "name": "teacherId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "classGroupId": {
+              "name": "classGroupId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "className": {
+              "name": "className",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "inviteCode": {
+              "name": "inviteCode",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "studentEmail": {
+              "name": "studentEmail",
+              "isArray": false,
+              "type": "AWSEmail",
+              "isRequired": false,
+              "attributes": []
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "expiresAt": {
+              "name": "expiresAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "acceptedAt": {
+              "name": "acceptedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "studentId": {
+              "name": "studentId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": false,
+              "attributes": []
+            },
+            "teacherProfile": {
+              "name": "teacherProfile",
+              "isArray": false,
+              "type": {
+                "model": "TeacherProfile"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "association": {
+                "connectionType": "BELONGS_TO",
+                "targetNames": [
+                  "teacherId"
+                ]
+              }
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "ClassInvites",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "byTeacherId",
+                "queryField": "listInvitesByTeacher",
+                "fields": [
+                  "teacherId"
+                ]
+              }
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "byInviteCode",
+                "queryField": "getInviteByCode",
+                "fields": [
+                  "inviteCode"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  },
+                  {
+                    "allow": "public",
+                    "provider": "apiKey",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
         "Achievement": {
           "name": "Achievement",
           "fields": {
@@ -1134,12 +1299,27 @@
               "isRequired": false,
               "attributes": []
             },
-            "classGroup": {
-              "name": "classGroup",
+            "classGroupId": {
+              "name": "classGroupId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": false,
+              "attributes": []
+            },
+            "classGroupName": {
+              "name": "classGroupName",
               "isArray": false,
               "type": "String",
               "isRequired": false,
               "attributes": []
+            },
+            "sentTo": {
+              "name": "sentTo",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true
             },
             "teacherProfile": {
               "name": "teacherProfile",
@@ -1187,6 +1367,16 @@
                 "queryField": "listAssignmentsByTeacher",
                 "fields": [
                   "teacherId"
+                ]
+              }
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "byClassGroupId",
+                "queryField": "listAssignmentsByClass",
+                "fields": [
+                  "classGroupId"
                 ]
               }
             },
@@ -2276,6 +2466,20 @@
               "isRequired": false,
               "attributes": []
             },
+            "bio": {
+              "name": "bio",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "avatarUrl": {
+              "name": "avatarUrl",
+              "isArray": false,
+              "type": "AWSURL",
+              "isRequired": false,
+              "attributes": []
+            },
             "preferredLevel": {
               "name": "preferredLevel",
               "isArray": false,
@@ -2391,6 +2595,22 @@
               "isArray": true,
               "type": {
                 "model": "SubmissionSummary"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true,
+              "association": {
+                "connectionType": "HAS_MANY",
+                "associatedWith": [
+                  "teacherId"
+                ]
+              }
+            },
+            "invites": {
+              "name": "invites",
+              "isArray": true,
+              "type": {
+                "model": "ClassInvite"
               },
               "isRequired": false,
               "attributes": [],
@@ -4221,6 +4441,27 @@
         }
       }
     }
+  },
+  "storage": {
+    "aws_region": "eu-central-1",
+    "bucket_name": "amplify-szakdolgozat-zsol-wordneststoragebucket1a8-ohebuqhilpuh",
+    "buckets": [
+      {
+        "name": "wordnestStorage",
+        "bucket_name": "amplify-szakdolgozat-zsol-wordneststoragebucket1a8-ohebuqhilpuh",
+        "aws_region": "eu-central-1",
+        "paths": {
+          "avatars/${cognito-identity.amazonaws.com:sub}/*": {
+            "entityidentity": [
+              "get",
+              "list",
+              "write",
+              "delete"
+            ]
+          }
+        }
+      }
+    ]
   },
   "version": "1.4"
 }

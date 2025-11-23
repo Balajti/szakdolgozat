@@ -79,6 +79,10 @@ function RegisterPageContent() {
         options: {
           userAttributes: {
             email: values.email,
+            name: values.fullName,
+            birthdate: values.birthday,
+            "custom:role": values.role,
+            "custom:teacherBio": values.teacherBio || "",
           },
         },
       });

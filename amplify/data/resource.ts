@@ -125,6 +125,24 @@ const schema = a.schema({
       index('teacherId').name('byTeacherId').queryField('listGroupsByTeacher'),
     ])
     .authorization((allow) => [allow.authenticated()]),
+  ClassInvite: a
+    .model({
+      teacherId: a.id().required(),
+      classGroupId: a.id().required(),
+      className: a.string().required(),
+      inviteCode: a.string().required(),
+      studentEmail: a.email(),
+      status: a.string().required(), // 'pending', 'accepted', 'expired'
+      expiresAt: a.datetime().required(),
+      acceptedAt: a.datetime(),
+      studentId: a.id(),
+      teacherProfile: a.belongsTo('TeacherProfile', 'teacherId'),
+    })
+    .secondaryIndexes((index) => [
+      index('teacherId').name('byTeacherId').queryField('listInvitesByTeacher'),
+      index('inviteCode').name('byInviteCode').queryField('getInviteByCode'),
+    ])
+    .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
   Achievement: a
     .model({
       studentId: a.id().required(),
@@ -154,11 +172,14 @@ const schema = a.schema({
       isTemplate: a.boolean(),
       originalAssignmentId: a.id(),
       usageCount: a.integer(),
-      classGroup: a.string(),
+      classGroupId: a.id(),
+      classGroupName: a.string(),
+      sentTo: a.string().array(), // Array of student emails who received this
       teacherProfile: a.belongsTo('TeacherProfile', 'teacherId'),
     })
     .secondaryIndexes((index) => [
       index('teacherId').name('byTeacherId').queryField('listAssignmentsByTeacher'),
+      index('classGroupId').name('byClassGroupId').queryField('listAssignmentsByClass'),
     ])
     .authorization((allow) => [allow.authenticated()]),
   AssignmentSubmission: a
@@ -275,6 +296,8 @@ const schema = a.schema({
       name: a.string().required(),
       email: a.email().required(),
       school: a.string(),
+      bio: a.string(),
+      avatarUrl: a.url(),
       preferredLevel: a.string(),
       preferredAge: a.integer(),
       classGroups: a.hasMany('ClassGroup', 'teacherId'),
@@ -284,6 +307,7 @@ const schema = a.schema({
       assignmentSubmissions: a.hasMany('AssignmentSubmission', 'teacherId'),
       studentClasses: a.hasMany('StudentClass', 'teacherId'),
       submissions: a.hasMany('SubmissionSummary', 'teacherId'),
+      invites: a.hasMany('ClassInvite', 'teacherId'),
     })
     .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')]),
   StoryView: a.customType({

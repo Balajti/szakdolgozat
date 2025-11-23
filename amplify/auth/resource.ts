@@ -8,6 +8,20 @@ export const auth = defineAuth({
   loginWith: {
     email: true,
   },
+  userAttributes: {
+    birthdate: {
+      required: false,
+      mutable: true,
+    },
+    "custom:role": {
+      dataType: "String",
+      mutable: true,
+    },
+    "custom:teacherBio": {
+      dataType: "String",
+      mutable: true,
+    },
+  },
   groups: ['students', 'teachers', 'admins'],
   accountRecovery: 'EMAIL_ONLY',
 });

@@ -1,6 +1,7 @@
 import { defineBackend } from '@aws-amplify/backend';
 import { auth } from './auth/resource';
 import { data } from './data/resource';
+import { storage } from './storage/resource';
 import { createAssignment } from './functions/create-assignment/resource';
 import { distributeAssignment } from './functions/distribute-assignment/resource';
 import { generateStory } from './functions/generate-story/resource';
@@ -26,6 +27,7 @@ import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 const backend = defineBackend({
   auth,
   data,
+  storage,
   studentDashboard,
   teacherDashboard,
   listStories,
