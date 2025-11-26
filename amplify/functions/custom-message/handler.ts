@@ -35,13 +35,13 @@ export const handler: CustomMessageTriggerHandler = async (event) => {
                                 </tr>
                             </table>
                             <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: #4B5563;">Másold be ezt a kódot a regisztrációs oldalon a folytatáshoz.</p>
-                            <p style="margin: 20px 0 0 0; font-size: 14px; line-height: 1.6; color: #6B7280;"><strong>Megjegyzés:</strong> Ez a kód 24 órán belül jár le. Ha nem te kérted ezt az emailt, nyugodtan figyelmen kívül hagyhatod.</p>
+                            <p style="margin: 20px 0 0 0; font-size: 14px; line-height: 1.6; color: #6B7280;"><strong>Megjegyzés:</strong> Ez a kód 10 percen belül jár le. Ha nem te kérted ezt az emailt, nyugodtan figyelmen kívül hagyhatod.</p>
                         </td>
                     </tr>
                     <tr>
                         <td style="padding: 30px 40px; background-color: #F9FAFB; border-radius: 0 0 12px 12px; border-top: 1px solid #E5E7EB;">
                             <p style="margin: 0 0 10px 0; font-size: 14px; color: #6B7280; text-align: center;">Kezdd el az angol tanulást még ma! 🚀</p>
-                            <p style="margin: 0; font-size: 12px; color: #9CA3AF; text-align: center;">© 2024 WordNest. Minden jog fenntartva.</p>
+                            <p style="margin: 0; font-size: 12px; color: #9CA3AF; text-align: center;">© 2025 WordNest. Minden jog fenntartva.</p>
                         </td>
                     </tr>
                 </table>
@@ -90,7 +90,7 @@ export const handler: CustomMessageTriggerHandler = async (event) => {
                     <tr>
                         <td style="padding: 30px 40px; background-color: #F9FAFB; border-radius: 0 0 12px 12px; border-top: 1px solid #E5E7EB;">
                             <p style="margin: 0 0 10px 0; font-size: 14px; color: #6B7280; text-align: center;">Biztonságos tanulást! 🚀</p>
-                            <p style="margin: 0; font-size: 12px; color: #9CA3AF; text-align: center;">© 2024 WordNest. Minden jog fenntartva.</p>
+                            <p style="margin: 0; font-size: 12px; color: #9CA3AF; text-align: center;">© 2025 WordNest. Minden jog fenntartva.</p>
                         </td>
                     </tr>
                 </table>
