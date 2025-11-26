@@ -157,11 +157,10 @@ function InvitePageContent() {
       </Form>
 
       <div className="rounded-3xl border border-border/60 bg-muted/40 p-4 text-sm text-muted-foreground">
-        Ha még nincs WordNest fiókod, kezdd a regisztrációval: {" "}
-        <Link href="/auth/register" className="font-semibold text-primary">
-          új fiók létrehozása
+        Még nincs fiókod?{" "}
+        <Link href="/auth/register/role-select" className="font-semibold text-primary">
+          Regisztrálj itt.
         </Link>
-        .
       </div>
     </motion.div>
   );

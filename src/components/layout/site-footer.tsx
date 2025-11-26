@@ -69,10 +69,17 @@ export function SiteFooter() {
                 </li>
               </ul>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               <h3 className="font-display text-lg font-semibold text-foreground">
-                Kapcsolat
+                Kezdj el
               </h3>
+              <ul className="space-y-2 text-muted-foreground">
+                <li>
+                  <Link className="hover:text-primary" href="/auth/register/role-select">
+                    Regisztráció
+                  </Link>
+                </li>
+              </ul>
               <p className="text-sm text-muted-foreground">
                 Kérdéseid vannak? Vedd fel velünk a kapcsolatot!
               </p>

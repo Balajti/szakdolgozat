@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
-import { fetchAuthSession, getCurrentUser, signIn as amplifySignIn, signOut as amplifySignOut } from "aws-amplify/auth";
+import { fetchAuthSession, fetchUserAttributes, getCurrentUser, signIn as amplifySignIn, signOut as amplifySignOut } from "aws-amplify/auth";
 import { Hub } from "aws-amplify/utils";
 import { ensureAmplifyConfigured } from "@/lib/api/config";
 import { useQueryClient } from "@tanstack/react-query";
@@ -38,12 +38,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const buildUser = useCallback(async (current: Awaited<ReturnType<typeof getCurrentUser>>): Promise<AuthUser> => {
     const withId = current as { userId?: string };
     const withDetails = current as { signInDetails?: { loginId?: string | null } };
-    
+
+    // Fetch user attributes to get the role
+    let role: "student" | "teacher" | null = null;
+    try {
+      const attributes = await fetchUserAttributes();
+      const roleAttribute = attributes["custom:role"];
+      if (roleAttribute === "student" || roleAttribute === "teacher") {
+        role = roleAttribute;
+      }
+    } catch (error) {
+      console.error("Failed to fetch user attributes:", error);
+    }
+
     return {
       userId: withId.userId,
       username: current?.username,
       email: withDetails.signInDetails?.loginId ?? null,
-      role: null, // Role will be determined by checking which profile exists in DynamoDB
+      role,
     };
   }, []);
 

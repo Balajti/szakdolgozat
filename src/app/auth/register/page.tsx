@@ -44,7 +44,7 @@ function RegisterPageContent() {
       birthday: "",
       role: preselectedRole,
       fullName: "",
-  teacherBio: "",
+      teacherBio: "",
     },
   });
 
@@ -60,6 +60,14 @@ function RegisterPageContent() {
   useEffect(() => {
     form.setValue("role", preselectedRole);
   }, [form, preselectedRole]);
+
+  // Redirect to role selection if no role is specified
+  useEffect(() => {
+    const roleParam = searchParams.get("role");
+    if (!roleParam || (roleParam !== "student" && roleParam !== "teacher")) {
+      router.replace("/auth/register/role-select");
+    }
+  }, [searchParams, router]);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -134,8 +142,10 @@ function RegisterPageContent() {
             password: password,
           });
 
-          // Default to student dashboard - they can switch role later
-          router.push("/student");
+          // Redirect based on the role they selected during registration
+          const role = form.getValues("role");
+          const redirectPath = role === "teacher" ? "/teacher" : "/student";
+          router.push(redirectPath);
         } catch (signInError) {
           console.error("Auto sign-in failed", signInError);
           setStatus("confirmed");

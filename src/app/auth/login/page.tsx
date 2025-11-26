@@ -129,9 +129,9 @@ export default function LoginPage() {
         </form>
       </Form>
 
-      <div className="rounded-3xl border border-border/60 bg-muted/50 p-4 text-sm text-muted-foreground">
-        Nincs még fiókod?{" "}
-        <Link href="/auth/register" className="font-semibold text-primary">
+      <div className="rounded-3xl border border-border/60 bg-muted/40 p-4 text-sm text-muted-foreground">
+        Még nincs fiókod?{" "}
+        <Link href="/auth/register/role-select" className="font-semibold text-primary">
           Regisztrálj itt.
         </Link>
       </div>

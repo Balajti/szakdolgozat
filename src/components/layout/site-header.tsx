@@ -68,13 +68,13 @@ export function SiteHeader() {
                 </Link>
               </Button>
               <Button variant="gradient" size="sm" className="hidden text-xs sm:inline-flex sm:text-sm" asChild>
-                <Link href={pathname?.startsWith("/teacher") ? "/auth/register?role=teacher" : "/auth/register"}>
+                <Link href={pathname?.startsWith("/teacher") ? "/auth/register?role=teacher" : "/auth/register/role-select"}>
                   <Sparkles className="size-4" /> Kezdjük!
                 </Link>
               </Button>
             </>
           )}
-          
+
           <Button
             variant="ghost"
             size="sm"
@@ -106,7 +106,7 @@ export function SiteHeader() {
                   {item.label}
                 </Link>
               ))}
-              
+
               <div className="mt-2 flex flex-col gap-2 border-t border-border/50 pt-3">
                 {isAuthenticated ? (
                   <>
@@ -126,7 +126,7 @@ export function SiteHeader() {
                     </Button>
                     <Button variant="gradient" size="sm" className="w-full justify-start" asChild>
                       <Link
-                        href={pathname?.startsWith("/teacher") ? "/auth/register?role=teacher" : "/auth/register"}
+                        href={pathname?.startsWith("/teacher") ? "/auth/register?role=teacher" : "/auth/register/role-select"}
                         onClick={() => setIsMobileMenuOpen(false)}
                       >
                         <Sparkles className="size-4" /> Kezdjük!

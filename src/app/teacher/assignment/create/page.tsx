@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import {
@@ -65,6 +65,8 @@ function AssignmentCreatePageInner() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [classes, setClasses] = useState<ClassGroup[]>([]);
+  const [classesLoading, setClassesLoading] = useState(true);
+  const [classesError, setClassesError] = useState<string | null>(null);
   const [isGenerationDialogOpen, setIsGenerationDialogOpen] = useState(false);
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
   const [isSendDialogOpen, setIsSendDialogOpen] = useState(false);
@@ -82,11 +84,9 @@ function AssignmentCreatePageInner() {
     matchingWords: [] as string[],
   });
 
-  useState(() => {
-    loadClasses();
-  });
-
-  const loadClasses = async () => {
+  const loadClasses = useCallback(async () => {
+    setClassesLoading(true);
+    setClassesError(null);
     try {
       const { client } = await import("@/lib/amplify-client");
       const { getCurrentUser } = await import("aws-amplify/auth");
@@ -114,8 +114,57 @@ function AssignmentCreatePageInner() {
       setClasses(classesData);
     } catch (error) {
       console.error("Error loading classes:", error);
+      setClassesError("Nem sikerült betölteni az osztályokat. Próbáld újra később.");
+      toast({
+        title: "Hiba",
+        description: "Nem sikerült betölteni az osztályokat.",
+        variant: "destructive",
+      });
+    } finally {
+      setClassesLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    loadClasses();
+  }, [loadClasses]);
+
+  // Helper function to get default due date (7 days from now)
+  const getDefaultDueDate = useCallback(() => {
+    return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  }, []);
+
+  // Validation helper
+  const validateForm = useCallback(() => {
+    if (!formData.title.trim()) {
+      toast({
+        title: "Hiányzó cím",
+        description: "Add meg a feladat címét.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (!formData.content.trim()) {
+      toast({
+        title: "Hiányzó tartalom",
+        description: "Add meg a feladat tartalmát.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (formData.content.trim().length < 50) {
+      toast({
+        title: "Túl rövid tartalom",
+        description: "A feladat tartalmának legalább 50 karakter hosszúnak kell lennie.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    return true;
+  }, [formData.title, formData.content, toast]);
 
   const handleGenerated = (assignment: GeneratedAssignment) => {
     setFormData({
@@ -131,12 +180,7 @@ function AssignmentCreatePageInner() {
   };
 
   const handleSaveDraft = async () => {
-    if (!formData.title || !formData.content) {
-      toast({
-        title: "Hiányzó adatok",
-        description: "A cím és a tartalom kötelező.",
-        variant: "destructive",
-      });
+    if (!validateForm()) {
       return;
     }
 
@@ -155,7 +199,7 @@ function AssignmentCreatePageInner() {
         }
       `;
 
-      const dueDate = formData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const dueDate = formData.dueDate || getDefaultDueDate();
 
       await client.graphql({
         query: createAssignmentMutation,
@@ -193,6 +237,11 @@ function AssignmentCreatePageInner() {
   };
 
   const handleSendToClass = async () => {
+    // Validate form first
+    if (!validateForm()) {
+      return;
+    }
+
     if (!formData.classGroupId) {
       toast({
         title: "Hiányzó osztály",
@@ -220,17 +269,16 @@ function AssignmentCreatePageInner() {
         return;
       }
 
-      // Get student emails
-      const studentEmails: string[] = [];
-      for (const studentId of selectedClass.studentIds) {
-        const getStudentQuery = /* GraphQL */ `
-          query GetStudentProfile($id: ID!) {
-            getStudentProfile(id: $id) {
-              email
-            }
+      // Get student emails in parallel for better performance
+      const getStudentQuery = /* GraphQL */ `
+        query GetStudentProfile($id: ID!) {
+          getStudentProfile(id: $id) {
+            email
           }
-        `;
+        }
+      `;
 
+      const studentEmailPromises = selectedClass.studentIds.map(async (studentId) => {
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const studentResponse = await client.graphql({
@@ -238,14 +286,15 @@ function AssignmentCreatePageInner() {
             variables: { id: studentId },
           }) as any;
 
-          const studentEmail = studentResponse.data?.getStudentProfile?.email;
-          if (studentEmail) {
-            studentEmails.push(studentEmail);
-          }
+          return studentResponse.data?.getStudentProfile?.email || null;
         } catch (error) {
           console.error(`Error loading student ${studentId}:`, error);
+          return null;
         }
-      }
+      });
+
+      const studentEmailResults = await Promise.all(studentEmailPromises);
+      const studentEmails = studentEmailResults.filter((email): email is string => email !== null);
 
       // Create assignment
       const createAssignmentMutation = /* GraphQL */ `
@@ -257,7 +306,7 @@ function AssignmentCreatePageInner() {
         }
       `;
 
-      const dueDate = formData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const dueDate = formData.dueDate || getDefaultDueDate();
 
       await client.graphql({
         query: createAssignmentMutation,
@@ -305,13 +354,13 @@ function AssignmentCreatePageInner() {
     if (formData.assignmentType === "fill_blanks" && formData.blankPositions.length > 0) {
       let content = formData.content;
       const blanks = [...formData.blankPositions].sort((a, b) => b.offset - a.offset);
-      
+
       blanks.forEach((blank) => {
         const before = content.substring(0, blank.offset);
         const after = content.substring(blank.offset + blank.length);
         content = before + "______" + after;
       });
-      
+
       return content;
     }
     return formData.content;
@@ -541,18 +590,34 @@ function AssignmentCreatePageInner() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="class-select">Osztály *</Label>
-              <Select value={formData.classGroupId} onValueChange={(value) => setFormData({ ...formData, classGroupId: value })}>
-                <SelectTrigger id="class-select">
-                  <SelectValue placeholder="Válassz osztályt" />
-                </SelectTrigger>
-                <SelectContent>
-                  {classes.map((cls) => (
-                    <SelectItem key={cls.id} value={cls.id}>
-                      {cls.name} ({cls.studentIds?.length || 0} diák)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {classesLoading ? (
+                <div className="flex items-center gap-2 p-3 rounded-lg border border-border/40 bg-muted/30">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm text-muted-foreground">Osztályok betöltése...</span>
+                </div>
+              ) : classesError ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 p-3 rounded-lg border border-destructive/40 bg-destructive/10 text-destructive text-sm">
+                    {classesError}
+                  </div>
+                  <Button variant="outline" size="sm" onClick={loadClasses} className="w-full">
+                    Újrapróbálás
+                  </Button>
+                </div>
+              ) : (
+                <Select value={formData.classGroupId} onValueChange={(value) => setFormData({ ...formData, classGroupId: value })} disabled={classes.length === 0}>
+                  <SelectTrigger id="class-select">
+                    <SelectValue placeholder={classes.length === 0 ? "Nincs elérhető osztály" : "Válassz osztályt"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classes.map((cls) => (
+                      <SelectItem key={cls.id} value={cls.id}>
+                        {cls.name} ({cls.studentIds?.length || 0} diák)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             {formData.classGroupId && (
               <div className="rounded-lg bg-muted/50 p-4 text-sm">

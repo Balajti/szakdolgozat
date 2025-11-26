@@ -102,7 +102,7 @@ export default function Home() {
             </p>
             <div className="flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
               <ParticleButton className="w-full rounded-2xl px-6 py-4 text-sm sm:w-auto sm:px-10 sm:py-5 sm:text-base" asChild>
-                <Link href="/auth/register">
+                <Link href="/auth/register/role-select">
                   <Sparkles className="size-5" /> Induljon a kaland
                 </Link>
               </ParticleButton>
@@ -123,28 +123,28 @@ export default function Home() {
           </motion.div>
         </section>
         <div className="grid gap-4 sm:grid-cols-3">
-              <MetricCard
-                title="AI történetek"
-                value="Végtelen"
-                description="Generálható történetek"
-                icon={<BookOpen className="size-6" />}
-                trend={{ label: "A1-C2", direction: "neutral" }}
-              />
-              <MetricCard
-                title="Szókincsfejlődés"
-                value="Követhető"
-                description="Vizuális grafikonokkal"
-                icon={<Brain className="size-6" />}
-                trend={{ label: "napi", direction: "up" }}
-              />
-              <MetricCard
-                title="Jelvények"
-                value="15+"
-                description="Elérhető achievement"
-                icon={<Sparkles className="size-6" />}
-                trend={{ label: "gyűjthető", direction: "neutral" }}
-              />
-            </div>
+          <MetricCard
+            title="AI történetek"
+            value="Végtelen"
+            description="Generálható történetek"
+            icon={<BookOpen className="size-6" />}
+            trend={{ label: "A1-C2", direction: "neutral" }}
+          />
+          <MetricCard
+            title="Szókincsfejlődés"
+            value="Követhető"
+            description="Vizuális grafikonokkal"
+            icon={<Brain className="size-6" />}
+            trend={{ label: "napi", direction: "up" }}
+          />
+          <MetricCard
+            title="Jelvények"
+            value="15+"
+            description="Elérhető achievement"
+            icon={<Sparkles className="size-6" />}
+            trend={{ label: "gyűjthető", direction: "neutral" }}
+          />
+        </div>
 
         <section id="features" className="space-y-8 sm:space-y-10 lg:space-y-12">
           <div className="flex flex-col items-start gap-3 sm:gap-4">
