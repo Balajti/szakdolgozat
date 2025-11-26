@@ -237,14 +237,6 @@ function RegisterPageContent() {
               <FormItem>
                 <FormLabel>Szerepkör</FormLabel>
                 <Tabs value={field.value} onValueChange={(value) => field.onChange(value)} className="w-full">
-                  <TabsList className="grid grid-cols-2 rounded-2xl bg-muted/60 p-1">
-                    <TabsTrigger value="student" className="rounded-xl">
-                      Diák vagyok
-                    </TabsTrigger>
-                    <TabsTrigger value="teacher" className="rounded-xl">
-                      Tanár vagyok
-                    </TabsTrigger>
-                  </TabsList>
                   <TabsContent value="student" className="space-y-2 rounded-3xl border border-border/60 bg-white/80 p-4 text-sm text-muted-foreground">
                     A történetek a születési dátum alapján életkornak megfelelően készülnek.
                   </TabsContent>

@@ -12,6 +12,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
+import { useAvatarUrl } from '@/hooks/use-avatar-url';
+import { useQueryClient } from '@tanstack/react-query';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'A név legalább 2 karakter legyen').max(60, 'Maximum 60 karakter'),
@@ -27,9 +29,11 @@ interface ProfileSettingsProps {
 export function ProfileSettings({ studentId }: ProfileSettingsProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarPath, setAvatarPath] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const { toast } = useToast();
+  const avatarUrl = useAvatarUrl(avatarPath);
+  const queryClient = useQueryClient();
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -65,7 +69,7 @@ export function ProfileSettings({ studentId }: ProfileSettingsProps) {
           name: profile.name || '',
           birthday: profile.birthday || '',
         });
-        setAvatarUrl(profile.avatarUrl || null);
+        setAvatarPath(profile.avatarUrl || null); // avatarUrl is actually the path
       }
       setLoading(false);
     } catch (error) {
@@ -165,11 +169,10 @@ export function ProfileSettings({ studentId }: ProfileSettingsProps) {
         }
       }).result;
 
-      // Get the URL
-      const urlResult = await getUrl({ path: result.path });
-      const newAvatarUrl = urlResult.url.toString().split('?')[0]; // Remove query params
+      // Store the path (not the URL) in the database
+      const storagePath = result.path;
 
-      // Update profile with new avatar URL
+      // Update profile with new avatar path
       const updateProfileMutation = /* GraphQL */ `
         mutation UpdateStudentProfile($input: UpdateStudentProfileInput!) {
           updateStudentProfile(input: $input) {
@@ -184,12 +187,16 @@ export function ProfileSettings({ studentId }: ProfileSettingsProps) {
         variables: {
           input: {
             id: studentId,
-            avatarUrl: newAvatarUrl,
+            avatarUrl: storagePath, // Store the path, not the URL
           },
         },
       });
 
-      setAvatarUrl(newAvatarUrl);
+      setAvatarPath(storagePath); // This will trigger the useEffect to fetch the signed URL
+
+      // Invalidate the student dashboard query to refresh avatar in navbar
+      queryClient.invalidateQueries({ queryKey: ['student-dashboard'] });
+
       toast({
         title: 'Profilkép frissítve',
         description: 'Az új profilképed sikeresen feltöltve.',

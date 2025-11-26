@@ -36,6 +36,7 @@ import type { Assignment, ClassSummary, TeacherProfile } from "@/lib/types";
 import { RequireAuth } from "@/components/providers/require-auth";
 import { LogoutButton } from "@/components/ui/logout-button";
 import { ClassesManagement } from "@/components/teacher/classes-management";
+import { useAvatarUrl } from "@/hooks/use-avatar-url";
 
 const assignmentStatusLabels: Record<Assignment["status"], string> = {
   draft: "Piszkozat",
@@ -66,6 +67,9 @@ function TeacherPortalPageInner() {
   const { data, isLoading, isFetching, error } = useTeacherDashboard();
   const [activeView, setActiveView] = useState<DashboardView>('overview');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  // Fetch signed URL for avatar
+  const avatarUrl = useAvatarUrl(data?.profile?.avatarUrl);
 
   const assignments: Assignment[] = useMemo(() => data?.assignments ?? [], [data?.assignments]);
   const classes: ClassSummary[] = useMemo(() => data?.classes ?? [], [data?.classes]);
@@ -172,7 +176,7 @@ function TeacherPortalPageInner() {
                   className="flex items-center gap-3 px-3 py-2 rounded-xl bg-muted/50 transition-colors hover:bg-muted cursor-pointer"
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={profile?.avatarUrl || undefined} />
+                    <AvatarImage src={avatarUrl || undefined} />
                     <AvatarFallback className="bg-primary/20 text-primary text-sm">
                       {profile?.name?.charAt(0)}
                     </AvatarFallback>
@@ -229,7 +233,7 @@ function TeacherPortalPageInner() {
                       className="flex w-full items-center gap-3 rounded-xl bg-muted/40 px-3 py-2 transition-colors hover:bg-muted/60 cursor-pointer"
                     >
                       <Avatar className="h-10 w-10">
-                        <AvatarImage src={profile?.avatarUrl || undefined} />
+                        <AvatarImage src={avatarUrl || undefined} />
                         <AvatarFallback className="bg-primary/20 text-primary text-sm">
                           {profile?.name?.charAt(0)}
                         </AvatarFallback>

@@ -32,6 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { LogoutButton } from "@/components/ui/logout-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { useAvatarUrl } from "@/hooks/use-avatar-url";
 
 const dashboardNavItems = [
   { value: 'overview' as const, label: 'Áttekintés', icon: TrendingUp },
@@ -51,6 +52,9 @@ function StudentPortalPageInner() {
   const [activeView, setActiveView] = useState<DashboardView>('overview');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const { toast } = useToast();
+
+  // Fetch signed URL for avatar
+  const avatarUrl = useAvatarUrl(data?.profile?.avatarUrl);
 
   // Handle query parameter for view navigation
   useEffect(() => {
@@ -97,6 +101,36 @@ function StudentPortalPageInner() {
         ? differenceInYears(new Date(), new Date(data.profile.birthday))
         : 12;
 
+      // Fetch student preferences for topic selection
+      const getPreferencesQuery = /* GraphQL */ `
+        query GetStudentPreferences($id: ID!) {
+          getStudentProfile(id: $id) {
+            id
+            preferredTopics
+            useRandomTopics
+            preferredDifficulty
+          }
+        }
+      `;
+
+      const preferencesResponse = await client.graphql({
+        query: getPreferencesQuery,
+        variables: { id: data.profile.id }
+      }) as { data: { getStudentProfile: { preferredTopics?: (string | null)[]; useRandomTopics?: boolean; preferredDifficulty?: string } } };
+
+      // Determine topic based on preferences
+      let selectedTopic: string | undefined = undefined;
+      const preferences = preferencesResponse.data?.getStudentProfile;
+
+      if (preferences && !preferences.useRandomTopics && preferences.preferredTopics && preferences.preferredTopics.length > 0) {
+        // Filter out null values and randomly select from preferred topics
+        const validTopics = preferences.preferredTopics.filter((t): t is string => t !== null && t !== undefined);
+        if (validTopics.length > 0) {
+          selectedTopic = validTopics[Math.floor(Math.random() * validTopics.length)];
+        }
+      }
+      // If useRandomTopics is true or no topics selected, don't pass a topic (AI will choose randomly)
+
       // Fetch student's vocabulary
       const listWordsQuery = /* GraphQL */ `
         query ListWordsByStudent($studentId: ID!) {
@@ -129,6 +163,8 @@ function StudentPortalPageInner() {
           $knownWords: [String]
           $unknownWords: [String]
           $mode: StoryGenerationMode!
+          $topic: String
+          $difficulty: String
         ) {
           generateStory(
             level: $level
@@ -136,6 +172,8 @@ function StudentPortalPageInner() {
             knownWords: $knownWords
             unknownWords: $unknownWords
             mode: $mode
+            topic: $topic
+            difficulty: $difficulty
           ) {
             story {
               id
@@ -160,7 +198,9 @@ function StudentPortalPageInner() {
           age,
           knownWords,
           unknownWords,
-          mode: "personalized"
+          mode: "personalized",
+          topic: selectedTopic, // Pass the selected topic
+          difficulty: preferences?.preferredDifficulty, // Pass the preferred difficulty
         }
       }) as { data: { generateStory: { story: { id: string } } } };
 
@@ -224,7 +264,7 @@ function StudentPortalPageInner() {
                   className="flex items-center gap-3 px-3 py-2 rounded-xl bg-muted/50 transition-colors hover:bg-muted cursor-pointer"
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={profile?.avatarUrl || undefined} />
+                    <AvatarImage src={avatarUrl || undefined} />
                     <AvatarFallback className="bg-primary/20 text-primary text-sm">
                       {profile?.name?.charAt(0)}
                     </AvatarFallback>
@@ -281,7 +321,7 @@ function StudentPortalPageInner() {
                       className="flex w-full items-center gap-3 rounded-xl bg-muted/40 px-3 py-2 transition-colors hover:bg-muted/60 cursor-pointer"
                     >
                       <Avatar className="h-10 w-10">
-                        <AvatarImage src={profile?.avatarUrl || undefined} />
+                        <AvatarImage src={avatarUrl || undefined} />
                         <AvatarFallback className="bg-primary/20 text-primary text-sm">
                           {profile?.name?.charAt(0)}
                         </AvatarFallback>
@@ -467,7 +507,7 @@ function StudentPortalPageInner() {
               <h3 className="text-xl font-semibold mb-4">Történet preferenciák</h3>
               <StoryPreferences
                 studentId={profile?.id || ""}
-                onSave={() => toast({ title: "Beállítások mentve" })}
+                onSave={() => toast({ title: "Beállítások mentve", description: "A történet preferenciáid sikeresen frissítve." })}
               />
             </div>
           </div>

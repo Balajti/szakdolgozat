@@ -31,10 +31,8 @@ interface StoryGenerationDialogProps {
 
 interface HighlightedWord {
   word: string;
-  translation: string;
-  position: number;
-  offset?: number;
-  length?: number;
+  offset: number;
+  length: number;
 }
 
 interface GeneratedAssignment {
@@ -48,31 +46,31 @@ interface GeneratedAssignment {
 }
 
 const LEVELS = [
-  { value: "A1", label: "A1 - Kezdő" },
-  { value: "A2", label: "A2 - Alapfok" },
-  { value: "B1", label: "B1 - Középfok" },
-  { value: "B2", label: "B2 - Felsőfok" },
-  { value: "C1", label: "C1 - Haladó" },
-  { value: "C2", label: "C2 - Mesterfok" },
+  { value: "A1", label: "A1 – Kezdő" },
+  { value: "A2", label: "A2 – Alapszint" },
+  { value: "B1", label: "B1 – Küszöbszint" },
+  { value: "B2", label: "B2 – Középszint" },
+  { value: "C1", label: "C1 – Felsőfok" },
+  { value: "C2", label: "C2 – Mesterszint" },
 ];
 
 const ASSIGNMENT_TYPES = [
   {
     value: "basic",
-    label: "Alapvető történet",
-    description: "Egyszerű olvasási feladat kiemelésekkel",
+    label: "Történet olvasása",
+    description: "Egyszerű történet generálása a megadott szinten, kiemelt szavakkal.",
     icon: BookOpen,
   },
   {
     value: "fill_blanks",
-    label: "Kihagyásos feladat",
-    description: "A diákoknak ki kell tölteniük az üres helyeket",
+    label: "Lyukas szöveg",
+    description: "A tanulónak be kell írnia a hiányzó szavakat a szövegbe.",
     icon: List,
   },
   {
     value: "word_matching",
-    label: "Szópárosítás",
-    description: "Szavak jelentésének párosítása",
+    label: "Szópárosító",
+    description: "A kiemelt szavak és jelentésük összepárosítása.",
     icon: Languages,
   },
 ];
@@ -124,8 +122,6 @@ export function StoryGenerationDialog({
               content
               highlightedWords {
                 word
-                translation
-                position
                 offset
                 length
               }
@@ -147,7 +143,7 @@ export function StoryGenerationDialog({
           customWords: words.length > 0 ? words : null,
           mode: "teacher",
         },
-      })) as { data?: { generateStory?: { story?: { title?: string; content?: string; highlightedWords?: { word: string; translation: string; position: number; offset: number; length: number }[] } } } };
+      })) as { data?: { generateStory?: { story?: { title?: string; content?: string; highlightedWords?: { word: string; offset: number; length: number }[] } } } };
 
       const storyData = response.data?.generateStory?.story;
 
@@ -221,8 +217,6 @@ export function StoryGenerationDialog({
 
     return selected.map((word) => ({
       word: word.word,
-      translation: word.translation,
-      position: word.position,
       offset: word.offset,
       length: word.length,
     }));

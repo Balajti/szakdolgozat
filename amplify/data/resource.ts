@@ -268,7 +268,7 @@ const schema = a.schema({
       name: a.string().required(),
       email: a.email().required(),
       birthday: a.date(),
-      avatarUrl: a.url(),
+      avatarUrl: a.string(), // S3 storage path, not URL
       level: a.string().required(),
       preferredLevel: a.string(),
       preferredAge: a.integer(),
@@ -297,7 +297,7 @@ const schema = a.schema({
       email: a.email().required(),
       school: a.string(),
       bio: a.string(),
-      avatarUrl: a.url(),
+      avatarUrl: a.string(), // S3 storage path, not URL
       preferredLevel: a.string(),
       preferredAge: a.integer(),
       classGroups: a.hasMany('ClassGroup', 'teacherId'),
@@ -349,7 +349,7 @@ const schema = a.schema({
     name: a.string().required(),
     email: a.email().required(),
     birthday: a.date(),
-    avatarUrl: a.url(),
+    avatarUrl: a.string(), // S3 storage path, not URL
     level: a.string().required(),
     streak: a.integer().required(),
     vocabularyCount: a.integer().required(),
@@ -507,6 +507,7 @@ const schema = a.schema({
       excludedWords: a.string().array(),
       topic: a.string(),
       customWords: a.string().array(),
+      difficulty: a.string(),
       mode: a.ref('StoryGenerationMode').required(),
     })
     .returns(a.ref('StoryGenerationPayload'))

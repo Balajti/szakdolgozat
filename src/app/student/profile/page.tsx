@@ -22,6 +22,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { RequireAuth } from "@/components/providers/require-auth";
+import { useAvatarUrl } from "@/hooks/use-avatar-url";
 
 interface BadgeItem {
   id: string;
@@ -67,6 +68,9 @@ function StudentProfilePageInner() {
     unknown: 0,
     learning: 0,
   });
+
+  // Fetch signed URL for avatar
+  const avatarUrl = useAvatarUrl(profile?.avatarUrl);
 
   useEffect(() => {
     const loadProfileData = async () => {
@@ -253,7 +257,7 @@ function StudentProfilePageInner() {
               <CardContent className="p-6 sm:p-8">
                 <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
                   <Avatar className="h-24 w-24 border-4 border-background shadow-xl sm:h-32 sm:w-32">
-                    <AvatarImage src={profile.avatarUrl || undefined} />
+                    <AvatarImage src={avatarUrl || undefined} />
                     <AvatarFallback className="bg-primary/20 text-primary text-3xl sm:text-4xl">
                       {profile.name?.charAt(0) || <User className="h-12 w-12 sm:h-16 sm:w-16" />}
                     </AvatarFallback>

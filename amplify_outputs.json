@@ -2151,7 +2151,7 @@
             "avatarUrl": {
               "name": "avatarUrl",
               "isArray": false,
-              "type": "AWSURL",
+              "type": "String",
               "isRequired": false,
               "attributes": []
             },
@@ -2476,7 +2476,7 @@
             "avatarUrl": {
               "name": "avatarUrl",
               "isArray": false,
-              "type": "AWSURL",
+              "type": "String",
               "isRequired": false,
               "attributes": []
             },
@@ -3006,7 +3006,7 @@
             "avatarUrl": {
               "name": "avatarUrl",
               "isArray": false,
-              "type": "AWSURL",
+              "type": "String",
               "isRequired": false,
               "attributes": []
             },
@@ -4129,6 +4129,12 @@
               "isRequired": false,
               "isArrayNullable": true
             },
+            "difficulty": {
+              "name": "difficulty",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
             "mode": {
               "name": "mode",
               "isArray": false,
@@ -4464,8 +4470,8 @@
         "bucket_name": "amplify-szakdolgozat-zsol-wordneststoragebucket1a8-z5hnemvtdbzn",
         "aws_region": "eu-central-1",
         "paths": {
-          "avatars/${cognito-identity.amazonaws.com:sub}/*": {
-            "entityidentity": [
+          "avatars/*": {
+            "authenticated": [
               "get",
               "list",
               "write",

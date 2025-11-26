@@ -37,16 +37,16 @@ const resolvedConfig: ResourcesConfig = {
       // Oauth is optional; include only if domain provided via env
       ...(process.env.NEXT_PUBLIC_COGNITO_OAUTH_DOMAIN
         ? {
-            loginWith: {
-              oauth: {
-                domain: process.env.NEXT_PUBLIC_COGNITO_OAUTH_DOMAIN,
-                scopes: ["email", "openid", "profile"],
-                redirectSignIn: [envOr("NEXT_PUBLIC_COGNITO_REDIRECT_SIGN_IN")],
-                redirectSignOut: [envOr("NEXT_PUBLIC_COGNITO_REDIRECT_SIGN_OUT")],
-                responseType: "code",
-              },
+          loginWith: {
+            oauth: {
+              domain: process.env.NEXT_PUBLIC_COGNITO_OAUTH_DOMAIN,
+              scopes: ["email", "openid", "profile"],
+              redirectSignIn: [envOr("NEXT_PUBLIC_COGNITO_REDIRECT_SIGN_IN")],
+              redirectSignOut: [envOr("NEXT_PUBLIC_COGNITO_REDIRECT_SIGN_OUT")],
+              responseType: "code",
             },
-          }
+          },
+        }
         : {}),
     },
   },
@@ -58,6 +58,12 @@ const resolvedConfig: ResourcesConfig = {
       apiKey: process.env.NEXT_PUBLIC_APPSYNC_API_KEY,
     },
   },
+  Storage: {
+    S3: {
+      bucket: envOr("NEXT_PUBLIC_STORAGE_BUCKET", outputs?.storage?.bucket_name),
+      region: envOr("NEXT_PUBLIC_AWS_REGION", outputs?.storage?.aws_region || "eu-central-1"),
+    }
+  }
 };
 
 let configured = false;

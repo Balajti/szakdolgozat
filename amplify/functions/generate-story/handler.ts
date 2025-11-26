@@ -20,6 +20,7 @@ type SanitizedInput = {
   excludedWords: string[];
   mode: GenerationMode;
   topic?: string;
+  difficulty?: string;
 };
 
 interface GeneratedStory {
@@ -80,10 +81,19 @@ async function generateStoryWithAI(input: SanitizedInput): Promise<GeneratedStor
     ? `Topic: Write a story specifically about "${input.topic}".`
     : "Scenario: Choose a completely RANDOM and CREATIVE scenario (e.g., sci-fi, mystery, fantasy, slice of life, historical).";
 
+  const difficultyHint = input.difficulty === "beginner"
+    ? "Keep vocabulary simple and sentence structures straightforward. Use common, everyday words."
+    : input.difficulty === "intermediate"
+      ? "Use moderately complex vocabulary and varied sentence structures. Include some idiomatic expressions."
+      : input.difficulty === "advanced"
+        ? "Feel free to use sophisticated vocabulary, complex sentence structures, and nuanced language."
+        : "Adjust vocabulary naturally for the CEFR level.";
+
   const prompt = `You are a creative storyteller writing a captivating bedtime story for a ${age}-year-old reader at CEFR level ${level}.
 
 ${modeContext}
 ${topicPrompt}
+${difficultyHint}
 
 **Requirements:**
 - Target audience: ${ageContext}
@@ -108,14 +118,14 @@ ${avoidWords.length > 0 ? `- AVOID these words: ${avoidWords.join(", ")}` : ""}
 **Format your response as JSON:**
 {
   "title": "Engaging story title (5-7 words)",
-  "content": "The complete story text with proper paragraphs (MINIMUM 400 words)",
+  "content": "The complete story text with proper paragraphs (MINIMUM 1000 words)",
   "highlightedWords": [
     {"word": "target word from the story", "offset": character_position, "length": word_length}
   ]
 }
 
 Important: 
-1. The story MUST be at least 400 words long
+1. The story MUST be at least 1000 words long
 2. In highlightedWords, include ALL occurrences of the NEW/UNKNOWN words (${targetWords.join(", ")})
 3. Find their exact positions in the content text for each occurrence`;
 
@@ -242,7 +252,7 @@ const toWordView = (word: DynamoDBItem): WordView => {
 
 export const handler: Handler = async (event) => {
   const appSyncEvent = event as AppSyncResolverEvent<any>;
-  const { level, age, mode, knownWords, unknownWords, requiredWords, excludedWords, topic, customWords } = appSyncEvent.arguments as {
+  const { level, age, mode, knownWords, unknownWords, requiredWords, excludedWords, topic, customWords, difficulty } = appSyncEvent.arguments as {
     level: string;
     age?: number | null;
     mode: GenerationMode;
@@ -252,6 +262,7 @@ export const handler: Handler = async (event) => {
     excludedWords?: (string | null | undefined)[] | null;
     topic?: string | null;
     customWords?: (string | null | undefined)[] | null;
+    difficulty?: string | null;
   };
 
   if (!level || !mode) {
@@ -276,6 +287,7 @@ export const handler: Handler = async (event) => {
     requiredWords: normalizeWordList(allRequiredWords),
     excludedWords: normalizeWordList(excludedWords),
     topic: topic?.trim() || undefined,
+    difficulty: difficulty?.trim() || undefined,
   };
 
   const ownership = resolveOwner(event, sanitized.mode);
