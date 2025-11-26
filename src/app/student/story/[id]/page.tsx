@@ -17,6 +17,8 @@ interface Story {
   topic?: string;
   createdAt: string;
   studentId?: string;
+  highlightedWords?: Array<{ word: string; offset: number; length: number }>;
+  unknownWordIds?: string[];
 }
 
 function StoryReaderPageInner() {
@@ -25,6 +27,8 @@ function StoryReaderPageInner() {
   const { toast } = useToast();
   const [story, setStory] = useState<Story | null>(null);
   const [loading, setLoading] = useState(true);
+  const [unknownWords, setUnknownWords] = useState<string[]>([]);
+  const [highlightedWords, setHighlightedWords] = useState<string[]>([]);
 
   useEffect(() => {
     async function loadStory() {
@@ -42,6 +46,12 @@ function StoryReaderPageInner() {
               topic
               createdAt
               studentId
+              highlightedWords {
+                word
+                offset
+                length
+              }
+              unknownWordIds
             }
           }
         `;
@@ -52,7 +62,39 @@ function StoryReaderPageInner() {
         }) as { data: { getStory: Story } };
 
         if (response.data?.getStory) {
-          setStory(response.data.getStory);
+          const storyData = response.data.getStory;
+          setStory(storyData);
+
+          // Process highlighted words from the story generation
+          if (storyData.highlightedWords) {
+            setHighlightedWords(storyData.highlightedWords.map(h => h.word));
+          }
+
+          // Fetch unknown words if there are any IDs
+          if (storyData.unknownWordIds && storyData.unknownWordIds.length > 0 && storyData.studentId) {
+            const listWordsQuery = /* GraphQL */ `
+              query ListWordsByStudent($studentId: ID!) {
+                listWordsByStudent(studentId: $studentId) {
+                  items {
+                    id
+                    text
+                  }
+                }
+              }
+            `;
+
+            const wordsResponse = await client.graphql({
+              query: listWordsQuery,
+              variables: { studentId: storyData.studentId }
+            }) as { data: { listWordsByStudent: { items: { id: string; text: string }[] } } };
+
+            const allWords = wordsResponse.data?.listWordsByStudent?.items || [];
+            const unknownWordTexts = allWords
+              .filter(w => storyData.unknownWordIds?.includes(w.id))
+              .map(w => w.text);
+
+            setUnknownWords(unknownWordTexts);
+          }
         } else {
           toast({
             title: "Hiba",
@@ -131,8 +173,8 @@ function StoryReaderPageInner() {
         <div className="bg-card rounded-2xl border border-border/40 p-8">
           <InteractiveStoryReader
             content={story.content}
-            highlightedWords={[]}
-            unknownWords={[]}
+            highlightedWords={highlightedWords}
+            unknownWords={unknownWords}
             learningWords={[]}
             onMarkUnknown={handleMarkUnknown}
             targetLanguage="hu"

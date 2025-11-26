@@ -66,9 +66,11 @@ function StudentPortalPageInner() {
   };
 
   const handleGenerateStory = async (level: string) => {
+    if (!data?.profile) return;
+
     try {
       const { client } = await import('@/lib/amplify-client');
-      
+
       // Update profile level if changed
       if (data?.profile && data.profile.level !== level) {
         const updateProfileMutation = /* GraphQL */ `
@@ -79,11 +81,11 @@ function StudentPortalPageInner() {
             }
           }
         `;
-        
+
         await client.graphql({
           query: updateProfileMutation,
-          variables: { 
-            input: { 
+          variables: {
+            input: {
               id: data.profile.id,
               level: level
             }
@@ -91,16 +93,41 @@ function StudentPortalPageInner() {
         });
       }
 
-      const age = data?.profile?.birthday 
+      const age = data?.profile?.birthday
         ? differenceInYears(new Date(), new Date(data.profile.birthday))
         : 12;
+
+      // Fetch student's vocabulary
+      const listWordsQuery = /* GraphQL */ `
+        query ListWordsByStudent($studentId: ID!) {
+          listWordsByStudent(studentId: $studentId) {
+            items {
+              text
+              mastery
+            }
+          }
+        }
+      `;
+
+      const wordsResponse = await client.graphql({
+        query: listWordsQuery,
+        variables: { studentId: data.profile.id }
+      }) as { data: { listWordsByStudent: { items: { text: string; mastery: string }[] } } };
+
+      const allWords = wordsResponse.data?.listWordsByStudent?.items || [];
+      const knownWords = allWords
+        .filter(w => w.mastery === 'known')
+        .map(w => w.text);
+      const unknownWords = allWords
+        .filter(w => w.mastery === 'unknown')
+        .map(w => w.text);
 
       const generateStoryMutation = /* GraphQL */ `
         mutation GenerateStory(
           $level: String!
-          $age: Int!
-          $knownWords: [String!]!
-          $unknownWords: [String!]!
+          $age: Int
+          $knownWords: [String]
+          $unknownWords: [String]
           $mode: StoryGenerationMode!
         ) {
           generateStory(
@@ -131,8 +158,8 @@ function StudentPortalPageInner() {
         variables: {
           level,
           age,
-          knownWords: [],
-          unknownWords: [],
+          knownWords,
+          unknownWords,
           mode: "personalized"
         }
       }) as { data: { generateStory: { story: { id: string } } } };
@@ -340,8 +367,8 @@ function StudentPortalPageInner() {
                 Készen állsz a nyelvtanulási utad folytatására? Generálj egy új történetet, vagy folytasd, ahol abbahagytad.
               </p>
               <div className="flex flex-wrap gap-3">
-                <Button 
-                  size="lg" 
+                <Button
+                  size="lg"
                   variant="secondary"
                   onClick={() => setIsGenerationModalOpen(true)}
                   className="bg-white text-primary hover:bg-white/90"
@@ -349,8 +376,8 @@ function StudentPortalPageInner() {
                   <Plus className="mr-2 h-5 w-5" />
                   Történet generálása
                 </Button>
-                <Button 
-                  size="lg" 
+                <Button
+                  size="lg"
                   variant="outline"
                   onClick={() => setIsGenerationModalOpen(true)}
                   className="border-white/30 text-black hover:bg-white/10"
@@ -433,14 +460,14 @@ function StudentPortalPageInner() {
                 Szabd személyre a fiókodat és a tanulási élményed.
               </p>
             </div>
-            
+
             <ProfileSettings studentId={profile?.id || ""} />
-            
+
             <div className="pt-6">
               <h3 className="text-xl font-semibold mb-4">Történet preferenciák</h3>
-              <StoryPreferences 
-                studentId={profile?.id || ""} 
-                onSave={() => toast({ title: "Beállítások mentve" })} 
+              <StoryPreferences
+                studentId={profile?.id || ""}
+                onSave={() => toast({ title: "Beállítások mentve" })}
               />
             </div>
           </div>

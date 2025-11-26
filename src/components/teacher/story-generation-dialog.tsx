@@ -119,10 +119,17 @@ export function StoryGenerationDialog({
       const generateStoryMutation = /* GraphQL */ `
         mutation GenerateStory($level: String!, $topic: String, $customWords: [String], $mode: StoryGenerationMode!) {
           generateStory(level: $level, topic: $topic, customWords: $customWords, mode: $mode) {
-            title
-            content
-            highlightedWords
-            unknownWords
+            story {
+              title
+              content
+              highlightedWords {
+                word
+                translation
+                position
+                offset
+                length
+              }
+            }
           }
         }
       `;
@@ -140,9 +147,9 @@ export function StoryGenerationDialog({
           customWords: words.length > 0 ? words : null,
           mode: "teacher",
         },
-      })) as { data?: { generateStory?: { title?: string; content?: string; highlightedWords?: { word: string; translation: string; position: number }[] } } };
+      })) as { data?: { generateStory?: { story?: { title?: string; content?: string; highlightedWords?: { word: string; translation: string; position: number; offset: number; length: number }[] } } } };
 
-      const storyData = response.data?.generateStory;
+      const storyData = response.data?.generateStory?.story;
 
       if (!storyData?.title || !storyData?.content) {
         throw new Error("No story data returned");
@@ -271,8 +278,8 @@ export function StoryGenerationDialog({
                   <Card
                     key={type.value}
                     className={`cursor-pointer transition-all ${assignmentType === type.value
-                        ? "ring-2 ring-primary bg-primary/5"
-                        : "hover:bg-muted/50"
+                      ? "ring-2 ring-primary bg-primary/5"
+                      : "hover:bg-muted/50"
                       }`}
                     onClick={() => setAssignmentType(type.value)}
                   >
