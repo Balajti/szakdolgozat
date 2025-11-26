@@ -1,4 +1,5 @@
 import { defineAuth } from '@aws-amplify/backend';
+import { postConfirmation } from '../functions/post-confirmation/resource';
 
 /**
  * Define and configure your auth resource
@@ -24,4 +25,7 @@ export const auth = defineAuth({
   },
   groups: ['students', 'teachers', 'admins'],
   accountRecovery: 'EMAIL_ONLY',
+  triggers: {
+    postConfirmation,
+  },
 });

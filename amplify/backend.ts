@@ -19,7 +19,10 @@ import { checkBadges } from './functions/check-badges/resource';
 import { adjustDifficulty } from './functions/adjust-difficulty/resource';
 import { trackVocabularyProgress } from './functions/track-vocabulary-progress/resource';
 import { cleanupOldStories } from './functions/cleanup-old-stories/resource';
-import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { postConfirmation } from './functions/post-confirmation/resource';
+import { PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { UserPoolOperation, UserPool } from 'aws-cdk-lib/aws-cognito';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 /**
  * @see https://docs.amplify.aws/react/build-a-backend/ to add storage, functions, and more
@@ -44,7 +47,8 @@ const backend = defineBackend({
   checkBadges,
   adjustDifficulty,
   trackVocabularyProgress,
-  cleanupOldStories
+  cleanupOldStories,
+  postConfirmation
 });
 
 const functions = [
@@ -87,7 +91,7 @@ functions.forEach((fn) => {
   fn.addEnvironment('AMPLIFY_DATA_QUIZQUESTION_TABLE_NAME', backend.data.resources.tables['QuizQuestion'].tableName);
   fn.addEnvironment('AMPLIFY_DATA_VOCABULARYPROGRESS_TABLE_NAME', backend.data.resources.tables['VocabularyProgress'].tableName);
   fn.addEnvironment('AMPLIFY_DATA_CLASSGROUP_TABLE_NAME', backend.data.resources.tables['ClassGroup'].tableName);
-  
+
   // Grant DynamoDB permissions to all functions
   fn.resources.lambda.addToRolePolicy(
     new PolicyStatement({
@@ -135,4 +139,52 @@ functions.forEach((fn) => {
   );
 });
 
+// Connect post-confirmation Lambda as a Cognito trigger
+const cfnUserPool = backend.auth.resources.userPool.node.defaultChild as any;
+if (cfnUserPool) {
+  cfnUserPool.addPropertyOverride('LambdaConfig.PostConfirmation',
+    backend.postConfirmation.resources.lambda.functionArn
+  );
+}
 
+// Grant Cognito permission to invoke the Lambda
+backend.postConfirmation.resources.lambda.addPermission('CognitoPostConfirmationInvoke', {
+  principal: new ServicePrincipal('cognito-idp.amazonaws.com'),
+  sourceArn: backend.auth.resources.userPool.userPoolArn,
+});
+
+// 1. Create SSM parameters for table names (Break Env Var Dependency)
+// These depend on Data stack, but Auth stack will NOT depend on these resources directly
+new StringParameter(backend.stack, 'StudentProfileTableParam', {
+  parameterName: '/amplify/data/StudentProfileTableName',
+  stringValue: backend.data.resources.tables['StudentProfile'].tableName,
+});
+
+new StringParameter(backend.stack, 'TeacherProfileTableParam', {
+  parameterName: '/amplify/data/TeacherProfileTableName',
+  stringValue: backend.data.resources.tables['TeacherProfile'].tableName,
+});
+
+// 2. Pass SSM Parameter Names to Lambda (Use String Literals to avoid dependency)
+backend.postConfirmation.addEnvironment('STUDENT_PROFILE_TABLE_PARAM', '/amplify/data/StudentProfileTableName');
+backend.postConfirmation.addEnvironment('TEACHER_PROFILE_TABLE_PARAM', '/amplify/data/TeacherProfileTableName');
+
+// 3. Grant Permission to read SSM Parameters (Use Wildcard to avoid dependency)
+backend.postConfirmation.resources.lambda.addToRolePolicy(
+  new PolicyStatement({
+    actions: ['ssm:GetParameter'],
+    resources: [
+      'arn:aws:ssm:*:*:parameter/amplify/data/StudentProfileTableName',
+      'arn:aws:ssm:*:*:parameter/amplify/data/TeacherProfileTableName'
+    ],
+  })
+);
+
+// 4. Grant DynamoDB Permissions using Wildcard (Break IAM Dependency)
+// We use a wildcard for the table name to avoid referencing the Table ARN directly
+backend.postConfirmation.resources.lambda.addToRolePolicy(
+  new PolicyStatement({
+    actions: ['dynamodb:PutItem'],
+    resources: ['arn:aws:dynamodb:*:*:table/*'],
+  })
+);

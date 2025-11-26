@@ -13,11 +13,23 @@ const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
 // Table names are injected via environment variables by Amplify
+// Or can be manually set (e.g. when fetched from SSM)
+const tableNames: Record<string, string> = {};
+
+export const setTableName = (modelName: string, tableName: string) => {
+  tableNames[modelName] = tableName;
+};
+
 const getTableName = (modelName: string): string => {
+  // Check if manually set first
+  if (tableNames[modelName]) {
+    return tableNames[modelName];
+  }
+
   const envKey = `AMPLIFY_DATA_${modelName.toUpperCase()}_TABLE_NAME`;
   const tableName = process.env[envKey];
   if (!tableName) {
-    throw new Error(`Table name not found for model: ${modelName}. Expected env var: ${envKey}`);
+    throw new Error(`Table name not found for model: ${modelName}. Expected env var: ${envKey} or manual registration.`);
   }
   return tableName;
 };
@@ -46,7 +58,7 @@ export class DynamoDBDataClient {
       createdAt: item.createdAt ?? now,
       updatedAt: now,
     };
-    
+
     await docClient.send(
       new PutCommand({
         TableName: tableName,
@@ -59,15 +71,15 @@ export class DynamoDBDataClient {
   async update(modelName: string, id: string, updates: DynamoDBItem): Promise<DynamoDBItem> {
     const tableName = getTableName(modelName);
     const now = new Date().toISOString();
-    
+
     // Build UpdateExpression dynamically
     const updateExpressions: string[] = [];
     const expressionAttributeNames: Record<string, string> = {};
     const expressionAttributeValues: Record<string, unknown> = {};
-    
+
     // Always update the updatedAt timestamp
     const allUpdates = { ...updates, updatedAt: now };
-    
+
     let index = 0;
     for (const [key, value] of Object.entries(allUpdates)) {
       if (key === 'id') continue; // Skip the key
@@ -78,11 +90,11 @@ export class DynamoDBDataClient {
       expressionAttributeValues[attrValue] = value;
       index++;
     }
-    
+
     if (updateExpressions.length === 0) {
       throw new Error("No fields to update");
     }
-    
+
     const result = await docClient.send(
       new UpdateCommand({
         TableName: tableName,
@@ -93,7 +105,7 @@ export class DynamoDBDataClient {
         ReturnValues: 'ALL_NEW',
       })
     );
-    
+
     return result.Attributes as DynamoDBItem;
   }
 
@@ -110,7 +122,7 @@ export class DynamoDBDataClient {
     }
   ): Promise<{ items: DynamoDBItem[]; lastEvaluatedKey?: Record<string, unknown> }> {
     const tableName = getTableName(modelName);
-    
+
     const result = await docClient.send(
       new QueryCommand({
         TableName: tableName,
@@ -123,7 +135,7 @@ export class DynamoDBDataClient {
         ExclusiveStartKey: options.exclusiveStartKey,
       })
     );
-    
+
     return {
       items: result.Items as DynamoDBItem[],
       lastEvaluatedKey: result.LastEvaluatedKey,
@@ -141,7 +153,7 @@ export class DynamoDBDataClient {
     }
   ): Promise<{ items: DynamoDBItem[]; lastEvaluatedKey?: Record<string, unknown> }> {
     const tableName = getTableName(modelName);
-    
+
     const result = await docClient.send(
       new ScanCommand({
         TableName: tableName,
@@ -152,7 +164,7 @@ export class DynamoDBDataClient {
         ExclusiveStartKey: options?.exclusiveStartKey,
       })
     );
-    
+
     return {
       items: result.Items as DynamoDBItem[],
       lastEvaluatedKey: result.LastEvaluatedKey,
@@ -161,7 +173,7 @@ export class DynamoDBDataClient {
 
   async delete(modelName: string, id: string): Promise<void> {
     const tableName = getTableName(modelName);
-    
+
     await docClient.send(
       new DeleteCommand({
         TableName: tableName,
