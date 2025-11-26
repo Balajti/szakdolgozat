@@ -20,6 +20,7 @@ import { adjustDifficulty } from './functions/adjust-difficulty/resource';
 import { trackVocabularyProgress } from './functions/track-vocabulary-progress/resource';
 import { cleanupOldStories } from './functions/cleanup-old-stories/resource';
 import { postConfirmation } from './functions/post-confirmation/resource';
+import { customMessage } from './functions/custom-message/resource';
 import { PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { UserPoolOperation, UserPool } from 'aws-cdk-lib/aws-cognito';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -48,8 +49,24 @@ const backend = defineBackend({
   adjustDifficulty,
   trackVocabularyProgress,
   cleanupOldStories,
-  postConfirmation
+  postConfirmation,
+  customMessage
 });
+
+// ... (existing code) ...
+
+// Connect custom-message Lambda as a Cognito trigger
+// if (cfnUserPool) {
+//   cfnUserPool.addPropertyOverride('LambdaConfig.CustomMessage',
+//     backend.customMessage.resources.lambda.functionArn
+//   );
+// }
+
+// Grant Cognito permission to invoke the custom message Lambda
+// backend.customMessage.resources.lambda.addPermission('CognitoCustomMessageInvoke', {
+//   principal: new ServicePrincipal('cognito-idp.amazonaws.com'),
+//   sourceArn: backend.auth.resources.userPool.userPoolArn,
+// });
 
 const functions = [
   backend.studentDashboard,
@@ -188,3 +205,6 @@ backend.postConfirmation.resources.lambda.addToRolePolicy(
     resources: ['arn:aws:dynamodb:*:*:table/*'],
   })
 );
+
+
+

@@ -25,7 +25,7 @@ export const handler: Schema["getStudentDashboard"]["functionHandler"] = async (
 
   // Get or create student profile
   let profileRecord = await db.get("StudentProfile", studentId);
-  
+
   if (!profileRecord) {
     profileRecord = await db.put("StudentProfile", {
       id: studentId,
@@ -57,6 +57,41 @@ export const handler: Schema["getStudentDashboard"]["functionHandler"] = async (
     });
   }
 
+  // Calculate and update streak based on lastActiveDate
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+  const lastActive = profileRecord.lastActiveDate ? String(profileRecord.lastActiveDate) : null;
+  let currentStreak = Number(profileRecord.streak ?? 0);
+
+  if (!lastActive) {
+    // First time login - set streak to 1
+    currentStreak = 1;
+    profileRecord = await db.update("StudentProfile", studentId, {
+      streak: currentStreak,
+      lastActiveDate: today,
+    });
+  } else if (lastActive !== today) {
+    // User is logging in on a different day
+    const lastActiveDate = new Date(lastActive);
+    const todayDate = new Date(today);
+    const diffTime = todayDate.getTime() - lastActiveDate.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) {
+      // Consecutive day - increment streak
+      currentStreak = currentStreak + 1;
+    } else if (diffDays > 1) {
+      // Missed days - reset streak to 1
+      currentStreak = 1;
+    }
+    // If diffDays === 0, same day, no update needed
+
+    // Update profile with new streak and date
+    profileRecord = await db.update("StudentProfile", studentId, {
+      streak: currentStreak,
+      lastActiveDate: today,
+    });
+  }
+
   const profileFallback = new Date().toISOString();
 
   const baseProfileView: Omit<StudentProfileView, 'achievements' | 'words' | 'stories'> = {
@@ -66,7 +101,7 @@ export const handler: Schema["getStudentDashboard"]["functionHandler"] = async (
     birthday: profileRecord.birthday ? String(profileRecord.birthday) : null,
     avatarUrl: profileRecord.avatarUrl ? String(profileRecord.avatarUrl) : null,
     level: String(profileRecord.level ?? DEFAULT_LEVEL),
-    streak: Number(profileRecord.streak ?? DEFAULT_STREAK),
+    streak: currentStreak,
     vocabularyCount: masteredWordCount,
     createdAt: String(profileRecord.createdAt ?? profileFallback),
     updatedAt: String(profileRecord.updatedAt ?? profileRecord.createdAt ?? profileFallback),

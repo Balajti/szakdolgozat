@@ -127,7 +127,8 @@ ${avoidWords.length > 0 ? `- AVOID these words: ${avoidWords.join(", ")}` : ""}
 Important: 
 1. The story MUST be at least 1000 words long
 2. In highlightedWords, include ALL occurrences of the NEW/UNKNOWN words (${targetWords.join(", ")})
-3. Find their exact positions in the content text for each occurrence`;
+3. Find their exact positions in the content text for each occurrence
+4. DO NOT use markdown formatting (**, *, etc.) in the story content - write plain text only`;
 
   try {
     console.log("Calling Gemini API with model: gemini-2.5-flash");

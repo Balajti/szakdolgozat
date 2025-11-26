@@ -44,30 +44,30 @@ export default function InteractiveStoryReader({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [translationCache, setTranslationCache] = useState<Map<string, WordTranslation>>(new Map());
   const [markedUnknown, setMarkedUnknown] = useState<Set<string>>(new Set(initialUnknownWords.map(w => w.toLowerCase())));
-  
+
   const unknownWords = Array.from(markedUnknown);
 
   const handleWordClick = async (word: string) => {
     // Clean the word (remove punctuation)
     const cleanWord = word.replace(/[.,!?;:"""''()]/g, "").toLowerCase();
-    
+
     setSelectedWord(cleanWord);
     setIsDialogOpen(true);
-    
+
     // Check cache first
     if (translationCache.has(cleanWord)) {
       console.log('Using cached translation for:', cleanWord);
       setTranslation(translationCache.get(cleanWord)!);
       return;
     }
-    
+
     setIsLoading(true);
     setTranslation(null);
 
     try {
       // Call GraphQL translateWord query directly
       const { client } = await import('@/lib/amplify-client');
-      
+
       const translateWordQuery = /* GraphQL */ `
         query TranslateWord($word: String!, $targetLanguage: String!) {
           translateWord(word: $word, targetLanguage: $targetLanguage) {
@@ -88,11 +88,11 @@ export default function InteractiveStoryReader({
       `;
 
       console.log('Translating word:', cleanWord);
-      
+
       const graphqlResponse = await client.graphql({
         query: translateWordQuery,
-        variables: { 
-          word: cleanWord, 
+        variables: {
+          word: cleanWord,
           targetLanguage,
           sourceLanguage: 'en'
         }
@@ -136,16 +136,16 @@ export default function InteractiveStoryReader({
     if (selectedWord && onMarkUnknown) {
       // Get the translation from cache
       const wordTranslation = translationCache.get(selectedWord);
-      
+
       if (wordTranslation) {
         // Save to database with translation data
         try {
           const { client } = await import('@/lib/amplify-client');
           const { fetchAuthSession } = await import('aws-amplify/auth');
-          
+
           const session = await fetchAuthSession();
           const studentId = session.userSub;
-          
+
           if (studentId) {
             // Check if word already exists
             const listWordsQuery = /* GraphQL */ `
@@ -158,12 +158,12 @@ export default function InteractiveStoryReader({
                 }
               }
             `;
-            
+
             const existingWords = await client.graphql({
               query: listWordsQuery,
               variables: { studentId }
             }) as { data: { listWordsByStudent: { items: Array<{ id: string; text: string }> } } };
-            
+
             // Only create if word doesn't exist
             if (!existingWords.data?.listWordsByStudent?.items?.length) {
               const createWordMutation = /* GraphQL */ `
@@ -176,7 +176,7 @@ export default function InteractiveStoryReader({
                   }
                 }
               `;
-              
+
               await client.graphql({
                 query: createWordMutation,
                 variables: {
@@ -195,7 +195,7 @@ export default function InteractiveStoryReader({
                   }
                 }
               });
-              
+
               console.log('Word saved to database with translation:', selectedWord);
             } else {
               console.log('Word already exists in database:', selectedWord);
@@ -205,7 +205,7 @@ export default function InteractiveStoryReader({
           console.error('Error saving word to database:', error);
         }
       }
-      
+
       // Call parent handler and update UI
       await onMarkUnknown(selectedWord);
       // Add to marked unknown set for visual indication
@@ -218,7 +218,7 @@ export default function InteractiveStoryReader({
   const renderContent = () => {
     // Match words (including accented characters) or non-word sequences (punctuation/spaces)
     const tokens = content.match(/([a-zA-Z0-9À-ÿ]+|[^a-zA-Z0-9À-ÿ]+)/g) || [];
-    
+
     return tokens.map((token, index) => {
       // If it's just whitespace or punctuation, render as is
       if (!/[a-zA-Z0-9À-ÿ]/.test(token)) {
@@ -226,15 +226,15 @@ export default function InteractiveStoryReader({
       }
 
       const cleanWord = token.toLowerCase();
-      
+
       // Check if this word should be highlighted
-      const isHighlighted = highlightedWords.some(hw => 
+      const isHighlighted = highlightedWords.some(hw =>
         hw.toLowerCase() === cleanWord
       );
-      const isUnknown = unknownWords.some(uw => 
+      const isUnknown = unknownWords.some(uw =>
         uw.toLowerCase() === cleanWord
       );
-      const isLearning = learningWords.some(lw => 
+      const isLearning = learningWords.some(lw =>
         lw.toLowerCase() === cleanWord
       );
 
@@ -272,8 +272,8 @@ export default function InteractiveStoryReader({
             </h3>
             <div className="flex flex-wrap gap-2">
               {Array.from(markedUnknown).map((word) => (
-                <Badge 
-                  key={word} 
+                <Badge
+                  key={word}
                   variant="outline"
                   className="bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-300 dark:border-red-700 cursor-pointer hover:bg-red-200 dark:hover:bg-red-900/60"
                   onClick={() => handleWordClick(word)}
@@ -285,8 +285,8 @@ export default function InteractiveStoryReader({
           </div>
         )}
 
-      {/* Legend & Instructions */}
-        <div className="mt-4 mb-4 space-y-3">
+        {/* Legend & Instructions */}
+        <div className="mt-4 mb-4 space-y-3 text-center">
           <p className="text-sm text-muted-foreground italic">
             Kattints bármely szóra a részletes fordításért, nyelvtani alakokért és példamondatokért
           </p>
@@ -393,15 +393,15 @@ export default function InteractiveStoryReader({
                 {/* Actions */}
                 {onMarkUnknown && (
                   <div className="flex gap-2 pt-2">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="flex-1"
                       onClick={() => setIsDialogOpen(false)}
                     >
                       Bezárás
                     </Button>
-                    <Button 
-                      variant="destructive" 
+                    <Button
+                      variant="destructive"
                       className="flex-1"
                       onClick={handleMarkUnknown}
                     >

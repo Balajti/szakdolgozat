@@ -7,22 +7,33 @@ export const CEFR_LEVELS = [
   { value: "C2", label: "C2 – Mesterszint" },
 ];
 
-export const STORY_LENGTH_OPTIONS = [
-  { value: "short", label: "Rövid (150 szó)" },
-  { value: "medium", label: "Közepes (250 szó)" },
-  { value: "long", label: "Hosszú (400 szó)" },
+// Story preferences - difficulty levels
+export const DIFFICULTY_LEVELS = [
+  { value: 'beginner', label: 'Kezdő (A1-A2)' },
+  { value: 'intermediate', label: 'Középhaladó (B1-B2)' },
+  { value: 'advanced', label: 'Haladó (C1-C2)' },
 ];
 
+// Story preferences - available topics
+export const STORY_TOPICS = [
+  'Mindennapi élet',
+  'Utazás',
+  'Étel',
+  'Technológia',
+  'Sport',
+  'Művészet',
+  'Természet',
+  'Történelem',
+  'Tudomány',
+  'Üzlet',
+];
+
+// Word mastery levels
 export const WORD_DIFFICULTY = [
   {
     value: "known",
     label: "Ismert szavak",
     description: "Gyakorolt szókincs, amit már magabiztosan használsz.",
-  },
-  {
-    value: "learning",
-    label: "Tanulás alatt",
-    description: "Friss szavak, amelyek gyakorlást igényelnek.",
   },
   {
     value: "unknown",
@@ -37,16 +48,4 @@ export const WORDNEST_COLORS = {
   accent: "#10B981",
   background: "#F9FAFB",
   foreground: "#111827",
-};
-
-export const STORY_PROMPTS = {
-  placementTest:
-    "You are WordNest, an English tutor for Hungarian children. Generate an 80-word A1 story with max 8 words per sentence. Use simple tense and incorporate both basic and slightly harder words. End with a gentle question.",
-  personalized: (
-    level: string,
-    age: number,
-  ) =>
-    `Create a contextual English story for a ${age}-year-old learner at ${level} level. Use mostly known words and inject 5-10% new vocabulary from the unknown list. Keep sentences short, grammar simple, and end with a reflective prompt.`,
-  teacherStory:
-    "Generate a 100-200 word English story for classrooms. Include all required words, exclude forbidden words, and keep the tone encouraging and culturally sensitive.",
 };

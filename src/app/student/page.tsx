@@ -49,6 +49,7 @@ function StudentPortalPageInner() {
   const searchParams = useSearchParams();
   const { data, isLoading } = useStudentDashboard();
   const [isGenerationModalOpen, setIsGenerationModalOpen] = useState(false);
+  const [isGeneratingSurprise, setIsGeneratingSurprise] = useState(false);
   const [activeView, setActiveView] = useState<DashboardView>('overview');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const { toast } = useToast();
@@ -205,12 +206,14 @@ function StudentPortalPageInner() {
       }) as { data: { generateStory: { story: { id: string } } } };
 
       if (response.data?.generateStory?.story) {
+        const storyId = response.data.generateStory.story.id;
         toast({
           title: "Történet generálva!",
           description: "Az új történeted elkészült.",
         });
         setIsGenerationModalOpen(false);
-        window.location.reload();
+        // Navigate to the newly generated story
+        router.push(`/student/story/${storyId}`);
       } else {
         throw new Error("No story returned from generation");
       }
@@ -221,6 +224,130 @@ function StudentPortalPageInner() {
         description: "Nem sikerült a történet generálása. Kérlek, próbáld újra.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleSurpriseMe = async () => {
+    if (!data?.profile) return;
+
+    setIsGeneratingSurprise(true);
+    try {
+      const { client } = await import('@/lib/amplify-client');
+
+      const age = data?.profile?.birthday
+        ? differenceInYears(new Date(), new Date(data.profile.birthday))
+        : 12;
+
+      // Fetch student preferences for difficulty only (topic will be random)
+      const getPreferencesQuery = /* GraphQL */ `
+        query GetStudentPreferences($id: ID!) {
+          getStudentProfile(id: $id) {
+            id
+            preferredDifficulty
+          }
+        }
+      `;
+
+      const preferencesResponse = await client.graphql({
+        query: getPreferencesQuery,
+        variables: { id: data.profile.id }
+      }) as { data: { getStudentProfile: { preferredDifficulty?: string } } };
+
+      const preferences = preferencesResponse.data?.getStudentProfile;
+
+      // Fetch student's vocabulary
+      const listWordsQuery = /* GraphQL */ `
+        query ListWordsByStudent($studentId: ID!) {
+          listWordsByStudent(studentId: $studentId) {
+            items {
+              text
+              mastery
+            }
+          }
+        }
+      `;
+
+      const wordsResponse = await client.graphql({
+        query: listWordsQuery,
+        variables: { studentId: data.profile.id }
+      }) as { data: { listWordsByStudent: { items: { text: string; mastery: string }[] } } };
+
+      const allWords = wordsResponse.data?.listWordsByStudent?.items || [];
+      const knownWords = allWords
+        .filter(w => w.mastery === 'known')
+        .map(w => w.text);
+      const unknownWords = allWords
+        .filter(w => w.mastery === 'unknown')
+        .map(w => w.text);
+
+      const generateStoryMutation = /* GraphQL */ `
+        mutation GenerateStory(
+          $level: String!
+          $age: Int
+          $knownWords: [String]
+          $unknownWords: [String]
+          $mode: StoryGenerationMode!
+          $topic: String
+          $difficulty: String
+        ) {
+          generateStory(
+            level: $level
+            age: $age
+            knownWords: $knownWords
+            unknownWords: $unknownWords
+            mode: $mode
+            topic: $topic
+            difficulty: $difficulty
+          ) {
+            story {
+              id
+              title
+              content
+              level
+              createdAt
+            }
+            newWords {
+              id
+              text
+              translation
+            }
+          }
+        }
+      `;
+
+      const response = await client.graphql({
+        query: generateStoryMutation,
+        variables: {
+          level: data.profile.level,
+          age,
+          knownWords,
+          unknownWords,
+          mode: "personalized",
+          topic: undefined, // Random topic - do not pass user's preference
+          difficulty: preferences?.preferredDifficulty,
+        }
+      }) as { data: { generateStory: { story: { id: string } } } };
+
+      if (response.data?.generateStory?.story) {
+        const storyId = response.data.generateStory.story.id;
+        toast({
+          title: "Történet generálva!",
+          description: "Az új meglepetés történeted elkészült.",
+        });
+        // Navigate to the newly generated story
+        router.push(`/student/story/${storyId}`);
+      } else {
+        throw new Error("No story returned from generation");
+      }
+    } catch (error) {
+      console.error("Error generating surprise story:", error);
+      toast({
+        title: "Hiba",
+        description: "Nem sikerült a történet generálása. Kérlek, próbáld újra.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingSurprise(false);
     }
   };
 
@@ -419,11 +546,21 @@ function StudentPortalPageInner() {
                 <Button
                   size="lg"
                   variant="outline"
-                  onClick={() => setIsGenerationModalOpen(true)}
+                  onClick={handleSurpriseMe}
+                  disabled={isGeneratingSurprise}
                   className="border-white/30 text-black hover:bg-white/10"
                 >
-                  <Sparkles className="mr-2 h-5 w-5" />
-                  Lepj meg
+                  {isGeneratingSurprise ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Generálás...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-5 w-5" />
+                      Lepj meg
+                    </>
+                  )}
                 </Button>
               </div>
             </div>

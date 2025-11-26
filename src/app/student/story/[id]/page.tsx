@@ -158,8 +158,8 @@ function StoryReaderPageInner() {
         </div>
       </div>
 
-      <main className="container max-w-4xl mx-auto px-6 py-8">
-        <div className="bg-card rounded-2xl border border-border/40 p-8">
+      <main className="w-full md:container md:max-w-4xl md:mx-auto md:px-6 md:py-8">
+        <div className="bg-card md:rounded-2xl md:border md:border-border/40 p-4 md:p-8">
           <InteractiveStoryReader
             content={story.content}
             highlightedWords={highlightedWords}

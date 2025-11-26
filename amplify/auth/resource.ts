@@ -1,5 +1,6 @@
 import { defineAuth } from '@aws-amplify/backend';
 import { postConfirmation } from '../functions/post-confirmation/resource';
+import { customMessage } from '../functions/custom-message/resource';
 
 /**
  * Define and configure your auth resource
@@ -27,5 +28,11 @@ export const auth = defineAuth({
   accountRecovery: 'EMAIL_ONLY',
   triggers: {
     postConfirmation,
+    customMessage,
   },
+  // senders: {
+  //   email: {
+  //     fromEmail: 'no-reply@wordnest.app',
+  //   },
+  // },
 });
