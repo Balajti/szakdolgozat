@@ -1,9 +1,9 @@
 {
   "auth": {
-    "user_pool_id": "eu-central-1_XJJTfTKnS",
+    "user_pool_id": "eu-central-1_VvttjF8z8",
     "aws_region": "eu-central-1",
-    "user_pool_client_id": "5n80ue49m8pih5abj0utf8rfah",
-    "identity_pool_id": "eu-central-1:f737ae5c-825b-43c1-9fc8-9cc2bd04abd7",
+    "user_pool_client_id": "68v29v6kvsbpqsge8ftclaa7mk",
+    "identity_pool_id": "eu-central-1:a002f9c4-9ec9-4d54-9c60-0ccb595c609f",
     "mfa_methods": [],
     "standard_required_attributes": [
       "email"
@@ -42,9 +42,9 @@
     "unauthenticated_identities_enabled": true
   },
   "data": {
-    "url": "https://bxvgcoblojbgzhn5yh5rcxfnxy.appsync-api.eu-central-1.amazonaws.com/graphql",
+    "url": "https://jgeu4ppccnha3ddlx4xjum2hhe.appsync-api.eu-central-1.amazonaws.com/graphql",
     "aws_region": "eu-central-1",
-    "api_key": "da2-7ln37bpnfzbvpi3hu3e5j66ixq",
+    "api_key": "da2-p6ajuenqmvaaxf5h7kjan2uzc4",
     "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
     "authorization_types": [
       "API_KEY",
@@ -4444,11 +4444,11 @@
   },
   "storage": {
     "aws_region": "eu-central-1",
-    "bucket_name": "amplify-szakdolgozat-zsol-wordneststoragebucket1a8-ohebuqhilpuh",
+    "bucket_name": "amplify-szakdolgozat-zsol-wordneststoragebucket1a8-3l1hqzdkjfdt",
     "buckets": [
       {
         "name": "wordnestStorage",
-        "bucket_name": "amplify-szakdolgozat-zsol-wordneststoragebucket1a8-ohebuqhilpuh",
+        "bucket_name": "amplify-szakdolgozat-zsol-wordneststoragebucket1a8-3l1hqzdkjfdt",
         "aws_region": "eu-central-1",
         "paths": {
           "avatars/${cognito-identity.amazonaws.com:sub}/*": {

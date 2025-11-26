@@ -42,7 +42,7 @@ export function ProfileSettings({ studentId }: ProfileSettingsProps) {
   const loadProfile = useCallback(async () => {
     try {
       const { client } = await import('@/lib/amplify-client');
-      
+
       const getProfileQuery = /* GraphQL */ `
         query GetStudentProfile($id: ID!) {
           getStudentProfile(id: $id) {
@@ -53,12 +53,12 @@ export function ProfileSettings({ studentId }: ProfileSettingsProps) {
           }
         }
       `;
-      
+
       const response = await client.graphql({
         query: getProfileQuery,
         variables: { id: studentId }
       }) as { data: { getStudentProfile: { name?: string; birthday?: string; avatarUrl?: string } } };
-      
+
       if (response.data?.getStudentProfile) {
         const profile = response.data.getStudentProfile;
         form.reset({
@@ -87,7 +87,7 @@ export function ProfileSettings({ studentId }: ProfileSettingsProps) {
     setSaving(true);
     try {
       const { client } = await import('@/lib/amplify-client');
-      
+
       const updateProfileMutation = /* GraphQL */ `
         mutation UpdateStudentProfile($input: UpdateStudentProfileInput!) {
           updateStudentProfile(input: $input) {
@@ -97,7 +97,7 @@ export function ProfileSettings({ studentId }: ProfileSettingsProps) {
           }
         }
       `;
-      
+
       await client.graphql({
         query: updateProfileMutation,
         variables: {
@@ -108,7 +108,7 @@ export function ProfileSettings({ studentId }: ProfileSettingsProps) {
           },
         },
       });
-      
+
       toast({
         title: 'Profil frissítve',
         description: 'Az adataid sikeresen mentve.',
@@ -151,13 +151,14 @@ export function ProfileSettings({ studentId }: ProfileSettingsProps) {
 
     setUploadingAvatar(true);
     try {
-      const { uploadData } = await import('aws-amplify/storage');
+      const { uploadData, getUrl } = await import('aws-amplify/storage');
       const { client } = await import('@/lib/amplify-client');
-      
-      // Upload to S3
-      const key = `avatars/${studentId}/${Date.now()}-${file.name}`;
+
+      // Upload to S3 using correct path pattern that matches storage configuration
+      // The storage resource is configured with 'avatars/{entity_id}/*' pattern
+      const fileName = `${Date.now()}-${file.name}`;
       const result = await uploadData({
-        key,
+        path: `avatars/${studentId}/${fileName}`,
         data: file,
         options: {
           contentType: file.type,
@@ -165,8 +166,7 @@ export function ProfileSettings({ studentId }: ProfileSettingsProps) {
       }).result;
 
       // Get the URL
-      const { getUrl } = await import('aws-amplify/storage');
-      const urlResult = await getUrl({ key: result.key });
+      const urlResult = await getUrl({ path: result.path });
       const newAvatarUrl = urlResult.url.toString().split('?')[0]; // Remove query params
 
       // Update profile with new avatar URL
@@ -178,7 +178,7 @@ export function ProfileSettings({ studentId }: ProfileSettingsProps) {
           }
         }
       `;
-      
+
       await client.graphql({
         query: updateProfileMutation,
         variables: {
@@ -284,7 +284,7 @@ export function ProfileSettings({ studentId }: ProfileSettingsProps) {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="birthday"

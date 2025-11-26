@@ -480,9 +480,6 @@ function TeacherPortalPageInner() {
                 <CardTitle>Elemzések</CardTitle>
                 <CardDescription>Részletes statisztikák az osztályok teljesítményéről.</CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Hamarosan...</p>
-              </CardContent>
             </Card>
           </div>
         )}
@@ -500,9 +497,6 @@ function TeacherPortalPageInner() {
                 <CardTitle>Feladatok</CardTitle>
                 <CardDescription>Kezeld a kiadott és piszkozat feladatokat.</CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Hamarosan...</p>
-              </CardContent>
             </Card>
           </div>
         )}
@@ -520,9 +514,6 @@ function TeacherPortalPageInner() {
                 <CardTitle>Diákok</CardTitle>
                 <CardDescription>Diákok listája és egyéni fejlődésük.</CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Hamarosan...</p>
-              </CardContent>
             </Card>
           </div>
         )}

@@ -45,7 +45,7 @@ export function TeacherProfileSettings({ teacherId }: TeacherProfileSettingsProp
   const loadProfile = useCallback(async () => {
     try {
       const { client } = await import('@/lib/amplify-client');
-      
+
       const getProfileQuery = /* GraphQL */ `
         query GetTeacherProfile($id: ID!) {
           getTeacherProfile(id: $id) {
@@ -57,12 +57,12 @@ export function TeacherProfileSettings({ teacherId }: TeacherProfileSettingsProp
           }
         }
       `;
-      
+
       const response = await client.graphql({
         query: getProfileQuery,
         variables: { id: teacherId }
       }) as { data: { getTeacherProfile: { name?: string; school?: string; bio?: string; avatarUrl?: string } } };
-      
+
       if (response.data?.getTeacherProfile) {
         const profile = response.data.getTeacherProfile;
         form.reset({
@@ -92,7 +92,7 @@ export function TeacherProfileSettings({ teacherId }: TeacherProfileSettingsProp
     setSaving(true);
     try {
       const { client } = await import('@/lib/amplify-client');
-      
+
       const updateProfileMutation = /* GraphQL */ `
         mutation UpdateTeacherProfile($input: UpdateTeacherProfileInput!) {
           updateTeacherProfile(input: $input) {
@@ -103,7 +103,7 @@ export function TeacherProfileSettings({ teacherId }: TeacherProfileSettingsProp
           }
         }
       `;
-      
+
       await client.graphql({
         query: updateProfileMutation,
         variables: {
@@ -161,10 +161,11 @@ export function TeacherProfileSettings({ teacherId }: TeacherProfileSettingsProp
       const { uploadData, getUrl } = await import('aws-amplify/storage');
       const { client } = await import('@/lib/amplify-client');
 
-      // Upload to S3
-      const fileName = `avatars/${teacherId}/${Date.now()}-${file.name}`;
+      // Upload to S3 using correct path pattern that matches storage configuration
+      // The storage resource is configured with 'avatars/{entity_id}/*' pattern
+      const fileName = `${Date.now()}-${file.name}`;
       const result = await uploadData({
-        path: fileName,
+        path: `avatars/${teacherId}/${fileName}`,
         data: file,
         options: {
           contentType: file.type,
@@ -311,8 +312,8 @@ export function TeacherProfileSettings({ teacherId }: TeacherProfileSettingsProp
                   <FormItem>
                     <FormLabel>Bemutatkozás</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        {...field} 
+                      <Textarea
+                        {...field}
                         placeholder="Rövid bemutatkozás magadról és a tanítási módszereidről..."
                         rows={4}
                       />

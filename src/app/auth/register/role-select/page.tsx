@@ -34,9 +34,9 @@ export default function RoleSelectPage() {
                 </p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6 mt-8">
+            <div className="grid md:grid-cols-1 gap-6 mt-8">
                 {/* Student Card */}
-                <Card className="border-2 hover:border-primary/50 transition-all cursor-pointer group" onClick={() => router.push('/auth/register?role=student')}>
+                <Card className="border-2 hover:border-primary/50 transition-all cursor-pointer group md:col-span-1" onClick={() => router.push('/auth/register?role=student')}>
                     <CardHeader className="text-center">
                         <div className="mx-auto mb-4 p-4 rounded-2xl bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
                             <GraduationCap className="h-12 w-12 text-primary" />
@@ -68,7 +68,7 @@ export default function RoleSelectPage() {
                 </Card>
 
                 {/* Teacher Card */}
-                <Card className="border-2 hover:border-accent/50 transition-all cursor-pointer group" onClick={() => router.push('/auth/register?role=teacher')}>
+                <Card className="border-2 hover:border-accent/50 transition-all cursor-pointer group md:col-span-1" onClick={() => router.push('/auth/register?role=teacher')}>
                     <CardHeader className="text-center">
                         <div className="mx-auto mb-4 p-4 rounded-2xl bg-accent/10 w-fit group-hover:bg-accent/20 transition-colors">
                             <Users className="h-12 w-12 text-accent" />
