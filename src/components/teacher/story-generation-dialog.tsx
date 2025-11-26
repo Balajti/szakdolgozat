@@ -89,6 +89,9 @@ export function StoryGenerationDialog({
   const [topic, setTopic] = useState("");
   const [customWords, setCustomWords] = useState("");
 
+  const [blankRatio, setBlankRatio] = useState(0.3);
+  const [pairCount, setPairCount] = useState(8);
+
   const handleGenerate = async () => {
     if (!level) {
       toast({
@@ -114,8 +117,8 @@ export function StoryGenerationDialog({
 
       // Call story generation function
       const generateStoryMutation = /* GraphQL */ `
-        mutation GenerateStory($level: String!, $topic: String, $customWords: [String]) {
-          generateStory(level: $level, topic: $topic, customWords: $customWords) {
+        mutation GenerateStory($level: String!, $topic: String, $customWords: [String], $mode: StoryGenerationMode!) {
+          generateStory(level: $level, topic: $topic, customWords: $customWords, mode: $mode) {
             title
             content
             highlightedWords
@@ -135,6 +138,7 @@ export function StoryGenerationDialog({
           level,
           topic: topic.trim() || null,
           customWords: words.length > 0 ? words : null,
+          mode: "teacher",
         },
       })) as { data?: { generateStory?: { title?: string; content?: string; highlightedWords?: { word: string; translation: string; position: number }[] } } };
 
@@ -159,15 +163,15 @@ export function StoryGenerationDialog({
           highlightedWords: storyData.highlightedWords || [],
         };
       } else if (assignmentType === "fill_blanks") {
-        // Generate blank positions from highlighted words
-        const blanks = processBlankPositions(storyData.content, storyData.highlightedWords || []);
+        // Generate blank positions from highlighted words using selected ratio
+        const blanks = processBlankPositions(storyData.content, storyData.highlightedWords || [], blankRatio);
         processedAssignment = {
           ...baseAssignment,
           blankPositions: blanks,
         };
       } else if (assignmentType === "word_matching") {
-        // Extract words for matching
-        const matchingWords = extractMatchingWords(storyData.highlightedWords || []);
+        // Extract words for matching using selected count
+        const matchingWords = extractMatchingWords(storyData.highlightedWords || [], pairCount);
         processedAssignment = {
           ...baseAssignment,
           matchingWords,
@@ -196,13 +200,13 @@ export function StoryGenerationDialog({
     }
   };
 
-  const processBlankPositions = (content: string, highlightedWords: HighlightedWord[]): HighlightedWord[] => {
+  const processBlankPositions = (content: string, highlightedWords: HighlightedWord[], ratio: number): HighlightedWord[] => {
     if (!highlightedWords || highlightedWords.length === 0) return [];
 
-    // Select random words to blank out (30-50% of highlighted words)
+    // Calculate number of blanks based on ratio
     const numBlanks = Math.max(
       3,
-      Math.floor(highlightedWords.length * (0.3 + Math.random() * 0.2))
+      Math.floor(highlightedWords.length * ratio)
     );
 
     const shuffled = [...highlightedWords].sort(() => Math.random() - 0.5);
@@ -217,11 +221,11 @@ export function StoryGenerationDialog({
     }));
   };
 
-  const extractMatchingWords = (highlightedWords: HighlightedWord[]): string[] => {
+  const extractMatchingWords = (highlightedWords: HighlightedWord[], count: number): string[] => {
     if (!highlightedWords || highlightedWords.length === 0) return [];
 
-    // Select 8-12 words for matching
-    const numWords = Math.min(12, Math.max(8, highlightedWords.length));
+    // Select words for matching based on count
+    const numWords = Math.min(count, Math.max(4, highlightedWords.length));
     const shuffled = [...highlightedWords].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, numWords).map((w) => w.word);
   };
@@ -266,11 +270,10 @@ export function StoryGenerationDialog({
                 return (
                   <Card
                     key={type.value}
-                    className={`cursor-pointer transition-all ${
-                      assignmentType === type.value
+                    className={`cursor-pointer transition-all ${assignmentType === type.value
                         ? "ring-2 ring-primary bg-primary/5"
                         : "hover:bg-muted/50"
-                    }`}
+                      }`}
                     onClick={() => setAssignmentType(type.value)}
                   >
                     <CardContent className="p-4">
@@ -293,6 +296,55 @@ export function StoryGenerationDialog({
               })}
             </div>
           </div>
+
+          {/* Dynamic Fields based on Assignment Type */}
+          {assignmentType === "fill_blanks" && (
+            <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+              <div className="space-y-2">
+                <Label>Hiányzó szavak aránya</Label>
+                <div className="flex items-center gap-4">
+                  <Input
+                    type="range"
+                    min="0.1"
+                    max="0.8"
+                    step="0.1"
+                    value={blankRatio}
+                    onChange={(e) => setBlankRatio(parseFloat(e.target.value))}
+                    className="flex-1"
+                  />
+                  <span className="w-12 text-right font-medium">
+                    {Math.round(blankRatio * 100)}%
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  A kiemelt szavak hány százaléka legyen üres hely.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {assignmentType === "word_matching" && (
+            <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+              <div className="space-y-2">
+                <Label htmlFor="pair-count">Párok száma</Label>
+                <Select value={String(pairCount)} onValueChange={(v) => setPairCount(parseInt(v))}>
+                  <SelectTrigger id="pair-count">
+                    <SelectValue placeholder="Válassz darabszámot" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[4, 6, 8, 10, 12, 15].map((num) => (
+                      <SelectItem key={num} value={String(num)}>
+                        {num} pár
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Hány szópárt kelljen megtalálni a feladatban.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Topic */}
           <div className="space-y-2">

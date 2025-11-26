@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { AppSyncIdentityCognito } from "aws-lambda";
+import type { AppSyncIdentityCognito, AppSyncResolverEvent } from "aws-lambda";
 import { GoogleGenAI } from "@google/genai";
 import type { Schema } from "../../data/resource";
 import { getDBClient, queryByIndex, type DynamoDBItem } from "../shared/dynamodb-client";
@@ -19,6 +19,7 @@ type SanitizedInput = {
   requiredWords: string[];
   excludedWords: string[];
   mode: GenerationMode;
+  topic?: string;
 };
 
 interface GeneratedStory {
@@ -48,7 +49,7 @@ function resolveOwner(
 async function generateStoryWithAI(input: SanitizedInput): Promise<GeneratedStory> {
   const apiKey = process.env.GEMINI_API_KEY;
   console.log("API Key exists:", !!apiKey, "Length:", apiKey?.length || 0);
-  
+
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY environment variable not set");
   }
@@ -57,27 +58,32 @@ async function generateStoryWithAI(input: SanitizedInput): Promise<GeneratedStor
   console.log("Gemini client initialized, generating story...");
 
   const { level, age, knownWords, unknownWords, requiredWords, excludedWords, mode } = input;
-  
+
   // Build vocabulary constraints
   const targetWords = [...new Set([...unknownWords, ...requiredWords])];
   const avoidWords = excludedWords.length > 0 ? excludedWords : [];
-  
+
   // Create age-appropriate context
-  const ageContext = age <= 10 
+  const ageContext = age <= 10
     ? "a young child who loves adventures, animals, and fantasy"
     : age <= 14
-    ? "a pre-teen interested in friendship, school life, and discovery"
-    : "an adult or young adult interested in engaging, mature storytelling, life experiences, and interesting scenarios";
+      ? "a pre-teen interested in friendship, school life, and discovery"
+      : "an adult or young adult interested in engaging, mature storytelling, life experiences, and interesting scenarios";
 
   const modeContext = mode === "placement"
     ? "This is a placement test story to assess vocabulary level."
     : mode === "teacher"
-    ? "This is a teacher-assigned story for classroom learning."
-    : "This is a personalized story for enjoyment and immersion.";
+      ? "This is a teacher-assigned story for classroom learning."
+      : "This is a personalized story for enjoyment and immersion.";
+
+  const topicPrompt = input.topic
+    ? `Topic: Write a story specifically about "${input.topic}".`
+    : "Scenario: Choose a completely RANDOM and CREATIVE scenario (e.g., sci-fi, mystery, fantasy, slice of life, historical).";
 
   const prompt = `You are a creative storyteller writing a captivating bedtime story for a ${age}-year-old reader at CEFR level ${level}.
 
 ${modeContext}
+${topicPrompt}
 
 **Requirements:**
 - Target audience: ${ageContext}
@@ -90,7 +96,7 @@ ${avoidWords.length > 0 ? `- AVOID these words: ${avoidWords.join(", ")}` : ""}
 
 **Story Guidelines:**
 - **Style:** Bedtime story / Fiction. NOT an educational text or lesson.
-- **Scenario:** Choose a completely RANDOM and CREATIVE scenario (e.g., sci-fi, mystery, fantasy, slice of life, historical). Do not default to "learning English" or "school" themes unless requested.
+- **Scenario:** ${input.topic ? `Focus strictly on the requested topic: "${input.topic}".` : "Be creative and unique."}
 - **Tone:** Relaxing, engaging, and immersive.
 - **Structure:** Create a rich narrative with a clear beginning, middle, and end.
 - **Age Appropriateness:** 
@@ -116,7 +122,7 @@ Important:
   try {
     console.log("Calling Gemini API with model: gemini-2.5-flash");
     const startTime = Date.now();
-    
+
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
@@ -127,38 +133,38 @@ Important:
         topK: 40,
       },
     });
-    
+
     const elapsed = Date.now() - startTime;
     console.log(`Gemini API response received in ${elapsed}ms`);
-    
+
     const text = response.text;
     if (!text) {
       throw new Error("No text received from AI response");
     }
-    
+
     console.log("Response text length:", text.length);
-    
+
     // Extract JSON from response (remove markdown code blocks if present)
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.error("Failed to extract JSON from response:", text.substring(0, 200));
       throw new Error("Failed to parse JSON from AI response");
     }
-    
+
     const parsed = JSON.parse(jsonMatch[0]) as GeneratedStory;
-    
+
     // Validate response structure
     if (!parsed.title || !parsed.content) {
       throw new Error("Invalid story structure from AI");
     }
-    
+
     console.log("Story generated successfully:", parsed.title);
-    
+
     // Ensure highlightedWords is an array
     if (!Array.isArray(parsed.highlightedWords)) {
       parsed.highlightedWords = [];
     }
-    
+
     return parsed;
   } catch (error) {
     console.error("Gemini API error details:", error);
@@ -175,7 +181,7 @@ Important:
 function generateFallbackStory(input: SanitizedInput): GeneratedStory {
   const { level, unknownWords, requiredWords } = input;
   const targetWords = [...new Set([...unknownWords, ...requiredWords])];
-  
+
   const title = `Learning Adventure (${level})`;
   const content = `Once upon a time, there was a curious learner who loved discovering new words and improving their English skills every single day.
 
@@ -235,26 +241,41 @@ const toWordView = (word: DynamoDBItem): WordView => {
 };
 
 export const handler: Handler = async (event) => {
-  const { level, age, mode, knownWords, unknownWords, requiredWords, excludedWords } = event.arguments as {
-    level: string; age: number; mode: GenerationMode;
-    knownWords: (string | null | undefined)[] | null | undefined;
-    unknownWords: (string | null | undefined)[] | null | undefined;
-    requiredWords?: (string | null | undefined)[] | null | undefined;
-    excludedWords?: (string | null | undefined)[] | null | undefined;
+  const appSyncEvent = event as AppSyncResolverEvent<any>;
+  const { level, age, mode, knownWords, unknownWords, requiredWords, excludedWords, topic, customWords } = appSyncEvent.arguments as {
+    level: string;
+    age?: number | null;
+    mode: GenerationMode;
+    knownWords?: (string | null | undefined)[] | null;
+    unknownWords?: (string | null | undefined)[] | null;
+    requiredWords?: (string | null | undefined)[] | null;
+    excludedWords?: (string | null | undefined)[] | null;
+    topic?: string | null;
+    customWords?: (string | null | undefined)[] | null;
   };
 
-  if (!level || !age || !mode) {
-    throw new Error("level, age, and mode are required");
+  if (!level || !mode) {
+    throw new Error("level and mode are required");
   }
+
+  // Default age based on level if not provided
+  const defaultAge = age || (level === "A1" ? 8 : level === "A2" ? 10 : level === "B1" ? 12 : level === "B2" ? 14 : 16);
+
+  // Merge customWords into requiredWords
+  const allRequiredWords = [
+    ...(requiredWords || []),
+    ...(customWords || [])
+  ];
 
   const sanitized: SanitizedInput = {
     level,
-    age,
+    age: defaultAge,
     mode,
     knownWords: normalizeWordList(knownWords),
     unknownWords: normalizeWordList(unknownWords),
-    requiredWords: normalizeWordList(requiredWords),
+    requiredWords: normalizeWordList(allRequiredWords),
     excludedWords: normalizeWordList(excludedWords),
+    topic: topic?.trim() || undefined,
   };
 
   const ownership = resolveOwner(event, sanitized.mode);

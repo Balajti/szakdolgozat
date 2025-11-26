@@ -290,7 +290,7 @@ const schema = a.schema({
       studentClasses: a.hasMany('StudentClass', 'studentId'),
       submissions: a.hasMany('SubmissionSummary', 'studentId'),
     })
-    .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')]),
+    .authorization((allow) => [allow.authenticated(), allow.publicApiKey(), allow.authenticated('identityPool')]),
   TeacherProfile: a
     .model({
       name: a.string().required(),
@@ -309,7 +309,7 @@ const schema = a.schema({
       submissions: a.hasMany('SubmissionSummary', 'teacherId'),
       invites: a.hasMany('ClassInvite', 'teacherId'),
     })
-    .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')]),
+    .authorization((allow) => [allow.authenticated(), allow.publicApiKey(), allow.authenticated('identityPool')]),
   StoryView: a.customType({
     id: a.id().required(),
     studentId: a.id(),
@@ -448,13 +448,13 @@ const schema = a.schema({
     .query()
     .arguments({ id: a.id() })
     .returns(a.ref('StudentDashboardPayload'))
-    .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
+    .authorization((allow) => [allow.authenticated(), allow.publicApiKey(), allow.authenticated('identityPool')])
     .handler(a.handler.function(studentDashboard)),
   getTeacherDashboard: a
     .query()
     .arguments({ id: a.id() })
     .returns(a.ref('TeacherDashboardPayload'))
-    .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
+    .authorization((allow) => [allow.authenticated(), allow.publicApiKey(), allow.authenticated('identityPool')])
     .handler(a.handler.function(teacherDashboard)),
   listStudentStories: a
     .query()
@@ -464,7 +464,7 @@ const schema = a.schema({
       nextToken: a.string(),
     })
     .returns(a.ref('StoryConnection'))
-    .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
+    .authorization((allow) => [allow.authenticated(), allow.publicApiKey(), allow.authenticated('identityPool')])
     .handler(a.handler.function(listStories)),
   listTeacherAssignments: a
     .query()
@@ -494,21 +494,23 @@ const schema = a.schema({
         needsImprovementCount: a.integer().required(),
       })
     )
-    .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
+    .authorization((allow) => [allow.authenticated(), allow.publicApiKey(), allow.authenticated('identityPool')])
     .handler(a.handler.function(getAssignmentAnalytics)),
   generateStory: a
     .mutation()
     .arguments({
       level: a.string().required(),
-      age: a.integer().required(),
-      knownWords: a.string().array().required(),
-      unknownWords: a.string().array().required(),
+      age: a.integer(),
+      knownWords: a.string().array(),
+      unknownWords: a.string().array(),
       requiredWords: a.string().array(),
       excludedWords: a.string().array(),
+      topic: a.string(),
+      customWords: a.string().array(),
       mode: a.ref('StoryGenerationMode').required(),
     })
     .returns(a.ref('StoryGenerationPayload'))
-    .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
+    .authorization((allow) => [allow.authenticated(), allow.publicApiKey(), allow.authenticated('identityPool')])
     .handler(a.handler.function(generateStory)),
   updateWordMastery: a
     .mutation()
@@ -518,7 +520,7 @@ const schema = a.schema({
       mastery: a.ref('WordMastery').required(),
     })
     .returns(a.ref('Word'))
-    .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
+    .authorization((allow) => [allow.authenticated(), allow.publicApiKey(), allow.authenticated('identityPool')])
     .handler(a.handler.function(updateWordMastery)),
   createTeacherAssignment: a
     .mutation()
@@ -531,7 +533,7 @@ const schema = a.schema({
       excludedWords: a.string().array(),
     })
     .returns(a.ref('Assignment'))
-    .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
+    .authorization((allow) => [allow.authenticated(), allow.publicApiKey(), allow.authenticated('identityPool')])
     .handler(a.handler.function(createAssignment)),
   generateTeacherAssignment: a
     .mutation()
@@ -562,7 +564,7 @@ const schema = a.schema({
         createdAt: a.string().required(),
       })
     )
-    .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
+    .authorization((allow) => [allow.authenticated(), allow.publicApiKey(), allow.authenticated('identityPool')])
     .handler(a.handler.function(generateTeacherAssignment)),
   distributeAssignment: a
     .mutation()
@@ -581,7 +583,7 @@ const schema = a.schema({
         notificationIds: a.string().array(),
       })
     )
-    .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
+    .authorization((allow) => [allow.authenticated(), allow.publicApiKey(), allow.authenticated('identityPool')])
     .handler(a.handler.function(distributeAssignment)),
   submitAssignment: a
     .mutation()
@@ -604,7 +606,7 @@ const schema = a.schema({
         passed: a.boolean().required(),
       })
     )
-    .authorization((allow) => [allow.authenticated(),allow.publicApiKey(), allow.authenticated('identityPool')])
+    .authorization((allow) => [allow.authenticated(), allow.publicApiKey(), allow.authenticated('identityPool')])
     .handler(a.handler.function(submitAssignment)),
   generateQuiz: a
     .mutation()

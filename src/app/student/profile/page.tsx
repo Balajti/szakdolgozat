@@ -109,9 +109,11 @@ function StudentProfilePageInner() {
         const listWordsQuery = /* GraphQL */ `
           query ListWordsByStudent($studentId: ID!) {
             listWordsByStudent(studentId: $studentId) {
-              id
-              text
-              masteryLevel
+              items {
+                id
+                text
+                mastery
+              }
             }
           }
         `;
@@ -119,13 +121,13 @@ function StudentProfilePageInner() {
         const wordsResponse = await client.graphql({
           query: listWordsQuery,
           variables: { studentId: user.userId },
-        }) as { data: { listWordsByStudent: Array<{ masteryLevel?: string }> } };
+        }) as { data: { listWordsByStudent: { items: Array<{ mastery?: string }> } } };
 
-        if (wordsResponse.data?.listWordsByStudent) {
-          const words = wordsResponse.data.listWordsByStudent;
-          const known = words.filter((w) => w.masteryLevel === "known").length;
-          const unknown = words.filter((w) => w.masteryLevel === "unknown").length;
-          const learning = words.filter((w) => w.masteryLevel === "learning").length;
+        if (wordsResponse.data?.listWordsByStudent?.items) {
+          const words = wordsResponse.data.listWordsByStudent.items;
+          const known = words.filter((w) => w.mastery === "known").length;
+          const unknown = words.filter((w) => w.mastery === "unknown").length;
+          const learning = words.filter((w) => w.mastery === "learning").length;
 
           setVocabStats({
             total: words.length,
