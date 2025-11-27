@@ -117,7 +117,8 @@ const schema = a.schema({
       teacherId: a.id().required(),
       name: a.string().required(),
       description: a.string(),
-      studentIds: a.id().array(),
+      studentIds: a.id().array(), // Legacy field for backward compatibility
+      students: a.json(), // Array of {id, name, email, addedAt} for teacher tracking
       color: a.string(),
       teacherProfile: a.belongsTo('TeacherProfile', 'teacherId'),
     })
@@ -185,15 +186,17 @@ const schema = a.schema({
   AssignmentSubmission: a
     .model({
       assignmentId: a.id().required(),
-      studentId: a.id().required(),
+      studentId: a.id(), // Optional - for logged-in students
+      studentEmail: a.email(), // For public submissions
       teacherId: a.id().required(),
       assignmentType: a.ref('AssignmentType').required(),
-      answers: a.json().required(),
-      score: a.integer().required(),
-      maxScore: a.integer().required(),
+      answers: a.json(), // Optional - for interactive assignments
+      score: a.integer(),
+      maxScore: a.integer(),
       submittedAt: a.datetime().required(),
       feedback: a.string(),
       timeSpentSeconds: a.integer(),
+      status: a.string(), // 'submitted', 'graded'
       studentProfile: a.belongsTo('StudentProfile', 'studentId'),
       teacherProfile: a.belongsTo('TeacherProfile', 'teacherId'),
     })
@@ -201,7 +204,7 @@ const schema = a.schema({
       index('studentId').name('byStudentId').queryField('listSubmissionsByStudent'),
       index('assignmentId').name('byAssignmentId').queryField('listSubmissionsByAssignment'),
     ])
-    .authorization((allow) => [allow.authenticated()]),
+    .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
   SubmissionSummary: a
     .model({
       assignmentId: a.id().required(),
@@ -257,7 +260,6 @@ const schema = a.schema({
       message: a.string().required(),
       assignmentId: a.id(),
       isRead: a.boolean().required(),
-      createdAt: a.datetime().required(),
     })
     .secondaryIndexes((index) => [
       index('recipientId').name('byRecipientId').queryField('listNotificationsByRecipient'),
@@ -582,6 +584,8 @@ const schema = a.schema({
         assignmentId: a.string().required(),
         recipientCount: a.integer().required(),
         notificationIds: a.string().array(),
+        emailsSent: a.integer(),
+        emailsFailed: a.integer(),
       })
     )
     .authorization((allow) => [allow.authenticated(), allow.publicApiKey(), allow.authenticated('identityPool')])

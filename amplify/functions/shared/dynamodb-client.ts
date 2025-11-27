@@ -57,7 +57,14 @@ export class DynamoDBDataClient {
       ...item,
       createdAt: item.createdAt ?? now,
       updatedAt: now,
-    };
+    } as DynamoDBItem;
+
+    if (!fullItem['id']) {
+      console.error(`[DynamoDB] Missing id in item for ${modelName}:`, JSON.stringify(fullItem));
+      throw new Error(`Missing id in item for ${modelName}`);
+    }
+
+    console.log(`[DynamoDB] Putting item into ${tableName} (${modelName}):`, JSON.stringify(fullItem));
 
     await docClient.send(
       new PutCommand({

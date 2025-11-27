@@ -15,7 +15,7 @@ interface StoryGenerationModalProps {
 }
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"];
-const COMPLEXITIES = ["Simple", "Moderate", "Complex"];
+const COMPLEXITIES = ["Szimpla", "Közepes", "Komplex"];
 
 export function StoryGenerationModal({
   isOpen,
@@ -24,7 +24,7 @@ export function StoryGenerationModal({
   currentLevel,
 }: StoryGenerationModalProps) {
   const [selectedLevel, setSelectedLevel] = useState(currentLevel);
-  const [selectedComplexity, setSelectedComplexity] = useState("Moderate");
+  const [selectedComplexity, setSelectedComplexity] = useState("Közepes");
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGenerate = async () => {
@@ -43,19 +43,19 @@ export function StoryGenerationModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Generate New Story</DialogTitle>
+          <DialogTitle>Új történet generálása</DialogTitle>
           <DialogDescription>
-            Customize your story settings. This will create a unique bedtime story for you.
+            Szint és komplexitás kiválasztása. Ez egyedi történetet fog generálni.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="level" className="text-right">
-              Level
+              Szint
             </Label>
             <Select value={selectedLevel} onValueChange={setSelectedLevel}>
               <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select level" />
+                <SelectValue placeholder="Szint kiválasztása" />
               </SelectTrigger>
               <SelectContent>
                 {LEVELS.map((level) => (
@@ -68,11 +68,11 @@ export function StoryGenerationModal({
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="complexity" className="text-right">
-              Complexity
+              Komplexitás
             </Label>
             <Select value={selectedComplexity} onValueChange={setSelectedComplexity}>
               <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select complexity" />
+                <SelectValue placeholder="Komplexitás kiválasztása" />
               </SelectTrigger>
               <SelectContent>
                 {COMPLEXITIES.map((c) => (
@@ -86,16 +86,16 @@ export function StoryGenerationModal({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isGenerating}>
-            Cancel
+            Mégse
           </Button>
           <Button onClick={handleGenerate} disabled={isGenerating}>
             {isGenerating ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating...
+                Generálás...
               </>
             ) : (
-              "Generate Story"
+              "Generálás"
             )}
           </Button>
         </DialogFooter>

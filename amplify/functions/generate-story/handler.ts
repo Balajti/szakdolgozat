@@ -89,6 +89,7 @@ async function generateStoryWithAI(input: SanitizedInput): Promise<GeneratedStor
         ? "Feel free to use sophisticated vocabulary, complex sentence structures, and nuanced language."
         : "Adjust vocabulary naturally for the CEFR level.";
 
+  // Reduced word count to 600 to avoid AppSync 30s timeout
   const prompt = `You are a creative storyteller writing a captivating bedtime story for a ${age}-year-old reader at CEFR level ${level}.
 
 ${modeContext}
@@ -98,7 +99,7 @@ ${difficultyHint}
 **Requirements:**
 - Target audience: ${ageContext}
 - CEFR Level: ${level}
-- Story length: 1000 words (MINIMUM 1000 words - this is critical for immersion)
+- Story length: ~600 words (Keep it concise but engaging to fit within time limits)
 - Must naturally include these target words multiple times: ${targetWords.join(", ")}
 - Repeat each target word 2-3 times throughout the story in different contexts
 - Can use these known words: ${knownWords.slice(0, 30).join(", ")}${knownWords.length > 30 ? ` (and ${knownWords.length - 30} more)` : ""}
@@ -109,32 +110,36 @@ ${avoidWords.length > 0 ? `- AVOID these words: ${avoidWords.join(", ")}` : ""}
 - **Scenario:** ${input.topic ? `Focus strictly on the requested topic: "${input.topic}".` : "Be creative and unique."}
 - **Tone:** Relaxing, engaging, and immersive.
 - **Structure:** Create a rich narrative with a clear beginning, middle, and end.
-- **Age Appropriateness:** 
-    - If the user is an adult (>18), write a mature, interesting story suitable for adults (not explicit, but not childish).
+- **Age Appropriateness:**
+    - If the user is an adult (>18), write a mature, interesting story suitable for adults.
     - If the user is a child, keep it whimsical and fun.
 - **Vocabulary:** Naturally weave target words into the story context. Do not force them.
-- **Length:** You MUST write at least 1000 words. Expand on descriptions, dialogue, and setting to achieve this.
+- **Length:** Aim for ~600 words.
 
 **Format your response as JSON:**
 {
   "title": "Engaging story title (5-7 words)",
-  "content": "The complete story text with proper paragraphs (MINIMUM 1000 words)",
+  "content": "The complete story text with proper paragraphs",
   "highlightedWords": [
     {"word": "target word from the story", "offset": character_position, "length": word_length}
   ]
 }
 
-Important: 
-1. The story MUST be at least 1000 words long
-2. In highlightedWords, include ALL occurrences of the NEW/UNKNOWN words (${targetWords.join(", ")})
-3. Find their exact positions in the content text for each occurrence
-4. DO NOT use markdown formatting (**, *, etc.) in the story content - write plain text only`;
+Important:
+1. In highlightedWords, include ALL occurrences of the NEW/UNKNOWN words (${targetWords.join(", ")})
+2. Find their exact positions in the content text for each occurrence
+3. DO NOT use markdown formatting (**, *, etc.) in the story content - write plain text only`;
 
   try {
     console.log("Calling Gemini API with model: gemini-2.5-flash");
     const startTime = Date.now();
 
-    const response = await ai.models.generateContent({
+    // Create a timeout promise that rejects after 25 seconds (leaving 5s buffer for AppSync)
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("AI generation timed out")), 25000);
+    });
+
+    const generationPromise = ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
       config: {
@@ -144,6 +149,9 @@ Important:
         topK: 40,
       },
     });
+
+    // Race against the timeout
+    const response = await Promise.race([generationPromise, timeoutPromise]);
 
     const elapsed = Date.now() - startTime;
     console.log(`Gemini API response received in ${elapsed}ms`);
@@ -183,8 +191,8 @@ Important:
       console.error("Error message:", error.message);
       console.error("Error stack:", error.stack);
     }
-    // Fallback to simple story if AI fails
-    console.log("Using fallback story generation");
+    // Fallback to simple story if AI fails or times out
+    console.log("Using fallback story generation due to error/timeout");
     return generateFallbackStory(input);
   }
 }
@@ -252,6 +260,9 @@ const toWordView = (word: DynamoDBItem): WordView => {
 };
 
 export const handler: Handler = async (event) => {
+  const handlerStartTime = Date.now();
+  console.log("[TIMING] Handler started at:", new Date().toISOString());
+
   const appSyncEvent = event as AppSyncResolverEvent<any>;
   const { level, age, mode, knownWords, unknownWords, requiredWords, excludedWords, topic, customWords, difficulty } = appSyncEvent.arguments as {
     level: string;
@@ -294,7 +305,11 @@ export const handler: Handler = async (event) => {
   const ownership = resolveOwner(event, sanitized.mode);
   const db = getDBClient();
 
+  console.log("[TIMING] Pre-processing completed in:", Date.now() - handlerStartTime, "ms");
+
+  // Ensure student profile exists
   if (ownership.studentId) {
+    const profileCheckStart = Date.now();
     const profile = await db.get("StudentProfile", ownership.studentId);
     if (!profile) {
       await db.put("StudentProfile", {
@@ -306,18 +321,33 @@ export const handler: Handler = async (event) => {
         vocabularyCount: 0,
       });
     }
+    console.log("[TIMING] Profile check completed in:", Date.now() - profileCheckStart, "ms");
   }
 
+  // Generate story with AI
+  const aiStartTime = Date.now();
+  console.log("[TIMING] Starting AI story generation...");
   const storyDraft = await generateStoryWithAI(sanitized);
+  const aiElapsed = Date.now() - aiStartTime;
+  console.log("[TIMING] AI generation completed in:", aiElapsed, "ms");
+  console.log("[TIMING] Total elapsed so far:", Date.now() - handlerStartTime, "ms");
+
   const timestamp = new Date().toISOString();
 
   const newWords: DynamoDBItem[] = [];
   const unknownWordIds: string[] = [];
 
+  // Process words for student
   if (ownership.studentId) {
+    const wordProcessingStart = Date.now();
+
+    // Query existing words once
     const existingWords = await queryByIndex("Word", "byStudentId", "studentId", ownership.studentId, 500);
     const byText = new Map(existingWords.map((word) => [String(word.text).toLowerCase(), word]));
+    console.log("[TIMING] Existing words loaded in:", Date.now() - wordProcessingStart, "ms");
 
+    // Process unknown words
+    const wordCreationStart = Date.now();
     for (const token of sanitized.unknownWords) {
       const normalized = token.toLowerCase();
       const matched = byText.get(normalized);
@@ -339,18 +369,24 @@ export const handler: Handler = async (event) => {
       unknownWordIds.push(String(created.id));
       newWords.push(created);
     }
+    console.log("[TIMING] Word creation completed in:", Date.now() - wordCreationStart, "ms");
 
-    const words = await queryByIndex("Word", "byStudentId", "studentId", ownership.studentId, 500);
-    const masteredCount = words.filter((word) => word.mastery !== "unknown").length;
+    // Update vocabulary count using already loaded words
+    const masteredCount = existingWords.filter((word) => word.mastery !== "unknown").length + newWords.filter(w => w.mastery !== "unknown").length;
 
+    const profileUpdateStart = Date.now();
     const profile = await db.get("StudentProfile", ownership.studentId);
     if (profile && Number(profile.vocabularyCount) !== masteredCount) {
       await db.update("StudentProfile", ownership.studentId, {
         vocabularyCount: masteredCount,
       });
     }
+    console.log("[TIMING] Profile update completed in:", Date.now() - profileUpdateStart, "ms");
+    console.log("[TIMING] Total word processing time:", Date.now() - wordProcessingStart, "ms");
   }
 
+  // Create story record
+  const storyCreationStart = Date.now();
   const story = await db.put("Story", {
     id: randomUUID(),
     studentId: ownership.studentId,
@@ -363,11 +399,22 @@ export const handler: Handler = async (event) => {
     unknownWordIds,
     highlightedWords: storyDraft.highlightedWords || [],
   });
+  console.log("[TIMING] Story creation completed in:", Date.now() - storyCreationStart, "ms");
 
+  // Build response
+  const responseStart = Date.now();
   const payload: StoryGenerationPayload = {
     story: toStoryView(story),
     newWords: newWords.map(toWordView),
   };
+  console.log("[TIMING] Response payload built in:", Date.now() - responseStart, "ms");
+
+  const totalElapsed = Date.now() - handlerStartTime;
+  console.log("[TIMING] ✅ TOTAL HANDLER EXECUTION TIME:", totalElapsed, "ms");
+
+  if (totalElapsed > 150000) { // 2.5 minutes
+    console.warn("[WARNING] Handler execution time approaching timeout limit!");
+  }
 
   return payload;
 };

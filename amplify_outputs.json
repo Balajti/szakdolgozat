@@ -1,9 +1,9 @@
 {
   "auth": {
-    "user_pool_id": "eu-central-1_VPZw8Db9H",
+    "user_pool_id": "eu-central-1_9fXFEkPzo",
     "aws_region": "eu-central-1",
-    "user_pool_client_id": "79coa5g7m7170foff71j1hj4a4",
-    "identity_pool_id": "eu-central-1:276f5763-9ef8-4bec-b51f-8739476f5bf4",
+    "user_pool_client_id": "ik8aguvtnisqk0nu7bke99k09",
+    "identity_pool_id": "eu-central-1:6e5d2de7-cf1f-4e64-83c7-a272d1230dd5",
     "mfa_methods": [],
     "standard_required_attributes": [
       "email"
@@ -42,9 +42,9 @@
     "unauthenticated_identities_enabled": true
   },
   "data": {
-    "url": "https://dq5hsltf3fejhl4x3kfam4np54.appsync-api.eu-central-1.amazonaws.com/graphql",
+    "url": "https://mssq6mmy4rfpfj6edwpgjuwfr4.appsync-api.eu-central-1.amazonaws.com/graphql",
     "aws_region": "eu-central-1",
-    "api_key": "da2-2b7dw7lilvdbjig66ejqxgtz3e",
+    "api_key": "da2-tcq27xlzbzgvrjlq7fnubhgvdy",
     "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
     "authorization_types": [
       "API_KEY",
@@ -823,6 +823,13 @@
               "attributes": [],
               "isArrayNullable": true
             },
+            "students": {
+              "name": "students",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
             "color": {
               "name": "color",
               "isArray": false,
@@ -1424,7 +1431,14 @@
               "name": "studentId",
               "isArray": false,
               "type": "ID",
-              "isRequired": true,
+              "isRequired": false,
+              "attributes": []
+            },
+            "studentEmail": {
+              "name": "studentEmail",
+              "isArray": false,
+              "type": "AWSEmail",
+              "isRequired": false,
               "attributes": []
             },
             "teacherId": {
@@ -1447,21 +1461,21 @@
               "name": "answers",
               "isArray": false,
               "type": "AWSJSON",
-              "isRequired": true,
+              "isRequired": false,
               "attributes": []
             },
             "score": {
               "name": "score",
               "isArray": false,
               "type": "Int",
-              "isRequired": true,
+              "isRequired": false,
               "attributes": []
             },
             "maxScore": {
               "name": "maxScore",
               "isArray": false,
               "type": "Int",
-              "isRequired": true,
+              "isRequired": false,
               "attributes": []
             },
             "submittedAt": {
@@ -1482,6 +1496,13 @@
               "name": "timeSpentSeconds",
               "isArray": false,
               "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": "String",
               "isRequired": false,
               "attributes": []
             },
@@ -1565,6 +1586,16 @@
                 "rules": [
                   {
                     "allow": "private",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  },
+                  {
+                    "allow": "public",
+                    "provider": "apiKey",
                     "operations": [
                       "create",
                       "update",
@@ -2065,8 +2096,9 @@
               "name": "createdAt",
               "isArray": false,
               "type": "AWSDateTime",
-              "isRequired": true,
-              "attributes": []
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
             },
             "updatedAt": {
               "name": "updatedAt",
@@ -3764,6 +3796,20 @@
               "isRequired": false,
               "attributes": [],
               "isArrayNullable": true
+            },
+            "emailsSent": {
+              "name": "emailsSent",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "emailsFailed": {
+              "name": "emailsFailed",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
             }
           }
         },
@@ -4463,11 +4509,11 @@
   },
   "storage": {
     "aws_region": "eu-central-1",
-    "bucket_name": "amplify-szakdolgozat-zsol-wordneststoragebucket1a8-ra2nxemvpc4x",
+    "bucket_name": "amplify-szakdolgozat-zsol-wordneststoragebucket1a8-si0mkwb8mttz",
     "buckets": [
       {
         "name": "wordnestStorage",
-        "bucket_name": "amplify-szakdolgozat-zsol-wordneststoragebucket1a8-ra2nxemvpc4x",
+        "bucket_name": "amplify-szakdolgozat-zsol-wordneststoragebucket1a8-si0mkwb8mttz",
         "aws_region": "eu-central-1",
         "paths": {
           "avatars/*": {

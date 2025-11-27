@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import {
@@ -35,7 +35,8 @@ interface ClassGroup {
   id: string;
   name: string;
   description?: string;
-  studentIds?: string[];
+  studentIds?: string[]; // Legacy
+  students?: Array<{ id: string; name: string; email: string; addedAt: string }>;
   color?: string;
 }
 
@@ -43,18 +44,7 @@ interface ClassStudent {
   id: string;
   name: string;
   email: string;
-  avatarUrl?: string;
-  joinedAt?: string;
-  level?: string;
-}
-
-interface ClassInvite {
-  id: string;
-  studentEmail?: string;
-  inviteCode: string;
-  status: string;
-  expiresAt: string;
-  acceptedAt?: string;
+  addedAt?: string;
 }
 
 function ClassDetailPageInner({ params }: { params: { id: string } }) {
@@ -63,17 +53,16 @@ function ClassDetailPageInner({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true);
   const [classGroup, setClassGroup] = useState<ClassGroup | null>(null);
   const [students, setStudents] = useState<ClassStudent[]>([]);
-  const [invites, setInvites] = useState<ClassInvite[]>([]);
-  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<ClassStudent | null>(null);
-  const [inviteEmail, setInviteEmail] = useState("");
+  const [studentName, setStudentName] = useState("");
+  const [studentEmail, setStudentEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   useEffect(() => {
     loadClassData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
 
   const loadClassData = async () => {
@@ -87,7 +76,7 @@ function ClassDetailPageInner({ params }: { params: { id: string } }) {
             id
             name
             description
-            studentIds
+            students
             color
           }
         }
@@ -111,69 +100,17 @@ function ClassDetailPageInner({ params }: { params: { id: string } }) {
 
       setClassGroup(classData);
 
-      // Load students who are in this class
-      if (classData.studentIds && classData.studentIds.length > 0) {
-        const studentsPromises = classData.studentIds.map(async (studentId: string) => {
-          const getStudentQuery = /* GraphQL */ `
-            query GetStudentProfile($id: ID!) {
-              getStudentProfile(id: $id) {
-                id
-                name
-                email
-                avatarUrl
-                level
-              }
-            }
-          `;
-
-          try {
-            const studentResponse = (await client.graphql({
-              query: getStudentQuery,
-              variables: { id: studentId },
-            })) as { data?: { getStudentProfile?: ClassStudent } };
-
-            return studentResponse.data?.getStudentProfile;
-          } catch (error) {
-            console.error(`Error loading student ${studentId}:`, error);
-            return null;
-          }
-        });
-
-        const studentsData = await Promise.all(studentsPromises);
-        setStudents(studentsData.filter((s): s is ClassStudent => s !== null));
-      }
-
-      // Load pending invites
-      const listInvitesQuery = /* GraphQL */ `
-        query ListInvitesByTeacher($teacherId: ID!) {
-          listInvitesByTeacher(teacherId: $teacherId) {
-            items {
-              id
-              studentEmail
-              inviteCode
-              status
-              expiresAt
-              acceptedAt
-              classGroupId
-            }
-          }
+      // Load students from ClassGroup.students array
+      let studentsList = classData.students;
+      if (typeof studentsList === 'string') {
+        try {
+          studentsList = JSON.parse(studentsList);
+        } catch (e) {
+          console.error("Error parsing students JSON:", e);
+          studentsList = [];
         }
-      `;
-
-      const { getCurrentUser } = await import("aws-amplify/auth");
-      const user = await getCurrentUser();
-
-      const invitesResponse = (await client.graphql({
-        query: listInvitesQuery,
-        variables: { teacherId: user.userId },
-      })) as { data?: { listInvitesByTeacher?: { items?: Array<ClassInvite & { classGroupId: string }> } } };
-
-      const allInvites = invitesResponse.data?.listInvitesByTeacher?.items || [];
-      const classInvites = allInvites.filter(
-        (invite: ClassInvite & { classGroupId: string }) =>
-          invite.classGroupId === params.id && invite.status === "pending"
-      );
-      setInvites(classInvites);
+      }
+      setStudents((studentsList as ClassStudent[]) || []);
 
       setLoading(false);
     } catch (error) {
@@ -187,11 +124,11 @@ function ClassDetailPageInner({ params }: { params: { id: string } }) {
     }
   };
 
-  const handleSendInvite = async () => {
-    if (!inviteEmail.trim() || !classGroup) {
+  const handleAddStudent = async () => {
+    if (!studentName.trim() || !studentEmail.trim() || !classGroup) {
       toast({
         title: "Hiányzó adat",
-        description: "Add meg a diák email címét.",
+        description: "Add meg a diák nevét és email címét.",
         variant: "destructive",
       });
       return;
@@ -199,7 +136,7 @@ function ClassDetailPageInner({ params }: { params: { id: string } }) {
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(inviteEmail)) {
+    if (!emailRegex.test(studentEmail)) {
       toast({
         title: "Hibás email",
         description: "Add meg egy érvényes email címet.",
@@ -211,59 +148,59 @@ function ClassDetailPageInner({ params }: { params: { id: string } }) {
     setSubmitting(true);
     try {
       const { client } = await import("@/lib/amplify-client");
-      const { getCurrentUser } = await import("aws-amplify/auth");
-      const user = await getCurrentUser();
 
-      // Generate invite code
-      const inviteCode = `${classGroup.id.substring(0, 8)}-${Date.now()}`;
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 30); // 30 days expiry
+      // Create new student record
+      const newStudent = {
+        id: `student-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name: studentName.trim(),
+        email: studentEmail.trim().toLowerCase(),
+        addedAt: new Date().toISOString(),
+      };
 
-      const createInviteMutation = /* GraphQL */ `
-        mutation CreateClassInvite($input: CreateClassInviteInput!) {
-          createClassInvite(input: $input) {
+      // Add to students array
+      let currentStudents = classGroup.students;
+      if (typeof currentStudents === 'string') {
+        try {
+          currentStudents = JSON.parse(currentStudents);
+        } catch (e) {
+          currentStudents = [];
+        }
+      }
+      const updatedStudents = [...((currentStudents as ClassStudent[]) || []), newStudent];
+
+      const updateClassMutation = /* GraphQL */ `
+        mutation UpdateClassGroup($input: UpdateClassGroupInput!) {
+          updateClassGroup(input: $input) {
             id
-            studentEmail
-            inviteCode
-            status
-            expiresAt
+            students
           }
         }
       `;
 
-      const response = (await client.graphql({
-        query: createInviteMutation,
+      await client.graphql({
+        query: updateClassMutation,
         variables: {
           input: {
-            teacherId: user.userId,
-            classGroupId: classGroup.id,
-            className: classGroup.name,
-            inviteCode,
-            studentEmail: inviteEmail.trim().toLowerCase(),
-            status: "pending",
-            expiresAt: expiresAt.toISOString(),
+            id: classGroup.id,
+            students: JSON.stringify(updatedStudents),
           },
         },
-      })) as { data?: { createClassInvite?: ClassInvite } };
+      });
 
-      const newInvite = response.data?.createClassInvite;
-      if (newInvite) {
-        setInvites([...invites, newInvite]);
-        setIsInviteDialogOpen(false);
-        setInviteEmail("");
-        toast({
-          title: "Meghívó elküldve",
-          description: `Meghívó elküldve a következőnek: ${inviteEmail}`,
-        });
-
-        // TODO: Send actual email with invite link
-        // The invite link would be: /auth/invite/${inviteCode}
-      }
+      setStudents(updatedStudents);
+      setClassGroup({ ...classGroup, students: updatedStudents });
+      setIsAddDialogOpen(false);
+      setStudentName("");
+      setStudentEmail("");
+      toast({
+        title: "Diák hozzáadva",
+        description: `${newStudent.name} hozzáadva az osztályhoz.`,
+      });
     } catch (error) {
-      console.error("Error sending invite:", error);
+      console.error("Error adding student:", error);
       toast({
         title: "Hiba",
-        description: "Nem sikerült elküldeni a meghívót.",
+        description: "Nem sikerült hozzáadni a diákot.",
         variant: "destructive",
       });
     } finally {
@@ -278,16 +215,24 @@ function ClassDetailPageInner({ params }: { params: { id: string } }) {
     try {
       const { client } = await import("@/lib/amplify-client");
 
-      // Remove student from class group
-      const updatedStudentIds = classGroup.studentIds?.filter(
-        (id) => id !== selectedStudent.id
-      ) || [];
+      // Remove student from students array
+      let currentStudents = classGroup.students;
+      if (typeof currentStudents === 'string') {
+        try {
+          currentStudents = JSON.parse(currentStudents);
+        } catch (e) {
+          currentStudents = [];
+        }
+      }
+      const updatedStudents = ((currentStudents as ClassStudent[]) || []).filter(
+        (s) => s.id !== selectedStudent.id
+      );
 
       const updateClassMutation = /* GraphQL */ `
         mutation UpdateClassGroup($input: UpdateClassGroupInput!) {
           updateClassGroup(input: $input) {
             id
-            studentIds
+            students
           }
         }
       `;
@@ -297,13 +242,13 @@ function ClassDetailPageInner({ params }: { params: { id: string } }) {
         variables: {
           input: {
             id: classGroup.id,
-            studentIds: updatedStudentIds,
+            students: JSON.stringify(updatedStudents),
           },
         },
       });
 
-      setStudents(students.filter((s) => s.id !== selectedStudent.id));
-      setClassGroup({ ...classGroup, studentIds: updatedStudentIds });
+      setStudents(updatedStudents);
+      setClassGroup({ ...classGroup, students: updatedStudents });
       setIsRemoveDialogOpen(false);
       setSelectedStudent(null);
       toast({
@@ -377,9 +322,9 @@ function ClassDetailPageInner({ params }: { params: { id: string } }) {
                 </p>
               </div>
             </div>
-            <Button onClick={() => setIsInviteDialogOpen(true)} className="gap-2 shrink-0">
+            <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2 shrink-0">
               <UserPlus className="h-4 w-4" />
-              <span className="hidden sm:inline">Meghívás</span>
+              <span className="hidden sm:inline">Diák hozzáadása</span>
             </Button>
           </div>
         </div>
@@ -405,58 +350,6 @@ function ClassDetailPageInner({ params }: { params: { id: string } }) {
             </motion.div>
           )}
 
-          {/* Pending Invites */}
-          {invites.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.1 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle>Függőben lévő meghívók</CardTitle>
-                  <CardDescription>
-                    Még nem elfogadott meghívók
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {invites.map((invite) => (
-                      <div
-                        key={invite.id}
-                        className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50"
-                      >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium text-sm truncate">
-                              {invite.studentEmail || "Nincs email"}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Lejár: {new Date(invite.expiresAt).toLocaleDateString("hu-HU")}
-                            </p>
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyInviteCode(invite.inviteCode)}
-                          className="shrink-0"
-                        >
-                          {copiedCode === invite.inviteCode ? (
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
           {/* Students List */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -477,12 +370,12 @@ function ClassDetailPageInner({ params }: { params: { id: string } }) {
                       Még nincsenek diákok az osztályban.
                     </p>
                     <Button
-                      onClick={() => setIsInviteDialogOpen(true)}
+                      onClick={() => setIsAddDialogOpen(true)}
                       variant="outline"
                       className="mt-4"
                     >
                       <UserPlus className="h-4 w-4 mr-2" />
-                      Első diák meghívása
+                      Első diák hozzáadása
                     </Button>
                   </div>
                 ) : (
@@ -493,22 +386,11 @@ function ClassDetailPageInner({ params }: { params: { id: string } }) {
                         className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50"
                       >
                         <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <Avatar className="h-10 w-10 shrink-0">
-                            <AvatarImage src={student.avatarUrl || undefined} />
-                            <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
                           <div className="min-w-0 flex-1">
                             <p className="font-medium text-sm truncate">{student.name}</p>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="text-xs text-muted-foreground truncate">
-                                {student.email}
-                              </p>
-                              {student.level && (
-                                <Badge variant="outline" className="text-xs">
-                                  {student.level}
-                                </Badge>
-                              )}
-                            </div>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {student.email}
+                            </p>
                           </div>
                         </div>
                         <Button
@@ -532,52 +414,59 @@ function ClassDetailPageInner({ params }: { params: { id: string } }) {
         </div>
       </main>
 
-      {/* Invite Dialog */}
-      <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+      {/* Add Student Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Diák meghívása</DialogTitle>
+            <DialogTitle>Diák hozzáadása</DialogTitle>
             <DialogDescription>
-              Add meg a diák email címét, hogy meghívhasd az osztályba.
+              Add meg a diák nevét és email címét a nyilvántartáshoz.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="invite-email">Email cím *</Label>
+              <Label htmlFor="student-name">Név *</Label>
               <Input
-                id="invite-email"
-                type="email"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder="diak@example.com"
+                id="student-name"
+                type="text"
+                value={studentName}
+                onChange={(e) => setStudentName(e.target.value)}
+                placeholder="Kovács János"
               />
             </div>
-            <div className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">
-              <Mail className="h-4 w-4 inline mr-2" />
-              A diák email-ben kap egy meghívó linket, amellyel csatlakozhat az osztályhoz.
+            <div className="space-y-2">
+              <Label htmlFor="student-email">Email cím *</Label>
+              <Input
+                id="student-email"
+                type="email"
+                value={studentEmail}
+                onChange={(e) => setStudentEmail(e.target.value)}
+                placeholder="diak@example.com"
+              />
             </div>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => {
-                setIsInviteDialogOpen(false);
-                setInviteEmail("");
+                setIsAddDialogOpen(false);
+                setStudentName("");
+                setStudentEmail("");
               }}
               disabled={submitting}
             >
               Mégse
             </Button>
-            <Button onClick={handleSendInvite} disabled={submitting || !inviteEmail.trim()}>
+            <Button onClick={handleAddStudent} disabled={submitting || !studentName.trim() || !studentEmail.trim()}>
               {submitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Küldés...
+                  Hozzáadás...
                 </>
               ) : (
                 <>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Meghívó küldése
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Diák hozzáadása
                 </>
               )}
             </Button>
@@ -628,10 +517,11 @@ function ClassDetailPageInner({ params }: { params: { id: string } }) {
   );
 }
 
-export default function ClassDetailPage({ params }: { params: { id: string } }) {
+export default function ClassDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = React.use(params);
   return (
     <RequireAuth role="teacher">
-      <ClassDetailPageInner params={params} />
+      <ClassDetailPageInner params={resolvedParams} />
     </RequireAuth>
   );
 }
