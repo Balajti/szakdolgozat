@@ -99,7 +99,7 @@ ${difficultyHint}
 **Requirements:**
 - Target audience: ${ageContext}
 - CEFR Level: ${level}
-- Story length: ~1000 words (Keep it concise but engaging)
+- Story length: ~800 words (Keep it concise but engaging)
 - Must naturally include these target words multiple times: ${targetWords.join(", ")}
 - Repeat each target word 2-3 times throughout the story in different contexts
 - Can use these known words: ${knownWords.slice(0, 30).join(", ")}${knownWords.length > 30 ? ` (and ${knownWords.length - 30} more)` : ""}
@@ -114,7 +114,7 @@ ${avoidWords.length > 0 ? `- AVOID these words: ${avoidWords.join(", ")}` : ""}
     - If the user is an adult (>18), write a mature, interesting story suitable for adults.
     - If the user is a child, keep it whimsical and fun.
 - **Vocabulary:** Naturally weave target words into the story context. Do not force them.
-- **Length:** Aim for ~1000 words.
+- **Length:** Aim for ~800 words.
 
 **Format your response as JSON:**
 {
@@ -131,7 +131,7 @@ Important:
 3. DO NOT use markdown formatting (**, *, etc.) in the story content - write plain text only`;
 
   try {
-    console.log("Calling Gemini API with model: gemini-1.5-flash");
+    console.log("Calling Gemini API with model: gemini-2.5-flash");
     const startTime = Date.now();
 
     // Create a timeout promise that rejects after 28.5 seconds (leaving 1.5s buffer for AppSync 30s limit)
@@ -140,7 +140,7 @@ Important:
     });
 
     const generationPromise = ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
