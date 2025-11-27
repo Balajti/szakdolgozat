@@ -89,7 +89,7 @@ async function generateStoryWithAI(input: SanitizedInput): Promise<GeneratedStor
         ? "Feel free to use sophisticated vocabulary, complex sentence structures, and nuanced language."
         : "Adjust vocabulary naturally for the CEFR level.";
 
-  // Reduced word count to 600 to avoid AppSync 30s timeout
+  // Reduced word count to 1000 - optimized for 1.5-flash speed within 30s limit
   const prompt = `You are a creative storyteller writing a captivating bedtime story for a ${age}-year-old reader at CEFR level ${level}.
 
 ${modeContext}
@@ -99,7 +99,7 @@ ${difficultyHint}
 **Requirements:**
 - Target audience: ${ageContext}
 - CEFR Level: ${level}
-- Story length: ~600 words (Keep it concise but engaging to fit within time limits)
+- Story length: ~1000 words (Keep it concise but engaging)
 - Must naturally include these target words multiple times: ${targetWords.join(", ")}
 - Repeat each target word 2-3 times throughout the story in different contexts
 - Can use these known words: ${knownWords.slice(0, 30).join(", ")}${knownWords.length > 30 ? ` (and ${knownWords.length - 30} more)` : ""}
@@ -114,7 +114,7 @@ ${avoidWords.length > 0 ? `- AVOID these words: ${avoidWords.join(", ")}` : ""}
     - If the user is an adult (>18), write a mature, interesting story suitable for adults.
     - If the user is a child, keep it whimsical and fun.
 - **Vocabulary:** Naturally weave target words into the story context. Do not force them.
-- **Length:** Aim for ~600 words.
+- **Length:** Aim for ~1000 words.
 
 **Format your response as JSON:**
 {
@@ -131,16 +131,16 @@ Important:
 3. DO NOT use markdown formatting (**, *, etc.) in the story content - write plain text only`;
 
   try {
-    console.log("Calling Gemini API with model: gemini-2.5-flash");
+    console.log("Calling Gemini API with model: gemini-1.5-flash");
     const startTime = Date.now();
 
-    // Create a timeout promise that rejects after 25 seconds (leaving 5s buffer for AppSync)
+    // Create a timeout promise that rejects after 28.5 seconds (leaving 1.5s buffer for AppSync 30s limit)
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error("AI generation timed out")), 25000);
+      setTimeout(() => reject(new Error("AI generation timed out")), 28500);
     });
 
     const generationPromise = ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
