@@ -1,9 +1,9 @@
 {
   "auth": {
-    "user_pool_id": "eu-central-1_9fXFEkPzo",
+    "user_pool_id": "eu-central-1_MKn0h8aqN",
     "aws_region": "eu-central-1",
-    "user_pool_client_id": "ik8aguvtnisqk0nu7bke99k09",
-    "identity_pool_id": "eu-central-1:6e5d2de7-cf1f-4e64-83c7-a272d1230dd5",
+    "user_pool_client_id": "4r1dhan78okf4fs1gov6vhpin3",
+    "identity_pool_id": "eu-central-1:f1d1a61f-a10b-42c8-af64-c9c537e504aa",
     "mfa_methods": [],
     "standard_required_attributes": [
       "email"
@@ -42,9 +42,9 @@
     "unauthenticated_identities_enabled": true
   },
   "data": {
-    "url": "https://mssq6mmy4rfpfj6edwpgjuwfr4.appsync-api.eu-central-1.amazonaws.com/graphql",
+    "url": "https://lxo252qxvbfmpb5xl66spgpgfi.appsync-api.eu-central-1.amazonaws.com/graphql",
     "aws_region": "eu-central-1",
-    "api_key": "da2-tcq27xlzbzgvrjlq7fnubhgvdy",
+    "api_key": "da2-vqzx43nt2vc6rl7trcgc5igydi",
     "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
     "authorization_types": [
       "API_KEY",
@@ -4772,13 +4772,6 @@
               "type": "Int",
               "isRequired": false
             },
-            "knownWords": {
-              "name": "knownWords",
-              "isArray": true,
-              "type": "String",
-              "isRequired": false,
-              "isArrayNullable": true
-            },
             "unknownWords": {
               "name": "unknownWords",
               "isArray": true,
@@ -5221,11 +5214,11 @@
   },
   "storage": {
     "aws_region": "eu-central-1",
-    "bucket_name": "amplify-szakdolgozat-zsol-wordneststoragebucket1a8-si0mkwb8mttz",
+    "bucket_name": "amplify-szakdolgozat-zsol-wordneststoragebucket1a8-nchrmdipw8by",
     "buckets": [
       {
         "name": "wordnestStorage",
-        "bucket_name": "amplify-szakdolgozat-zsol-wordneststoragebucket1a8-si0mkwb8mttz",
+        "bucket_name": "amplify-szakdolgozat-zsol-wordneststoragebucket1a8-nchrmdipw8by",
         "aws_region": "eu-central-1",
         "paths": {
           "avatars/*": {

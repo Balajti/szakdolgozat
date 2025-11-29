@@ -27,6 +27,21 @@ interface GeneratedStory {
     highlightedWords: Array<{ word: string; offset: number; length: number }>;
 }
 
+interface WordDetails {
+    word: string;
+    translation: string;
+    sourceLanguage: string;
+    targetLanguage: string;
+    exampleSentence: string;
+    exampleTranslation: string;
+    phonetic: string | null;
+    partOfSpeech: string | null;
+    pastTense: string | null;
+    futureTense: string | null;
+    pluralForm: string | null;
+    usageNotes: string | null;
+}
+
 async function generateStoryWithAI(input: SanitizedInput): Promise<GeneratedStory> {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error("GEMINI_API_KEY environment variable not set");
@@ -160,6 +175,109 @@ The end.`;
     }).filter((h): h is { word: string; offset: number; length: number } => h !== null);
 
     return { title, content, highlightedWords };
+    return { title, content, highlightedWords };
+}
+
+async function translateWithAI(
+    word: string,
+    sourceLanguage: string,
+    targetLanguage: string
+): Promise<WordDetails> {
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+        throw new Error("GEMINI_API_KEY environment variable not set");
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+
+    const prompt = `You are a language learning assistant. Provide comprehensive information about the English word "${word}" for a Hungarian student learning English.
+
+Analyze the word and provide:
+1. Hungarian translation
+2. Part of speech (noun, verb, adjective, etc.) - in Hungarian
+3. Phonetic pronunciation (IPA format if possible)
+4. If it's a verb: provide past tense and future tense forms
+5. If it's a noun: provide plural form
+6. A natural example sentence using this word in English (NOT a generic template)
+7. Hungarian translation of the example sentence
+8. Brief usage notes in Hungarian explaining when/how to use this word
+
+**Format your response as JSON:**
+{
+  "word": "${word}",
+  "translation": "Hungarian translation here",
+  "partOfSpeech": "főnév/ige/melléknév/stb (in Hungarian)",
+  "phonetic": "pronunciation in IPA format or simple phonetic",
+  "pastTense": "past tense form (only for verbs, otherwise null)",
+  "futureTense": "will + verb form (only for verbs, otherwise null)",
+  "pluralForm": "plural form (only for nouns, otherwise null)",
+  "exampleSentence": "A natural, creative example sentence in English using '${word}'",
+  "exampleTranslation": "Hungarian translation of the example sentence",
+  "usageNotes": "Brief explanation in Hungarian of when and how to use this word"
+}
+
+Important: 
+- Make the example sentence natural and contextual, not a template
+- Write usageNotes in Hungarian
+- Write partOfSpeech in Hungarian (főnév, ige, melléknév, határozószó, etc.)`;
+
+    console.log("Calling Gemini API for word translation...");
+
+    const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            temperature: 0.7,
+        },
+    });
+
+    const text = response.text;
+    if (!text) {
+        throw new Error("No response from Gemini API");
+    }
+
+    // Extract JSON from response
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+        throw new Error("Failed to parse JSON from Gemini response");
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]) as WordDetails;
+
+    return {
+        word: parsed.word || word,
+        translation: parsed.translation || word,
+        sourceLanguage,
+        targetLanguage,
+        exampleSentence: parsed.exampleSentence || `Example with ${word}.`,
+        exampleTranslation: parsed.exampleTranslation || "",
+        phonetic: parsed.phonetic || null,
+        partOfSpeech: parsed.partOfSpeech || null,
+        pastTense: parsed.pastTense || null,
+        futureTense: parsed.futureTense || null,
+        pluralForm: parsed.pluralForm || null,
+        usageNotes: parsed.usageNotes || null,
+    };
+}
+
+function getFallbackTranslation(word: string, sourceLang: string, targetLang: string): WordDetails {
+    console.log("Using fallback translation for:", word);
+    return {
+        word,
+        translation: `[Translation for "${word}"]`,
+        sourceLanguage: sourceLang,
+        targetLanguage: targetLang,
+        exampleSentence: `The student used the word "${word}" in their essay.`,
+        exampleTranslation: targetLang === "hu" ? `A diák a "${word}" szót használta az esszéjében.` : "",
+        phonetic: null,
+        partOfSpeech: null,
+        pastTense: null,
+        futureTense: null,
+        pluralForm: null,
+        usageNotes: "Please ensure you have a stable internet connection for detailed translations.",
+    };
 }
 
 const toStoryView = (story: DynamoDBItem): StoryView => {
@@ -229,6 +347,47 @@ async function publishStoryResult(
     }
 }
 
+async function publishTranslationResult(
+    jobId: string,
+    status: "completed" | "failed",
+    translation?: WordDetails,
+    error?: string
+) {
+    const endpoint = process.env.AMPLIFY_DATA_GRAPHQL_ENDPOINT;
+    if (!endpoint) return;
+
+    const mutation = `
+    mutation PublishTranslationResult($input: PublishTranslationResultInput!) {
+      publishTranslationResult(input: $input) {
+        jobId
+        status
+      }
+    }
+  `;
+
+    const variables = {
+        input: {
+            jobId,
+            status,
+            translation,
+            error,
+        },
+    };
+
+    try {
+        await fetch(endpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-api-key": process.env.AMPLIFY_DATA_API_KEY || "",
+            },
+            body: JSON.stringify({ query: mutation, variables }),
+        });
+    } catch (error) {
+        console.error("Error publishing translation result:", error);
+    }
+}
+
 export const handler = async (event: DynamoDBStreamEvent) => {
     console.log(`[ProcessJob] Received ${event.Records.length} records`);
     const db = getDBClient();
@@ -240,8 +399,51 @@ export const handler = async (event: DynamoDBStreamEvent) => {
             // Use unmarshall to convert DynamoDB JSON to standard JSON
             const job = unmarshall(record.dynamodb?.NewImage as any);
 
-            if (job.type !== "story" || job.status !== "pending") {
-                console.log(`[ProcessJob] Skipping job ${job.id} (type: ${job.type}, status: ${job.status})`);
+            if (job.status !== "pending") {
+                console.log(`[ProcessJob] Skipping job ${job.id} (status: ${job.status})`);
+                continue;
+            }
+
+            if (job.type === "translation") {
+                console.log(`[ProcessJob] Processing translation job: ${job.id}`);
+                const jobId = job.id;
+                const input = job.input as { word: string; sourceLanguage: string; targetLanguage: string };
+
+                // Update job status to processing
+                await db.update("GenerationJob", jobId, { status: "processing" });
+
+                try {
+                    const translation = await translateWithAI(input.word, input.sourceLanguage, input.targetLanguage);
+                    const timestamp = new Date().toISOString();
+
+                    // Update job with result
+                    await db.update("GenerationJob", jobId, {
+                        status: "completed",
+                        completedAt: timestamp,
+                        result: translation,
+                    });
+
+                    // Publish result
+                    await publishTranslationResult(jobId, "completed", translation);
+                    console.log(`[ProcessJob] Translation job ${jobId} completed successfully`);
+                } catch (error) {
+                    console.error(`[ProcessJob] Error processing translation:`, error);
+                    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+                    const fallback = getFallbackTranslation(input.word, input.sourceLanguage, input.targetLanguage);
+
+                    await db.update("GenerationJob", jobId, {
+                        status: "completed", // Mark as completed even with fallback
+                        completedAt: new Date().toISOString(),
+                        result: fallback,
+                        error: errorMessage,
+                    });
+                    await publishTranslationResult(jobId, "completed", fallback);
+                }
+                continue;
+            }
+
+            if (job.type !== "story") {
+                console.log(`[ProcessJob] Skipping unknown job type ${job.type}`);
                 continue;
             }
 

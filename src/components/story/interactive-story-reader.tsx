@@ -5,6 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
+import { useAsyncWordTranslation } from "@/lib/hooks/use-async-word-translation";
+import { useEffect } from "react";
 
 interface WordTranslation {
   word: string;
@@ -45,6 +47,42 @@ export default function InteractiveStoryReader({
   const [translationCache, setTranslationCache] = useState<Map<string, WordTranslation>>(new Map());
   const [markedUnknown, setMarkedUnknown] = useState<Set<string>>(new Set(initialUnknownWords.map(w => w.toLowerCase())));
 
+  const { translateWord, isTranslating, translation: asyncTranslation, error: asyncError, reset } = useAsyncWordTranslation();
+
+  // Sync async translation result with local state and cache
+  useEffect(() => {
+    if (asyncTranslation) {
+      console.log('Async translation received:', asyncTranslation);
+      setTranslation(asyncTranslation);
+      setTranslationCache(prev => new Map(prev).set(asyncTranslation.word.toLowerCase(), asyncTranslation));
+    }
+  }, [asyncTranslation]);
+
+  // Handle async errors
+  useEffect(() => {
+    if (asyncError && selectedWord) {
+      console.error('Async translation error:', asyncError);
+      // Show basic fallback
+      const fallbackTranslation = {
+        word: selectedWord,
+        translation: `[Fordítás: ${selectedWord}]`,
+        sourceLanguage: 'en',
+        targetLanguage,
+        exampleSentence: `The student learned the word "${selectedWord}" today.`,
+        exampleTranslation: `A diák megtanulta a(z) "${selectedWord}" szót ma.`,
+        phonetic: undefined,
+        partOfSpeech: undefined,
+        pastTense: undefined,
+        futureTense: undefined,
+        pluralForm: undefined,
+        usageNotes: 'Kérlek, ellenőrizd az internetkapcsolatod a részletes fordításhoz.'
+      };
+      setTranslation(fallbackTranslation);
+      // Cache fallback too
+      setTranslationCache(prev => new Map(prev).set(selectedWord, fallbackTranslation));
+    }
+  }, [asyncError, selectedWord, targetLanguage]);
+
   const unknownWords = Array.from(markedUnknown);
 
   const handleWordClick = async (word: string) => {
@@ -61,74 +99,20 @@ export default function InteractiveStoryReader({
       return;
     }
 
-    setIsLoading(true);
+    // Reset previous async state
+    reset();
     setTranslation(null);
 
     try {
-      // Call GraphQL translateWord query directly
-      const { client } = await import('@/lib/amplify-client');
-
-      const translateWordQuery = /* GraphQL */ `
-        query TranslateWord($word: String!, $targetLanguage: String!) {
-          translateWord(word: $word, targetLanguage: $targetLanguage) {
-            word
-            translation
-            sourceLanguage
-            targetLanguage
-            exampleSentence
-            exampleTranslation
-            phonetic
-            partOfSpeech
-            pastTense
-            futureTense
-            pluralForm
-            usageNotes
-          }
-        }
-      `;
-
       console.log('Translating word:', cleanWord);
-
-      const graphqlResponse = await client.graphql({
-        query: translateWordQuery,
-        variables: {
-          word: cleanWord,
-          targetLanguage,
-          sourceLanguage: 'en'
-        }
-      }) as { data: { translateWord: WordTranslation } };
-
-      if (graphqlResponse.data?.translateWord) {
-        console.log('Translation successful:', graphqlResponse.data.translateWord.translation);
-        const translationData = graphqlResponse.data.translateWord;
-        setTranslation(translationData);
-        // Cache the translation
-        setTranslationCache(prev => new Map(prev).set(cleanWord, translationData));
-      } else {
-        throw new Error('No translation data received');
-      }
-    } catch (error) {
-      console.error('Translation error:', error);
-      // Show basic fallback
-      const fallbackTranslation = {
+      await translateWord({
         word: cleanWord,
-        translation: `[Fordítás: ${cleanWord}]`,
-        sourceLanguage: 'en',
         targetLanguage,
-        exampleSentence: `The student learned the word "${cleanWord}" today.`,
-        exampleTranslation: `A diák megtanulta a(z) "${cleanWord}" szót ma.`,
-        phonetic: undefined,
-        partOfSpeech: undefined,
-        pastTense: undefined,
-        futureTense: undefined,
-        pluralForm: undefined,
-        usageNotes: 'Kérlek, ellenőrizd az internetkapcsolatod a részletes fordításhoz.'
-      };
-      setTranslation(fallbackTranslation);
-      // Cache fallback too
-      setTranslationCache(prev => new Map(prev).set(cleanWord, fallbackTranslation));
-    } finally {
-      setIsLoading(false);
+        sourceLanguage: 'en'
+      });
+      // The useEffect hooks will handle the result/error
+    } catch (error) {
+      console.error('Translation initiation error:', error);
     }
   };
 
@@ -311,7 +295,7 @@ export default function InteractiveStoryReader({
           </DialogHeader>
 
           <div className="space-y-4">
-            {isLoading ? (
+            {isTranslating ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 <span className="ml-2 text-muted-foreground">Betöltés...</span>

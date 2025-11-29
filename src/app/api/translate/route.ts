@@ -15,8 +15,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call the translateWord query
-    const { data, errors } = await client.queries.translateWord({
+    // Call the startWordTranslation mutation
+    const { data, errors } = await client.mutations.startWordTranslation({
       word,
       sourceLanguage,
       targetLanguage
@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Return the jobId and status
     return NextResponse.json(data);
   } catch (error) {
     console.error('Translation API error:', error);

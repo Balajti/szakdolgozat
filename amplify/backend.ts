@@ -192,6 +192,15 @@ backend.processGenerationJob.resources.lambda.addEventSource(
   })
 );
 
+// Grant Lambda permission to invoke AppSync API
+const cfnGraphqlApi = (backend.data.resources.cfnResources as any).cfnGraphqlApi;
+backend.processGenerationJob.resources.lambda.addToRolePolicy(
+  new PolicyStatement({
+    actions: ['appsync:GraphQL'],
+    resources: [`${cfnGraphqlApi.attrArn}/*`],
+  })
+);
+
 // Connect post-confirmation Lambda as a Cognito trigger
 const cfnUserPool = backend.auth.resources.userPool.node.defaultChild as any;
 if (cfnUserPool) {
