@@ -12,7 +12,7 @@ type GenerationMode = "placement" | "personalized" | "teacher";
 type SanitizedInput = {
     level: string;
     age: number;
-    knownWords: string[];
+
     unknownWords: string[];
     requiredWords: string[];
     excludedWords: string[];
@@ -32,7 +32,7 @@ async function generateStoryWithAI(input: SanitizedInput): Promise<GeneratedStor
     if (!apiKey) throw new Error("GEMINI_API_KEY environment variable not set");
 
     const ai = new GoogleGenAI({ apiKey });
-    const { level, age, knownWords, unknownWords, requiredWords, excludedWords, mode } = input;
+    const { level, age, unknownWords, requiredWords, excludedWords, mode } = input;
 
     const targetWords = [...new Set([...unknownWords, ...requiredWords])];
     const avoidWords = excludedWords.length > 0 ? excludedWords : [];
@@ -73,7 +73,7 @@ ${difficultyHint}
 - Story length: ~1000 words (Keep it concise but engaging)
 - Must naturally include these target words multiple times: ${targetWords.join(", ")}
 - Repeat each target word 2-3 times throughout the story in different contexts
-- Can use these known words: ${knownWords.slice(0, 30).join(", ")}${knownWords.length > 30 ? ` (and ${knownWords.length - 30} more)` : ""}
+
 ${avoidWords.length > 0 ? `- AVOID these words: ${avoidWords.join(", ")}` : ""}
 
 **Story Guidelines:**

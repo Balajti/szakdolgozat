@@ -28,6 +28,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { StartingPosition, FilterCriteria, FilterRule } from 'aws-cdk-lib/aws-lambda';
 import { CfnTable, StreamViewType } from 'aws-cdk-lib/aws-dynamodb';
+import { CfnGraphQLApi } from 'aws-cdk-lib/aws-appsync';
 
 /**
  * @see https://docs.amplify.aws/react/build-a-backend/ to add storage, functions, and more
@@ -90,7 +91,8 @@ const functions = [
   backend.adjustDifficulty,
   backend.trackVocabularyProgress,
   backend.cleanupOldStories,
-  backend.processGenerationJob
+  backend.processGenerationJob,
+  backend.translateWord
 ];
 
 // Add Gemini API key to AI-powered functions
@@ -116,6 +118,12 @@ functions.forEach((fn) => {
   fn.addEnvironment('AMPLIFY_DATA_VOCABULARYPROGRESS_TABLE_NAME', backend.data.resources.tables['VocabularyProgress'].tableName);
   fn.addEnvironment('AMPLIFY_DATA_CLASSGROUP_TABLE_NAME', backend.data.resources.tables['ClassGroup'].tableName);
   fn.addEnvironment('AMPLIFY_DATA_GENERATIONJOB_TABLE_NAME', backend.data.resources.tables['GenerationJob'].tableName);
+
+  const cfnGraphqlApi = (backend.data.resources.cfnResources as any).cfnGraphqlApi;
+  const cfnApiKey = (backend.data.resources.cfnResources as any).cfnApiKey;
+
+  fn.addEnvironment('AMPLIFY_DATA_GRAPHQL_ENDPOINT', cfnGraphqlApi.attrGraphQlUrl);
+  fn.addEnvironment('AMPLIFY_DATA_API_KEY', cfnApiKey ? cfnApiKey.attrApiKey : '');
 
   // Grant DynamoDB permissions to all functions
   fn.resources.lambda.addToRolePolicy(

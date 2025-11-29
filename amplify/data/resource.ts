@@ -721,7 +721,6 @@ const schema = a.schema({
     .arguments({
       level: a.string().required(),
       age: a.integer(),
-      knownWords: a.string().array(),
       unknownWords: a.string().array(),
       requiredWords: a.string().array(),
       excludedWords: a.string().array(),

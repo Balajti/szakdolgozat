@@ -10,7 +10,7 @@ type GenerationMode = "placement" | "personalized" | "teacher";
 type SanitizedInput = {
   level: string;
   age: number;
-  knownWords: string[];
+
   unknownWords: string[];
   requiredWords: string[];
   excludedWords: string[];
@@ -31,11 +31,11 @@ export const handler: Handler = async (event) => {
   console.log("[HANDLER] Started at:", new Date().toISOString());
 
   const appSyncEvent = event as AppSyncResolverEvent<any>;
-  const { level, age, mode, knownWords, unknownWords, requiredWords, excludedWords, topic, customWords, difficulty } = appSyncEvent.arguments as {
+  const { level, age, mode, unknownWords, requiredWords, excludedWords, topic, customWords, difficulty } = appSyncEvent.arguments as {
     level: string;
     age?: number | null;
     mode: GenerationMode;
-    knownWords?: (string | null | undefined)[] | null;
+
     unknownWords?: (string | null | undefined)[] | null;
     requiredWords?: (string | null | undefined)[] | null;
     excludedWords?: (string | null | undefined)[] | null;
@@ -61,7 +61,7 @@ export const handler: Handler = async (event) => {
     level,
     age: defaultAge,
     mode,
-    knownWords: normalizeWordList(knownWords),
+
     unknownWords: normalizeWordList(unknownWords),
     requiredWords: normalizeWordList(allRequiredWords),
     excludedWords: normalizeWordList(excludedWords),
