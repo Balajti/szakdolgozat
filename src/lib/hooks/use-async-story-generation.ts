@@ -4,7 +4,7 @@ import { client } from '@/lib/amplify-client';
 interface StoryGenerationArgs {
     level: string;
     age?: number;
-    knownWords?: string[];
+
     unknownWords?: string[];
     requiredWords?: string[];
     excludedWords?: string[];
@@ -93,7 +93,7 @@ export function useAsyncStoryGeneration(): UseAsyncStoryGenerationReturn {
         mutation StartStoryGeneration(
           $level: String!
           $age: Int
-          $knownWords: [String]
+
           $unknownWords: [String]
           $requiredWords: [String]
           $excludedWords: [String]
@@ -105,7 +105,7 @@ export function useAsyncStoryGeneration(): UseAsyncStoryGenerationReturn {
           startStoryGeneration(
             level: $level
             age: $age
-            knownWords: $knownWords
+
             unknownWords: $unknownWords
             requiredWords: $requiredWords
             excludedWords: $excludedWords
