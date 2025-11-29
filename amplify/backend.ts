@@ -26,7 +26,7 @@ import { PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { UserPoolOperation, UserPool } from 'aws-cdk-lib/aws-cognito';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
-import { StartingPosition } from 'aws-cdk-lib/aws-lambda';
+import { StartingPosition, FilterCriteria, FilterRule } from 'aws-cdk-lib/aws-lambda';
 import { CfnTable, StreamViewType } from 'aws-cdk-lib/aws-dynamodb';
 
 /**
@@ -177,9 +177,9 @@ backend.processGenerationJob.resources.lambda.addEventSource(
   new DynamoEventSource(backend.data.resources.tables['GenerationJob'], {
     startingPosition: StartingPosition.LATEST,
     filters: [
-      {
-        eventName: ['INSERT'],
-      },
+      FilterCriteria.filter({
+        eventName: FilterRule.isEqual('INSERT'),
+      }),
     ],
   })
 );
