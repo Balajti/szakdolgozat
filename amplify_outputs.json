@@ -2149,6 +2149,133 @@
             "sortKeyFieldNames": []
           }
         },
+        "GenerationJob": {
+          "name": "GenerationJob",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "userId": {
+              "name": "userId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "type": {
+              "name": "type",
+              "isArray": false,
+              "type": {
+                "enum": "GenerationJobType"
+              },
+              "isRequired": true,
+              "attributes": []
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": {
+                "enum": "GenerationJobStatus"
+              },
+              "isRequired": true,
+              "attributes": []
+            },
+            "input": {
+              "name": "input",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "result": {
+              "name": "result",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "error": {
+              "name": "error",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "startedAt": {
+              "name": "startedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "completedAt": {
+              "name": "completedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "GenerationJobs",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "byUserId",
+                "queryField": "listJobsByUser",
+                "fields": [
+                  "userId"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
         "StudentProfile": {
           "name": "StudentProfile",
           "fields": {
@@ -2755,6 +2882,22 @@
             "fill_blanks",
             "word_matching",
             "custom_words"
+          ]
+        },
+        "GenerationJobStatus": {
+          "name": "GenerationJobStatus",
+          "values": [
+            "pending",
+            "processing",
+            "completed",
+            "failed"
+          ]
+        },
+        "GenerationJobType": {
+          "name": "GenerationJobType",
+          "values": [
+            "story",
+            "translation"
           ]
         }
       },
@@ -3575,6 +3718,111 @@
             },
             "usageNotes": {
               "name": "usageNotes",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            }
+          }
+        },
+        "GenerationJobStatusPayload": {
+          "name": "GenerationJobStatusPayload",
+          "fields": {
+            "jobId": {
+              "name": "jobId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": {
+                "enum": "GenerationJobStatus"
+              },
+              "isRequired": true,
+              "attributes": []
+            }
+          }
+        },
+        "StoryGenerationUpdate": {
+          "name": "StoryGenerationUpdate",
+          "fields": {
+            "jobId": {
+              "name": "jobId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": {
+                "enum": "GenerationJobStatus"
+              },
+              "isRequired": true,
+              "attributes": []
+            },
+            "story": {
+              "name": "story",
+              "isArray": false,
+              "type": {
+                "nonModel": "StoryView"
+              },
+              "isRequired": false,
+              "attributes": []
+            },
+            "newWords": {
+              "name": "newWords",
+              "isArray": true,
+              "type": {
+                "nonModel": "WordView"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true
+            },
+            "error": {
+              "name": "error",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            }
+          }
+        },
+        "WordTranslationUpdate": {
+          "name": "WordTranslationUpdate",
+          "fields": {
+            "jobId": {
+              "name": "jobId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": {
+                "enum": "GenerationJobStatus"
+              },
+              "isRequired": true,
+              "attributes": []
+            },
+            "translation": {
+              "name": "translation",
+              "isArray": false,
+              "type": {
+                "nonModel": "WordTranslation"
+              },
+              "isRequired": false,
+              "attributes": []
+            },
+            "error": {
+              "name": "error",
               "isArray": false,
               "type": "String",
               "isRequired": false,
@@ -4501,6 +4749,470 @@
               "isArray": false,
               "type": "ID",
               "isRequired": true
+            }
+          }
+        },
+        "startStoryGeneration": {
+          "name": "startStoryGeneration",
+          "isArray": false,
+          "type": {
+            "nonModel": "GenerationJobStatusPayload"
+          },
+          "isRequired": false,
+          "arguments": {
+            "level": {
+              "name": "level",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "age": {
+              "name": "age",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false
+            },
+            "knownWords": {
+              "name": "knownWords",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "isArrayNullable": true
+            },
+            "unknownWords": {
+              "name": "unknownWords",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "isArrayNullable": true
+            },
+            "requiredWords": {
+              "name": "requiredWords",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "isArrayNullable": true
+            },
+            "excludedWords": {
+              "name": "excludedWords",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "isArrayNullable": true
+            },
+            "topic": {
+              "name": "topic",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "customWords": {
+              "name": "customWords",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "isArrayNullable": true
+            },
+            "difficulty": {
+              "name": "difficulty",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "mode": {
+              "name": "mode",
+              "isArray": false,
+              "type": {
+                "enum": "StoryGenerationMode"
+              },
+              "isRequired": true
+            }
+          }
+        },
+        "startWordTranslation": {
+          "name": "startWordTranslation",
+          "isArray": false,
+          "type": {
+            "nonModel": "GenerationJobStatusPayload"
+          },
+          "isRequired": false,
+          "arguments": {
+            "word": {
+              "name": "word",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "sourceLanguage": {
+              "name": "sourceLanguage",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "targetLanguage": {
+              "name": "targetLanguage",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        },
+        "publishStoryResult": {
+          "name": "publishStoryResult",
+          "isArray": false,
+          "type": {
+            "nonModel": "StoryGenerationUpdate"
+          },
+          "isRequired": false,
+          "arguments": {
+            "jobId": {
+              "name": "jobId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": {
+                "enum": "GenerationJobStatus"
+              },
+              "isRequired": true
+            },
+            "story": {
+              "name": "story",
+              "isArray": false,
+              "type": {
+                "input": "StoryViewInput"
+              },
+              "isRequired": false
+            },
+            "newWords": {
+              "name": "newWords",
+              "isArray": true,
+              "type": {
+                "input": "WordViewInput"
+              },
+              "isRequired": false,
+              "isArrayNullable": true
+            },
+            "error": {
+              "name": "error",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            }
+          }
+        },
+        "publishTranslationResult": {
+          "name": "publishTranslationResult",
+          "isArray": false,
+          "type": {
+            "nonModel": "WordTranslationUpdate"
+          },
+          "isRequired": false,
+          "arguments": {
+            "jobId": {
+              "name": "jobId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": {
+                "enum": "GenerationJobStatus"
+              },
+              "isRequired": true
+            },
+            "translation": {
+              "name": "translation",
+              "isArray": false,
+              "type": {
+                "input": "WordTranslationInput"
+              },
+              "isRequired": false
+            },
+            "error": {
+              "name": "error",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            }
+          }
+        }
+      },
+      "subscriptions": {
+        "onStoryGenerationUpdate": {
+          "name": "onStoryGenerationUpdate",
+          "isArray": false,
+          "type": {
+            "nonModel": "StoryGenerationUpdate"
+          },
+          "isRequired": false,
+          "arguments": {
+            "jobId": {
+              "name": "jobId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        },
+        "onWordTranslationUpdate": {
+          "name": "onWordTranslationUpdate",
+          "isArray": false,
+          "type": {
+            "nonModel": "WordTranslationUpdate"
+          },
+          "isRequired": false,
+          "arguments": {
+            "jobId": {
+              "name": "jobId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        }
+      },
+      "inputs": {
+        "HighlightedWordInput": {
+          "name": "HighlightedWordInput",
+          "attributes": {
+            "word": {
+              "name": "word",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "offset": {
+              "name": "offset",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false
+            },
+            "length": {
+              "name": "length",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false
+            }
+          }
+        },
+        "StoryViewInput": {
+          "name": "StoryViewInput",
+          "attributes": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true
+            },
+            "studentId": {
+              "name": "studentId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": false
+            },
+            "teacherId": {
+              "name": "teacherId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": false
+            },
+            "title": {
+              "name": "title",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "content": {
+              "name": "content",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "level": {
+              "name": "level",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true
+            },
+            "mode": {
+              "name": "mode",
+              "isArray": false,
+              "type": {
+                "enum": "StoryGenerationMode"
+              },
+              "isRequired": false
+            },
+            "unknownWordIds": {
+              "name": "unknownWordIds",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "isArrayNullable": true
+            },
+            "highlightedWords": {
+              "name": "highlightedWords",
+              "isArray": true,
+              "type": {
+                "input": "HighlightedWordInput"
+              },
+              "isRequired": false,
+              "isArrayNullable": true
+            }
+          }
+        },
+        "WordViewInput": {
+          "name": "WordViewInput",
+          "attributes": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true
+            },
+            "studentId": {
+              "name": "studentId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true
+            },
+            "text": {
+              "name": "text",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "translation": {
+              "name": "translation",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "exampleSentence": {
+              "name": "exampleSentence",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "mastery": {
+              "name": "mastery",
+              "isArray": false,
+              "type": {
+                "enum": "WordMastery"
+              },
+              "isRequired": true
+            },
+            "lastReviewedAt": {
+              "name": "lastReviewedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true
+            }
+          }
+        },
+        "WordTranslationInput": {
+          "name": "WordTranslationInput",
+          "attributes": {
+            "word": {
+              "name": "word",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "translation": {
+              "name": "translation",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "sourceLanguage": {
+              "name": "sourceLanguage",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "targetLanguage": {
+              "name": "targetLanguage",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "exampleSentence": {
+              "name": "exampleSentence",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "exampleTranslation": {
+              "name": "exampleTranslation",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "phonetic": {
+              "name": "phonetic",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "partOfSpeech": {
+              "name": "partOfSpeech",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "pastTense": {
+              "name": "pastTense",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "futureTense": {
+              "name": "futureTense",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "pluralForm": {
+              "name": "pluralForm",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "usageNotes": {
+              "name": "usageNotes",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
             }
           }
         }

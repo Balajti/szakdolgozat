@@ -36,7 +36,7 @@ interface ClassGroup {
   name: string;
   description?: string;
   studentIds?: string[]; // Legacy
-  students?: Array<{ id: string; name: string; email: string; addedAt: string }>;
+  students?: Array<{ id: string; name: string; email: string; addedAt?: string }>;
   color?: string;
 }
 
@@ -59,6 +59,7 @@ function ClassDetailPageInner({ params }: { params: { id: string } }) {
   const [studentName, setStudentName] = useState("");
   const [studentEmail, setStudentEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   useEffect(() => {
     loadClassData();

@@ -21,9 +21,13 @@ import { trackVocabularyProgress } from './functions/track-vocabulary-progress/r
 import { cleanupOldStories } from './functions/cleanup-old-stories/resource';
 import { postConfirmation } from './functions/post-confirmation/resource';
 import { customMessage } from './functions/custom-message/resource';
+import { processGenerationJob } from './functions/process-generation-job/resource';
 import { PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { UserPoolOperation, UserPool } from 'aws-cdk-lib/aws-cognito';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
+import { StartingPosition } from 'aws-cdk-lib/aws-lambda';
+import { CfnTable, StreamViewType } from 'aws-cdk-lib/aws-dynamodb';
 
 /**
  * @see https://docs.amplify.aws/react/build-a-backend/ to add storage, functions, and more
@@ -50,7 +54,8 @@ const backend = defineBackend({
   trackVocabularyProgress,
   cleanupOldStories,
   postConfirmation,
-  customMessage
+  customMessage,
+  processGenerationJob
 });
 
 // ... (existing code) ...
@@ -84,12 +89,14 @@ const functions = [
   backend.checkBadges,
   backend.adjustDifficulty,
   backend.trackVocabularyProgress,
-  backend.cleanupOldStories
+  backend.cleanupOldStories,
+  backend.processGenerationJob
 ];
 
 // Add Gemini API key to AI-powered functions
 backend.generateStory.addEnvironment('GEMINI_API_KEY', process.env.GEMINI_API_KEY || '');
 backend.translateWord.addEnvironment('GEMINI_API_KEY', process.env.GEMINI_API_KEY || '');
+backend.processGenerationJob.addEnvironment('GEMINI_API_KEY', process.env.GEMINI_API_KEY || '');
 
 // Add table name environment variables to all functions
 functions.forEach((fn) => {
@@ -108,6 +115,7 @@ functions.forEach((fn) => {
   fn.addEnvironment('AMPLIFY_DATA_QUIZQUESTION_TABLE_NAME', backend.data.resources.tables['QuizQuestion'].tableName);
   fn.addEnvironment('AMPLIFY_DATA_VOCABULARYPROGRESS_TABLE_NAME', backend.data.resources.tables['VocabularyProgress'].tableName);
   fn.addEnvironment('AMPLIFY_DATA_CLASSGROUP_TABLE_NAME', backend.data.resources.tables['ClassGroup'].tableName);
+  fn.addEnvironment('AMPLIFY_DATA_GENERATIONJOB_TABLE_NAME', backend.data.resources.tables['GenerationJob'].tableName);
 
   // Grant DynamoDB permissions to all functions
   fn.resources.lambda.addToRolePolicy(
@@ -151,10 +159,30 @@ functions.forEach((fn) => {
         `${backend.data.resources.tables['VocabularyProgress'].tableArn}/index/*`,
         `${backend.data.resources.tables['ClassGroup'].tableArn}/index/*`,
         `${backend.data.resources.tables['AssignmentSubmission'].tableArn}/index/*`,
+        backend.data.resources.tables['GenerationJob'].tableArn,
+        `${backend.data.resources.tables['GenerationJob'].tableArn}/index/*`,
       ],
     })
   );
 });
+
+// Enable DynamoDB Stream for GenerationJob table
+const generationJobTable = backend.data.resources.tables['GenerationJob'] as unknown as CfnTable;
+generationJobTable.streamSpecification = {
+  streamViewType: StreamViewType.NEW_AND_OLD_IMAGES
+};
+
+// Connect GenerationJob table stream to processGenerationJob lambda
+backend.processGenerationJob.resources.lambda.addEventSource(
+  new DynamoEventSource(backend.data.resources.tables['GenerationJob'], {
+    startingPosition: StartingPosition.LATEST,
+    filters: [
+      {
+        eventName: ['INSERT'],
+      },
+    ],
+  })
+);
 
 // Connect post-confirmation Lambda as a Cognito trigger
 const cfnUserPool = backend.auth.resources.userPool.node.defaultChild as any;
@@ -170,32 +198,11 @@ backend.postConfirmation.resources.lambda.addPermission('CognitoPostConfirmation
   sourceArn: backend.auth.resources.userPool.userPoolArn,
 });
 
-// 1. Create SSM parameters for table names (Break Env Var Dependency)
-// These depend on Data stack, but Auth stack will NOT depend on these resources directly
-new StringParameter(backend.stack, 'StudentProfileTableParam', {
-  parameterName: '/amplify/data/StudentProfileTableName',
-  stringValue: backend.data.resources.tables['StudentProfile'].tableName,
-});
 
-new StringParameter(backend.stack, 'TeacherProfileTableParam', {
-  parameterName: '/amplify/data/TeacherProfileTableName',
-  stringValue: backend.data.resources.tables['TeacherProfile'].tableName,
-});
 
-// 2. Pass SSM Parameter Names to Lambda (Use String Literals to avoid dependency)
-backend.postConfirmation.addEnvironment('STUDENT_PROFILE_TABLE_PARAM', '/amplify/data/StudentProfileTableName');
-backend.postConfirmation.addEnvironment('TEACHER_PROFILE_TABLE_PARAM', '/amplify/data/TeacherProfileTableName');
 
-// 3. Grant Permission to read SSM Parameters (Use Wildcard to avoid dependency)
-backend.postConfirmation.resources.lambda.addToRolePolicy(
-  new PolicyStatement({
-    actions: ['ssm:GetParameter'],
-    resources: [
-      'arn:aws:ssm:*:*:parameter/amplify/data/StudentProfileTableName',
-      'arn:aws:ssm:*:*:parameter/amplify/data/TeacherProfileTableName'
-    ],
-  })
-);
+
+
 
 // 4. Grant DynamoDB Permissions using Wildcard (Break IAM Dependency)
 // We use a wildcard for the table name to avoid referencing the Table ARN directly

@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useAsyncStoryGeneration } from "@/lib/hooks/use-async-story-generation";
 
 interface StoryGenerationDialogProps {
   open: boolean;
@@ -81,7 +82,7 @@ export function StoryGenerationDialog({
   onGenerated,
 }: StoryGenerationDialogProps) {
   const { toast } = useToast();
-  const [generating, setGenerating] = useState(false);
+  const { generateStory: generateStoryAsync, isGenerating, result, error: generationError } = useAsyncStoryGeneration();
   const [level, setLevel] = useState("A2");
   const [assignmentType, setAssignmentType] = useState("basic");
   const [topic, setTopic] = useState("");
@@ -109,7 +110,7 @@ export function StoryGenerationDialog({
       return;
     }
 
-    setGenerating(true);
+    // Generation is now tracked by the hook's isGenerating state
     try {
       const { client } = await import("@/lib/amplify-client");
 
@@ -199,7 +200,7 @@ export function StoryGenerationDialog({
         variant: "destructive",
       });
     } finally {
-      setGenerating(false);
+      // Generation state handled by hook
     }
   };
 
@@ -399,12 +400,12 @@ export function StoryGenerationDialog({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={generating}
+            disabled={isGenerating}
           >
             Mégse
           </Button>
-          <Button onClick={handleGenerate} disabled={generating}>
-            {generating ? (
+          <Button onClick={handleGenerate} disabled={isGenerating}>
+            {isGenerating ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Generálás...

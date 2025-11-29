@@ -33,6 +33,7 @@ import { LogoutButton } from "@/components/ui/logout-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useAvatarUrl } from "@/hooks/use-avatar-url";
+import { useAsyncStoryGeneration } from "@/lib/hooks/use-async-story-generation";
 
 const dashboardNavItems = [
   { value: 'overview' as const, label: 'Áttekintés', icon: TrendingUp },
@@ -53,6 +54,7 @@ function StudentPortalPageInner() {
   const [activeView, setActiveView] = useState<DashboardView>('overview');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const { toast } = useToast();
+  const { generateStory: generateStoryAsync, isGenerating, result, error: generationError } = useAsyncStoryGeneration();
 
   // Fetch signed URL for avatar
   const avatarUrl = useAvatarUrl(data?.profile?.avatarUrl);
@@ -69,6 +71,31 @@ function StudentPortalPageInner() {
     setActiveView(view);
     setIsMobileNavOpen(false);
   };
+
+  // Handle async story generation result
+  useEffect(() => {
+    if (result?.story?.id) {
+      toast({
+        title: "Történet generálva!",
+        description: "Az új történeted elkészült.",
+      });
+      setIsGenerationModalOpen(false);
+      setIsGeneratingSurprise(false);
+      router.push(`/student/story/${result.story.id}`);
+    }
+  }, [result, router, toast]);
+
+  // Handle async story generation errors
+  useEffect(() => {
+    if (generationError) {
+      toast({
+        title: "Hiba",
+        description: "Nem sikerült a történet generálása. Kérlek, próbáld újra.",
+        variant: "destructive",
+      });
+      setIsGeneratingSurprise(false);
+    }
+  }, [generationError, toast]);
 
   const handleGenerateStory = async (level: string) => {
     if (!data?.profile) return;
@@ -157,71 +184,21 @@ function StudentPortalPageInner() {
         .filter(w => w.mastery === 'unknown')
         .map(w => w.text);
 
-      const generateStoryMutation = /* GraphQL */ `
-        mutation GenerateStory(
-          $level: String!
-          $age: Int
-          $knownWords: [String]
-          $unknownWords: [String]
-          $mode: StoryGenerationMode!
-          $topic: String
-          $difficulty: String
-        ) {
-          generateStory(
-            level: $level
-            age: $age
-            knownWords: $knownWords
-            unknownWords: $unknownWords
-            mode: $mode
-            topic: $topic
-            difficulty: $difficulty
-          ) {
-            story {
-              id
-              title
-              content
-              level
-              createdAt
-            }
-            newWords {
-              id
-              text
-              translation
-            }
-          }
-        }
-      `;
-
-      const response = await client.graphql({
-        query: generateStoryMutation,
-        variables: {
-          level,
-          age,
-          knownWords,
-          unknownWords,
-          mode: "personalized",
-          topic: selectedTopic, // Pass the selected topic
-          difficulty: preferences?.preferredDifficulty, // Pass the preferred difficulty
-        }
-      }) as { data: { generateStory: { story: { id: string } } } };
-
-      if (response.data?.generateStory?.story) {
-        const storyId = response.data.generateStory.story.id;
-        toast({
-          title: "Történet generálva!",
-          description: "Az új történeted elkészült.",
-        });
-        setIsGenerationModalOpen(false);
-        // Navigate to the newly generated story
-        router.push(`/student/story/${storyId}`);
-      } else {
-        throw new Error("No story returned from generation");
-      }
+      // Start async story generation (will handle result via effect)
+      await generateStoryAsync({
+        level,
+        age,
+        knownWords,
+        unknownWords,
+        mode: "personalized",
+        topic: selectedTopic,
+        difficulty: preferences?.preferredDifficulty,
+      });
     } catch (error) {
-      console.error("Error generating story:", error);
+      console.error("Error starting story generation:", error);
       toast({
         title: "Hiba",
-        description: "Nem sikerült a történet generálása. Kérlek, próbáld újra.",
+        description: "Nem sikerült elindítani a történet generálását. Kérlek, próbáld újra.",
         variant: "destructive",
       });
     }
@@ -280,73 +257,23 @@ function StudentPortalPageInner() {
         .filter(w => w.mastery === 'unknown')
         .map(w => w.text);
 
-      const generateStoryMutation = /* GraphQL */ `
-        mutation GenerateStory(
-          $level: String!
-          $age: Int
-          $knownWords: [String]
-          $unknownWords: [String]
-          $mode: StoryGenerationMode!
-          $topic: String
-          $difficulty: String
-        ) {
-          generateStory(
-            level: $level
-            age: $age
-            knownWords: $knownWords
-            unknownWords: $unknownWords
-            mode: $mode
-            topic: $topic
-            difficulty: $difficulty
-          ) {
-            story {
-              id
-              title
-              content
-              level
-              createdAt
-            }
-            newWords {
-              id
-              text
-              translation
-            }
-          }
-        }
-      `;
-
-      const response = await client.graphql({
-        query: generateStoryMutation,
-        variables: {
-          level: data.profile.level,
-          age,
-          knownWords,
-          unknownWords,
-          mode: "personalized",
-          topic: undefined, // Random topic - do not pass user's preference
-          difficulty: preferences?.preferredDifficulty,
-        }
-      }) as { data: { generateStory: { story: { id: string } } } };
-
-      if (response.data?.generateStory?.story) {
-        const storyId = response.data.generateStory.story.id;
-        toast({
-          title: "Történet generálva!",
-          description: "Az új meglepetés történeted elkészült.",
-        });
-        // Navigate to the newly generated story
-        router.push(`/student/story/${storyId}`);
-      } else {
-        throw new Error("No story returned from generation");
-      }
+      // Start async story generation (will handle result via effect)
+      await generateStoryAsync({
+        level: data.profile.level,
+        age,
+        knownWords,
+        unknownWords,
+        mode: "personalized",
+        topic: undefined, // Random topic
+        difficulty: preferences?.preferredDifficulty,
+      });
     } catch (error) {
-      console.error("Error generating surprise story:", error);
+      console.error("Error starting surprise story generation:", error);
       toast({
         title: "Hiba",
-        description: "Nem sikerült a történet generálása. Kérlek, próbáld újra.",
+        description: "Nem sikerült elindítani a történet generálását. Kérlek, próbáld újra.",
         variant: "destructive",
       });
-    } finally {
       setIsGeneratingSurprise(false);
     }
   };
@@ -547,10 +474,10 @@ function StudentPortalPageInner() {
                   size="lg"
                   variant="outline"
                   onClick={handleSurpriseMe}
-                  disabled={isGeneratingSurprise}
+                  disabled={isGeneratingSurprise || isGenerating}
                   className="border-white/30 text-black hover:bg-white/10"
                 >
-                  {isGeneratingSurprise ? (
+                  {(isGeneratingSurprise || isGenerating) ? (
                     <>
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                       Generálás...

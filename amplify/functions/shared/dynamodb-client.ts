@@ -10,7 +10,11 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 
 const client = new DynamoDBClient({});
-const docClient = DynamoDBDocumentClient.from(client);
+const docClient = DynamoDBDocumentClient.from(client, {
+  marshallOptions: {
+    removeUndefinedValues: true, // Automatically remove undefined values
+  },
+});
 
 // Table names are injected via environment variables by Amplify
 // Or can be manually set (e.g. when fetched from SSM)

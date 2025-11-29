@@ -16,12 +16,15 @@ import { checkBadges } from '../functions/check-badges/resource';
 import { adjustDifficulty } from '../functions/adjust-difficulty/resource';
 import { trackVocabularyProgress } from '../functions/track-vocabulary-progress/resource';
 import { cleanupOldStories } from '../functions/cleanup-old-stories/resource';
+import { publishResults } from '../functions/publish-results/resource';
 
 const schema = a.schema({
   WordMastery: a.enum(['known', 'learning', 'unknown']),
   AssignmentStatus: a.enum(['draft', 'sent', 'submitted', 'graded']),
   StoryGenerationMode: a.enum(['placement', 'personalized', 'teacher']),
   AssignmentType: a.enum(['basic', 'fill_blanks', 'word_matching', 'custom_words']),
+  GenerationJobStatus: a.enum(['pending', 'processing', 'completed', 'failed']),
+  GenerationJobType: a.enum(['story', 'translation']),
   HighlightedWord: a.customType({
     word: a.string(),
     offset: a.integer(),
@@ -265,6 +268,21 @@ const schema = a.schema({
       index('recipientId').name('byRecipientId').queryField('listNotificationsByRecipient'),
     ])
     .authorization((allow) => [allow.authenticated()]),
+  GenerationJob: a
+    .model({
+      userId: a.id().required(),
+      type: a.ref('GenerationJobType').required(),
+      status: a.ref('GenerationJobStatus').required(),
+      input: a.json(),
+      result: a.json(),
+      error: a.string(),
+      startedAt: a.datetime().required(),
+      completedAt: a.datetime(),
+    })
+    .secondaryIndexes((index) => [
+      index('userId').name('byUserId').queryField('listJobsByUser'),
+    ])
+    .authorization((allow) => [allow.authenticated()]),
   StudentProfile: a
     .model({
       name: a.string().required(),
@@ -435,6 +453,23 @@ const schema = a.schema({
     futureTense: a.string(),
     pluralForm: a.string(),
     usageNotes: a.string(),
+  }),
+  GenerationJobStatusPayload: a.customType({
+    jobId: a.string().required(),
+    status: a.ref('GenerationJobStatus').required(),
+  }),
+  StoryGenerationUpdate: a.customType({
+    jobId: a.string().required(),
+    status: a.ref('GenerationJobStatus').required(),
+    story: a.ref('StoryView'),
+    newWords: a.ref('WordView').array(),
+    error: a.string(),
+  }),
+  WordTranslationUpdate: a.customType({
+    jobId: a.string().required(),
+    status: a.ref('GenerationJobStatus').required(),
+    translation: a.ref('WordTranslation'),
+    error: a.string(),
   }),
   translateWord: a
     .query()
@@ -681,6 +716,68 @@ const schema = a.schema({
     )
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(cleanupOldStories)),
+  startStoryGeneration: a
+    .mutation()
+    .arguments({
+      level: a.string().required(),
+      age: a.integer(),
+      knownWords: a.string().array(),
+      unknownWords: a.string().array(),
+      requiredWords: a.string().array(),
+      excludedWords: a.string().array(),
+      topic: a.string(),
+      customWords: a.string().array(),
+      difficulty: a.string(),
+      mode: a.ref('StoryGenerationMode').required(),
+    })
+    .returns(a.ref('GenerationJobStatusPayload'))
+    .authorization((allow) => [allow.authenticated(), allow.publicApiKey(), allow.authenticated('identityPool')])
+    .handler(a.handler.function(generateStory)),
+  startWordTranslation: a
+    .mutation()
+    .arguments({
+      word: a.string().required(),
+      sourceLanguage: a.string(),
+      targetLanguage: a.string().required(),
+    })
+    .returns(a.ref('GenerationJobStatusPayload'))
+    .authorization((allow) => [allow.authenticated(), allow.publicApiKey()])
+    .handler(a.handler.function(translateWord)),
+  publishStoryResult: a
+    .mutation()
+    .arguments({
+      jobId: a.string().required(),
+      status: a.ref('GenerationJobStatus').required(),
+      story: a.ref('StoryView'),
+      newWords: a.ref('WordView').array(),
+      error: a.string(),
+    })
+    .returns(a.ref('StoryGenerationUpdate'))
+    .authorization((allow) => [allow.publicApiKey()])
+    .handler(a.handler.function(publishResults)),
+  publishTranslationResult: a
+    .mutation()
+    .arguments({
+      jobId: a.string().required(),
+      status: a.ref('GenerationJobStatus').required(),
+      translation: a.ref('WordTranslation'),
+      error: a.string(),
+    })
+    .returns(a.ref('WordTranslationUpdate'))
+    .authorization((allow) => [allow.publicApiKey()])
+    .handler(a.handler.function(publishResults)),
+  onStoryGenerationUpdate: a
+    .subscription()
+    .for(a.ref('publishStoryResult'))
+    .arguments({ jobId: a.string().required() })
+    .authorization((allow) => [allow.authenticated(), allow.publicApiKey()])
+    .handler(a.handler.function(publishResults)),
+  onWordTranslationUpdate: a
+    .subscription()
+    .for(a.ref('publishTranslationResult'))
+    .arguments({ jobId: a.string().required() })
+    .authorization((allow) => [allow.authenticated(), allow.publicApiKey()])
+    .handler(a.handler.function(publishResults)),
 });
 
 export type Schema = ClientSchema<typeof schema>;
