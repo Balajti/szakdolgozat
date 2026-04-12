@@ -176,11 +176,26 @@ functions.forEach((fn) => {
 });
 
 // Enable DynamoDB Stream for GenerationJob table
-// Use .node.defaultChild to get the L1 CfnTable from the L2 ITable construct
-const generationJobTableCfn = backend.data.resources.tables['GenerationJob'].node.defaultChild as CfnTable;
-generationJobTableCfn.streamSpecification = {
-  streamViewType: 'NEW_AND_OLD_IMAGES'
-};
+// Find the CfnTable from the construct tree
+const generationJobTable = backend.data.resources.tables['GenerationJob'];
+const generationJobTableCfn = (generationJobTable.node.tryFindChild('Resource') as CfnTable | undefined)
+  ?? (generationJobTable.node.defaultChild as CfnTable | undefined);
+
+if (generationJobTableCfn) {
+  generationJobTableCfn.streamSpecification = {
+    streamViewType: 'NEW_AND_OLD_IMAGES'
+  };
+} else {
+  // Fallback: iterate through all children to find CfnTable
+  for (const child of generationJobTable.node.children) {
+    if (child instanceof CfnTable) {
+      (child as CfnTable).streamSpecification = {
+        streamViewType: 'NEW_AND_OLD_IMAGES'
+      };
+      break;
+    }
+  }
+}
 
 // Connect GenerationJob table stream to processGenerationJob lambda
 backend.processGenerationJob.resources.lambda.addEventSource(
