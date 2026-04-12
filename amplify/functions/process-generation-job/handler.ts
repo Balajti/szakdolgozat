@@ -117,20 +117,26 @@ Important:
 3. DO NOT use markdown formatting (**, *, etc.) in the story content - write plain text only`;
 
     try {
+        console.log("[generateStoryWithAI] Calling Gemini API...");
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-flash-preview",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
                 temperature: 1.0,
                 topP: 0.95,
                 topK: 40,
+                thinkingConfig: {
+                    thinkingBudget: 0,
+                },
             },
         });
 
+        console.log("[generateStoryWithAI] Response received");
         const text = response.text;
         if (!text) throw new Error("No text received from AI response");
 
+        console.log("[generateStoryWithAI] Response text length:", text.length);
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (!jsonMatch) throw new Error("Failed to parse JSON from AI response");
 
@@ -141,9 +147,11 @@ Important:
             parsed.highlightedWords = [];
         }
 
+        console.log("[generateStoryWithAI] Story generated successfully:", parsed.title);
         return parsed;
     } catch (error) {
-        console.error("Gemini API error:", error);
+        console.error("[generateStoryWithAI] Gemini API error:", error);
+        console.log("[generateStoryWithAI] Using fallback story");
         return generateFallbackStory(input);
     }
 }
@@ -174,7 +182,6 @@ The end.`;
         return offset >= 0 ? { word, offset, length: word.length } : null;
     }).filter((h): h is { word: string; offset: number; length: number } => h !== null);
 
-    return { title, content, highlightedWords };
     return { title, content, highlightedWords };
 }
 
@@ -222,14 +229,17 @@ Important:
 - Write usageNotes in Hungarian
 - Write partOfSpeech in Hungarian (főnév, ige, melléknév, határozószó, etc.)`;
 
-    console.log("Calling Gemini API for word translation...");
+    console.log("[translateWithAI] Calling Gemini API for word translation...");
 
     const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
             responseMimeType: "application/json",
             temperature: 0.7,
+            thinkingConfig: {
+                thinkingBudget: 0,
+            },
         },
     });
 
@@ -327,6 +337,30 @@ async function publishStoryResult(
       publishStoryResult(jobId: $jobId, status: $status, story: $story, newWords: $newWords, error: $error) {
         jobId
         status
+        error
+        story {
+          id
+          title
+          content
+          level
+          createdAt
+          updatedAt
+          mode
+          highlightedWords {
+            word
+            offset
+            length
+          }
+        }
+        newWords {
+          id
+          studentId
+          text
+          translation
+          mastery
+          createdAt
+          updatedAt
+        }
       }
     }
   `;
@@ -357,22 +391,15 @@ async function publishTranslationResult(
     if (!endpoint) return;
 
     const mutation = `
-    mutation PublishTranslationResult($input: PublishTranslationResultInput!) {
-      publishTranslationResult(input: $input) {
+    mutation PublishTranslationResult($jobId: String!, $status: GenerationJobStatus!, $translation: WordTranslationInput, $error: String) {
+      publishTranslationResult(jobId: $jobId, status: $status, translation: $translation, error: $error) {
         jobId
         status
       }
     }
   `;
 
-    const variables = {
-        input: {
-            jobId,
-            status,
-            translation,
-            error,
-        },
-    };
+    const variables = { jobId, status, translation, error };
 
     try {
         await fetch(endpoint, {
@@ -453,19 +480,21 @@ export const handler = async (event: DynamoDBStreamEvent) => {
             const userId = job.userId;
 
             // Determine ownership based on mode (simplified check)
-            // In a real scenario, we might want to store ownership explicitly in the job
-            // For now, assuming studentId = userId if mode != teacher
             const ownership = sanitized.mode === "teacher"
                 ? { teacherId: userId }
                 : { studentId: userId };
 
+            console.log(`[ProcessJob] Job ${jobId}: mode=${sanitized.mode}, userId=${userId}`);
+
             // Update job status to processing
             await db.update("GenerationJob", jobId, { status: "processing" });
+            console.log(`[ProcessJob] Job ${jobId}: status set to processing`);
 
             // Ensure student profile exists if student
             if (ownership.studentId) {
                 const profile = await db.get("StudentProfile", ownership.studentId);
                 if (!profile) {
+                    console.log(`[ProcessJob] Job ${jobId}: Creating student profile for ${ownership.studentId}`);
                     await db.put("StudentProfile", {
                         id: ownership.studentId,
                         name: "New Learner",
@@ -478,17 +507,20 @@ export const handler = async (event: DynamoDBStreamEvent) => {
             }
 
             // Generate story
+            console.log(`[ProcessJob] Job ${jobId}: Starting AI story generation...`);
             const storyDraft = await generateStoryWithAI(sanitized);
+            console.log(`[ProcessJob] Job ${jobId}: Story generated: "${storyDraft.title}"`);
             const timestamp = new Date().toISOString();
             const newWords: DynamoDBItem[] = [];
             const unknownWordIds: string[] = [];
 
             // Process words for student
             if (ownership.studentId) {
+                console.log(`[ProcessJob] Job ${jobId}: Processing words for student...`);
                 const existingWords = await queryByIndex("Word", "byStudentId", "studentId", ownership.studentId, 500);
                 const byText = new Map(existingWords.map((word) => [String(word.text).toLowerCase(), word]));
 
-                for (const token of sanitized.unknownWords) {
+                for (const token of (sanitized.unknownWords || [])) {
                     const normalized = token.toLowerCase();
                     const matched = byText.get(normalized);
                     if (matched) {
@@ -515,9 +547,11 @@ export const handler = async (event: DynamoDBStreamEvent) => {
                 if (profile && Number(profile.vocabularyCount) !== masteredCount) {
                     await db.update("StudentProfile", ownership.studentId, { vocabularyCount: masteredCount });
                 }
+                console.log(`[ProcessJob] Job ${jobId}: Processed ${newWords.length} new words`);
             }
 
             // Create story record
+            console.log(`[ProcessJob] Job ${jobId}: Saving story to DB...`);
             const story = await db.put("Story", {
                 id: randomUUID(),
                 studentId: ownership.studentId,
@@ -530,6 +564,7 @@ export const handler = async (event: DynamoDBStreamEvent) => {
                 unknownWordIds,
                 highlightedWords: storyDraft.highlightedWords || [],
             });
+            console.log(`[ProcessJob] Job ${jobId}: Story saved with id ${story.id}`);
 
             // Update job with result
             await db.update("GenerationJob", jobId, {
@@ -540,25 +575,33 @@ export const handler = async (event: DynamoDBStreamEvent) => {
                     newWords: newWords.map(toWordView),
                 },
             });
+            console.log(`[ProcessJob] Job ${jobId}: Job status updated to completed`);
 
             // Publish result
+            console.log(`[ProcessJob] Job ${jobId}: Publishing result via GraphQL...`);
             await publishStoryResult(jobId, "completed", toStoryView(story), newWords.map(toWordView));
             console.log(`[ProcessJob] Job ${jobId} completed successfully`);
 
         } catch (error) {
-            console.error(`[ProcessJob] Error processing record:`, error);
-            // Try to update job status to failed if we have a jobId
-            // But here we are inside the loop, so we might not have jobId easily accessible if parsing failed
-            // Assuming parsing succeeded:
-            const job = unmarshall(record.dynamodb?.NewImage as any);
-            if (job && job.id) {
-                const errorMessage = error instanceof Error ? error.message : "Unknown error";
-                await db.update("GenerationJob", job.id, {
-                    status: "failed",
-                    completedAt: new Date().toISOString(),
-                    error: errorMessage,
-                });
-                await publishStoryResult(job.id, "failed", undefined, undefined, errorMessage);
+            console.error(`[ProcessJob] FATAL Error processing record:`, error);
+            console.error(`[ProcessJob] Error type:`, typeof error);
+            console.error(`[ProcessJob] Error message:`, error instanceof Error ? error.message : String(error));
+            console.error(`[ProcessJob] Error stack:`, error instanceof Error ? error.stack : 'no stack');
+            // Try to update job status to failed
+            try {
+                const job = unmarshall(record.dynamodb?.NewImage as any);
+                if (job && job.id) {
+                    const errorMessage = error instanceof Error ? error.message : String(error);
+                    await db.update("GenerationJob", job.id, {
+                        status: "failed",
+                        completedAt: new Date().toISOString(),
+                        error: errorMessage,
+                    });
+                    await publishStoryResult(job.id, "failed", undefined, undefined, errorMessage);
+                    console.log(`[ProcessJob] Published failure for job ${job.id}: ${errorMessage}`);
+                }
+            } catch (publishError) {
+                console.error(`[ProcessJob] Failed to publish error status:`, publishError);
             }
         }
     }

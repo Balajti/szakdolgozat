@@ -1,9 +1,17 @@
 import { Schema } from '../../data/resource';
+import { GoogleGenAI } from '@google/genai';
 
 export const handler: Schema['adjustDifficulty']['functionHandler'] = async (event) => {
   const { text, currentLevel, targetLevel } = event.arguments;
   
   try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY environment variable not set');
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+
     // Use Gemini AI to adjust text difficulty
     const prompt = `You are an English language teacher. Adjust the following text from ${currentLevel} level to ${targetLevel} level.
 
@@ -19,29 +27,21 @@ Requirements:
 
 Provide only the adjusted text without any explanation or formatting.`;
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: prompt }]
-          }],
-          generationConfig: {
-            temperature: 0.5,
-            maxOutputTokens: 2000,
-          }
-        })
-      }
-    );
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        temperature: 0.5,
+        thinkingConfig: {
+          thinkingBudget: 0,
+        },
+      },
+    });
 
-    if (!response.ok) {
-      throw new Error('Failed to adjust text difficulty');
+    const adjustedText = response.text?.trim();
+    if (!adjustedText) {
+      throw new Error('No text received from AI response');
     }
-
-    const data = await response.json();
-    const adjustedText = data.candidates[0].content.parts[0].text.trim();
     
     return {
       adjustedText,

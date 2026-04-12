@@ -22,6 +22,7 @@ import { cleanupOldStories } from './functions/cleanup-old-stories/resource';
 import { postConfirmation } from './functions/post-confirmation/resource';
 import { customMessage } from './functions/custom-message/resource';
 import { processGenerationJob } from './functions/process-generation-job/resource';
+import { publishResults } from './functions/publish-results/resource';
 import { PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { UserPoolOperation, UserPool } from 'aws-cdk-lib/aws-cognito';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -56,7 +57,8 @@ const backend = defineBackend({
   cleanupOldStories,
   postConfirmation,
   customMessage,
-  processGenerationJob
+  processGenerationJob,
+  publishResults
 });
 
 // ... (existing code) ...
@@ -95,10 +97,9 @@ const functions = [
   backend.translateWord
 ];
 
-// Add Gemini API key to AI-powered functions
-backend.generateStory.addEnvironment('GEMINI_API_KEY', process.env.GEMINI_API_KEY || '');
-backend.translateWord.addEnvironment('GEMINI_API_KEY', process.env.GEMINI_API_KEY || '');
-backend.processGenerationJob.addEnvironment('GEMINI_API_KEY', process.env.GEMINI_API_KEY || '');
+// Note: GEMINI_API_KEY is provided via secret() in each function's resource.ts.
+// Do NOT use addEnvironment here — it would overwrite the secret with an empty
+// string during CI/CD where process.env.GEMINI_API_KEY is not available.
 
 // Add table name environment variables to all functions
 functions.forEach((fn) => {
@@ -175,9 +176,10 @@ functions.forEach((fn) => {
 });
 
 // Enable DynamoDB Stream for GenerationJob table
-const generationJobTable = backend.data.resources.tables['GenerationJob'] as unknown as CfnTable;
-generationJobTable.streamSpecification = {
-  streamViewType: StreamViewType.NEW_AND_OLD_IMAGES
+// Use .node.defaultChild to get the L1 CfnTable from the L2 ITable construct
+const generationJobTableCfn = backend.data.resources.tables['GenerationJob'].node.defaultChild as CfnTable;
+generationJobTableCfn.streamSpecification = {
+  streamViewType: 'NEW_AND_OLD_IMAGES'
 };
 
 // Connect GenerationJob table stream to processGenerationJob lambda
@@ -201,19 +203,8 @@ backend.processGenerationJob.resources.lambda.addToRolePolicy(
   })
 );
 
-// Connect post-confirmation Lambda as a Cognito trigger
-const cfnUserPool = backend.auth.resources.userPool.node.defaultChild as any;
-if (cfnUserPool) {
-  cfnUserPool.addPropertyOverride('LambdaConfig.PostConfirmation',
-    backend.postConfirmation.resources.lambda.functionArn
-  );
-}
-
-// Grant Cognito permission to invoke the Lambda
-backend.postConfirmation.resources.lambda.addPermission('CognitoPostConfirmationInvoke', {
-  principal: new ServicePrincipal('cognito-idp.amazonaws.com'),
-  sourceArn: backend.auth.resources.userPool.userPoolArn,
-});
+// Post-confirmation trigger is already wired via defineAuth({ triggers: { postConfirmation } })
+// in auth/resource.ts — no need for manual addPropertyOverride or addPermission here.
 
 
 

@@ -54,7 +54,7 @@ function StudentPortalPageInner() {
   const [activeView, setActiveView] = useState<DashboardView>('overview');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const { toast } = useToast();
-  const { generateStory: generateStoryAsync, isGenerating, result, error: generationError } = useAsyncStoryGeneration();
+  const { generateStory: generateStoryAsync, isGenerating, result, error: generationError, onComplete } = useAsyncStoryGeneration();
   const initialStoryCountRef = useRef<number>(0);
 
   // Fetch signed URL for avatar
@@ -73,53 +73,72 @@ function StudentPortalPageInner() {
     setIsMobileNavOpen(false);
   };
 
-  // Handle async story generation result
+  // Set up story generation completion callback
   useEffect(() => {
-    const handleResult = async () => {
-      if (result?.story?.id) {
-        // Refetch dashboard to get updated story list
-        const { data: newData } = await refetch();
-        const newStoryCount = newData?.profile?.stories?.length || 0;
-        const initialCount = initialStoryCountRef.current;
+    onComplete(async (storyId: string) => {
+      try {
+        // Fetch all user stories to verify the new one exists
+        const { client } = await import('@/lib/amplify-client');
+        const { fetchAuthSession } = await import('aws-amplify/auth');
 
-        console.log(`Story generation complete. Initial count: ${initialCount}, New count: ${newStoryCount}`);
+        const session = await fetchAuthSession();
+        const userId = session.userSub;
 
-        if (newStoryCount > initialCount) {
+        if (!userId) return;
+
+        const listStoriesQuery = /* GraphQL */ `
+          query ListStoriesByStudent($studentId: ID!) {
+            listStoriesByStudent(studentId: $studentId) {
+              items {
+                id
+                createdAt
+              }
+            }
+          }
+        `;
+
+        const response = await client.graphql({
+          query: listStoriesQuery,
+          variables: { studentId: userId }
+        }) as { data: { listStoriesByStudent: { items: Array<{ id: string; createdAt: string }> } } };
+
+        const stories = response.data?.listStoriesByStudent?.items || [];
+
+        // Find the newest story (should be the one just created)
+        const newestStory = stories.sort((a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )[0];
+
+        if (newestStory) {
           toast({
             title: "Történet generálva!",
             description: "Az új történeted elkészült.",
           });
           setIsGenerationModalOpen(false);
           setIsGeneratingSurprise(false);
-          router.push(`/student/story/${result.story.id}`);
-        } else {
-          console.warn("Story count did not increase after generation.");
-          // If it fails, maybe we should show a toast saying "Story generated but list not updated yet"?
-          // Let's navigate anyway if the ID is valid, as a fail-safe, but log the count discrepancy.
-          // Actually, the user explicitly said "if that number is bigger... then the app should take the user".
-          // So I will strictly follow that. If it's not bigger, we don't navigate automatically?
-          // That might be bad UX if it's just a race condition. 
-          // Let's try to navigate if the ID is valid, as the subscription returned the story object.
-          // But to strictly follow the prompt: "if that number is bigger then what the user had before than the app should take the user"
 
-          // Let's try to wait a bit and refetch again if count hasn't increased?
-          // Or just proceed with the navigation if the count increased.
-
-          // I'll implement the strict check. If it fails, the user stays on the dashboard and sees the new story in the list eventually.
-          // But to be helpful, I'll add a small delay and retry once if count matches.
+          // Navigate to the newest story
+          router.push(`/student/story/${newestStory.id}`);
         }
+      } catch (error) {
+        console.error('Error fetching stories after generation:', error);
+        toast({
+          title: "Figyelem",
+          description: "A történet elkészült, de a navigáció nem sikerült. Keresd meg a könyvtárban!",
+          variant: "destructive",
+        });
       }
-    };
-
-    handleResult();
-  }, [result, router, toast, refetch]);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only register once on mount
 
   // Handle async story generation errors
   useEffect(() => {
     if (generationError) {
+      console.error("Story generation error:", generationError);
       toast({
         title: "Hiba",
-        description: "Nem sikerült a történet generálása. Kérlek, próbáld újra.",
+        description: `Nem sikerült a történet generálása: ${generationError}`,
         variant: "destructive",
       });
       setIsGeneratingSurprise(false);
@@ -227,6 +246,7 @@ function StudentPortalPageInner() {
       });
     } catch (error) {
       console.error("Error starting story generation:", error);
+      console.error("Error details:", JSON.stringify(error, null, 2));
       toast({
         title: "Hiba",
         description: "Nem sikerült elindítani a történet generálását. Kérlek, próbáld újra.",

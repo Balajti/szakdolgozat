@@ -1,5 +1,6 @@
 import { Schema } from '../../data/resource';
 import { getDBClient } from '../shared/dynamodb-client';
+import { GoogleGenAI } from '@google/genai';
 
 interface Question {
   question: string;
@@ -46,29 +47,28 @@ Format your response as valid JSON with this structure:
 
     let questions: Question[];
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{ text: prompt }]
-            }],
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 2000,
-            }
-          })
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to generate quiz with AI');
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error('GEMINI_API_KEY environment variable not set');
       }
 
-      const data = await response.json();
-      const generatedText = data.candidates[0].content.parts[0].text;
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.7,
+          thinkingConfig: {
+            thinkingBudget: 0,
+          },
+        },
+      });
+
+      const generatedText = response.text;
+      if (!generatedText) {
+        throw new Error('No text received from AI response');
+      }
       
       // Extract JSON from response (may be wrapped in markdown code blocks)
       const jsonMatch = generatedText.match(/\{[\s\S]*\}/);

@@ -1,4 +1,4 @@
-import { defineFunction } from '@aws-amplify/backend';
+import { defineFunction, secret } from '@aws-amplify/backend';
 
 export const adjustDifficulty = defineFunction({
   name: 'adjust-difficulty',
@@ -6,6 +6,6 @@ export const adjustDifficulty = defineFunction({
   timeoutSeconds: 30,
   resourceGroupName: 'data',
   environment: {
-    GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
+    GEMINI_API_KEY: secret('GEMINI_API_KEY'),
   },
 });

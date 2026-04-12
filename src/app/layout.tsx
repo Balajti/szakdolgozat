@@ -3,6 +3,7 @@ import { Poppins, Baloo_2 } from "next/font/google";
 import "./globals.css";
 
 import { AppProviders } from "@/components/providers/app-providers";
+import ConfigureAmplify from "@/components/providers/configure-amplify";
 
 const poppins = Poppins({
   variable: "--font-wordnest-sans",
@@ -49,10 +50,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="hu">
+    <html lang="hu" suppressHydrationWarning>
       <body
         className={`${poppins.variable} ${baloo.variable} antialiased bg-background text-foreground`}
+        suppressHydrationWarning
       >
+        <ConfigureAmplify />
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

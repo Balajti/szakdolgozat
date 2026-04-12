@@ -20,6 +20,11 @@ export function useToast() {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const toast = useCallback((options: ToastOptions) => {
+    if (!options || typeof options !== 'object') {
+      console.warn('toast() called with invalid options:', options);
+      return;
+    }
+
     const id = Math.random().toString(36).substring(7);
     const newToast: Toast = {
       ...options,
@@ -40,9 +45,9 @@ export function useToast() {
     // For now, use browser alert for visibility
     // Replace with proper toast UI component in production
     if (options.variant === 'destructive') {
-      console.error(`${options.title}: ${options.description}`);
+      console.error(`${options.title ?? ''}: ${options.description ?? ''}`);
     } else {
-      console.log(`${options.title}: ${options.description}`);
+      console.log(`${options.title ?? ''}: ${options.description ?? ''}`);
     }
   }, []);
 

@@ -46,6 +46,7 @@ interface UseAsyncStoryGenerationReturn {
     error: string | null;
     result: StoryGenerationResult | null;
     reset: () => void;
+    onComplete: (callback: (storyId: string) => void) => void; // Register callback for when generation completes
 }
 
 export function useAsyncStoryGeneration(): UseAsyncStoryGenerationReturn {
@@ -54,6 +55,7 @@ export function useAsyncStoryGeneration(): UseAsyncStoryGenerationReturn {
     const [result, setResult] = useState<StoryGenerationResult | null>(null);
     const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null);
     const currentJobIdRef = useRef<string | null>(null);
+    const onCompleteCallbackRef = useRef<((storyId: string) => void) | null>(null);
 
     // Cleanup subscription on unmount
     useEffect(() => {
@@ -74,6 +76,11 @@ export function useAsyncStoryGeneration(): UseAsyncStoryGenerationReturn {
             subscriptionRef.current = null;
         }
         currentJobIdRef.current = null;
+        onCompleteCallbackRef.current = null;
+    }, []);
+
+    const onComplete = useCallback((callback: (storyId: string) => void) => {
+        onCompleteCallbackRef.current = callback;
     }, []);
 
     const generateStory = useCallback(async (args: StoryGenerationArgs): Promise<string> => {
@@ -176,6 +183,11 @@ export function useAsyncStoryGeneration(): UseAsyncStoryGenerationReturn {
                         setIsGenerating(false);
                         setError(null);
 
+                        // Trigger callback with story ID
+                        if (onCompleteCallbackRef.current && update.story.id) {
+                            onCompleteCallbackRef.current(update.story.id);
+                        }
+
                         // Unsubscribe after receiving result
                         if (subscriptionRef.current) {
                             subscriptionRef.current.unsubscribe();
@@ -222,5 +234,6 @@ export function useAsyncStoryGeneration(): UseAsyncStoryGenerationReturn {
         error,
         result,
         reset,
+        onComplete,
     };
 }
