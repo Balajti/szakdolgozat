@@ -9,7 +9,9 @@ let cachedOutputs: { data?: { url?: string; aws_region?: string } } | null = nul
 async function loadOutputs() {
   if (cachedOutputs !== null) return cachedOutputs;
   try {
-    cachedOutputs = (await import("../../../amplify_outputs.json")).default;
+    // Use a variable so TypeScript doesn't try to resolve the module path
+    const outputsPath = "../../../amplify_outputs.json";
+    cachedOutputs = (await import(/* webpackIgnore: true */ outputsPath)).default;
   } catch {
     cachedOutputs = {};
   }
