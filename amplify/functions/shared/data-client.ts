@@ -4,8 +4,17 @@ import { Sha256 } from "@aws-crypto/sha256-js";
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import { getAmplifyDataClientConfig } from "@aws-amplify/backend-function/runtime";
 import type { DataClientEnv } from "@aws-amplify/backend-function/runtime";
-// Import outputs JSON (Lambda bundler should transpile this as static JSON)
-import outputs from "../../../amplify_outputs.json";
+// Lazy-load amplify_outputs.json only when needed (it may not exist in CI)
+let cachedOutputs: { data?: { url?: string; aws_region?: string } } | null = null;
+async function loadOutputs() {
+  if (cachedOutputs !== null) return cachedOutputs;
+  try {
+    cachedOutputs = (await import("../../../amplify_outputs.json")).default;
+  } catch {
+    cachedOutputs = {};
+  }
+  return cachedOutputs;
+}
 
 import type { Schema } from "../../data/resource";
 
@@ -59,6 +68,7 @@ async function getGraphQLConfig(): Promise<GraphQLConfig> {
         }
         throw new Error("GraphQL configuration is missing endpoint or region");
       } catch (error) {
+        const outputs = await loadOutputs();
         if (outputs?.data?.url && outputs?.data?.aws_region) {
           return { endpoint: outputs.data.url, region: outputs.data.aws_region };
         }
