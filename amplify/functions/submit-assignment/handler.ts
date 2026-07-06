@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { Schema } from '../../data/resource';
 import { DynamoDBDataClient } from '../shared/dynamodb-client';
 
@@ -18,31 +19,52 @@ interface WordMatchingAnswer {
 }
 
 /**
- * Processes assignment submissions with automatic scoring
- * Supports different assignment types:
- * - basic: No scoring, just marks as completed
- * - fill_blanks: Compares student answers with correct words
- * - word_matching: Validates word-definition matches
- * - custom_words: Checks if required words are used
+ * Processes assignment submissions with automatic scoring.
+ * Students can be identified either by studentId (logged in) or by
+ * studentEmail (public assignment links). Creates both the
+ * AssignmentSubmission record and the SubmissionSummary used by the
+ * teacher dashboard and analytics.
  */
 export const handler: SubmitAssignmentHandler = async (event: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
   const {
     assignmentId,
     studentId,
-    answers,
+    studentEmail,
+    answers: rawAnswers,
     timeSpentSeconds
   } = event.arguments;
 
   try {
+    if (!studentId && !studentEmail) {
+      throw new Error('Either studentId or studentEmail is required');
+    }
+
+    // AWSJSON may arrive as a JSON string depending on the caller
+    const answers = typeof rawAnswers === 'string' ? JSON.parse(rawAnswers) : rawAnswers;
+
     // Fetch the assignment
     const assignment = await dbClient.get('Assignment', assignmentId);
     if (!assignment) {
       throw new Error(`Assignment not found: ${assignmentId}`);
     }
 
-    // Fetch student profile for name
-    const studentProfile = await dbClient.get('StudentProfile', studentId);
-    const studentName = studentProfile?.name as string || 'Student';
+    // Resolve the student profile: by id, or by email for public submissions
+    let studentProfile = studentId ? await dbClient.get('StudentProfile', studentId) : null;
+    const normalizedEmail = studentEmail ? String(studentEmail).trim().toLowerCase() : null;
+
+    if (!studentProfile && normalizedEmail) {
+      const scanResult = await dbClient.scan('StudentProfile', {
+        filterExpression: '#email = :email',
+        expressionAttributeNames: { '#email': 'email' },
+        expressionAttributeValues: { ':email': normalizedEmail },
+      });
+      studentProfile = scanResult.items[0] ?? null;
+    }
+
+    const effectiveStudentId = (studentProfile?.id as string) || studentId || normalizedEmail!;
+    const studentName =
+      (studentProfile?.name as string) ||
+      (normalizedEmail ? normalizedEmail.split('@')[0] : 'Student');
 
     const assignmentType = assignment.assignmentType as string;
     const teacherId = assignment.teacherId as string;
@@ -61,21 +83,14 @@ export const handler: SubmitAssignmentHandler = async (event: any) => { // eslin
         break;
 
       case 'fill_blanks':
-        const fillBlanksResult = scoreFillBlanks(
-          answers,
-          assignment.blankPositions,
-          assignment.requiredWords as string[]
-        );
+        const fillBlanksResult = scoreFillBlanks(answers);
         score = fillBlanksResult.score;
         maxScore = fillBlanksResult.maxScore;
         feedback = fillBlanksResult.feedback;
         break;
 
       case 'word_matching':
-        const wordMatchingResult = scoreWordMatching(
-          answers,
-          assignment.matchingWords as string[]
-        );
+        const wordMatchingResult = scoreWordMatching(answers);
         score = wordMatchingResult.score;
         maxScore = wordMatchingResult.maxScore;
         feedback = wordMatchingResult.feedback;
@@ -101,41 +116,46 @@ export const handler: SubmitAssignmentHandler = async (event: any) => { // eslin
     // Create submission record
     const submission = {
       assignmentId,
-      studentId,
+      studentId: studentProfile?.id ?? null,
+      studentEmail: normalizedEmail,
       teacherId,
       assignmentType,
-      answers,
+      answers: typeof rawAnswers === 'string' ? rawAnswers : JSON.stringify(rawAnswers),
       score,
       maxScore,
       submittedAt: now,
       feedback,
       timeSpentSeconds: timeSpentSeconds || 0,
+      status: 'submitted',
       createdAt: now,
       updatedAt: now
     };
 
-    const savedSubmission = await dbClient.put('AssignmentSubmission', submission);
-
-    // Update assignment status if needed
-    await dbClient.update('Assignment', assignmentId, {
-      status: 'submitted'
+    const savedSubmission = await dbClient.put('AssignmentSubmission', {
+      ...submission,
+      id: randomUUID(),
     });
 
-    // Track words that student struggled with (score < 70%)
+    // Track words that the student struggled with
     const strugglingWords: string[] = [];
-    if (assignmentType === 'fill_blanks' && answers.blanks) {
+    if (assignmentType === 'fill_blanks' && Array.isArray(answers?.blanks)) {
       answers.blanks.forEach((blank: FillBlanksAnswer) => {
-        if (blank.answer.toLowerCase() !== blank.correctAnswer.toLowerCase()) {
+        if (
+          typeof blank?.answer === 'string' &&
+          typeof blank?.correctAnswer === 'string' &&
+          blank.answer.toLowerCase().trim() !== blank.correctAnswer.toLowerCase().trim()
+        ) {
           strugglingWords.push(blank.correctAnswer);
         }
       });
     }
 
-    // Create submission summary for teacher dashboard
+    // Create submission summary for the teacher dashboard / analytics
     await dbClient.put('SubmissionSummary', {
+      id: randomUUID(),
       assignmentId,
       teacherId,
-      studentId,
+      studentId: effectiveStudentId,
       studentName,
       submittedAt: now,
       score,
@@ -144,16 +164,18 @@ export const handler: SubmitAssignmentHandler = async (event: any) => { // eslin
       updatedAt: now
     });
 
+    const safeMaxScore = maxScore > 0 ? maxScore : 100;
+
     return {
       id: savedSubmission.id as string,
       assignmentId,
-      studentId,
+      studentId: effectiveStudentId,
       score,
-      maxScore,
-      percentage: Math.round((score / maxScore) * 100),
+      maxScore: safeMaxScore,
+      percentage: Math.round((score / safeMaxScore) * 100),
       feedback,
       submittedAt: now,
-      passed: score >= maxScore * 0.7 // 70% passing grade
+      passed: score >= safeMaxScore * 0.7 // 70% passing grade
     };
 
   } catch (error) {
@@ -166,11 +188,9 @@ export const handler: SubmitAssignmentHandler = async (event: any) => { // eslin
  * Scores fill-in-the-blanks assignments
  */
 function scoreFillBlanks(
-  answers: any, // eslint-disable-line @typescript-eslint/no-explicit-any
-  _blankPositions: unknown, // eslint-disable-line @typescript-eslint/no-unused-vars
-  _requiredWords: string[] // eslint-disable-line @typescript-eslint/no-unused-vars
+  answers: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ): { score: number; maxScore: number; feedback: string } {
-  if (!answers.blanks || !Array.isArray(answers.blanks)) {
+  if (!answers?.blanks || !Array.isArray(answers.blanks) || answers.blanks.length === 0) {
     return { score: 0, maxScore: 100, feedback: 'No answers provided' };
   }
 
@@ -179,15 +199,9 @@ function scoreFillBlanks(
   let correctCount = 0;
 
   blanks.forEach((blank: FillBlanksAnswer) => {
-    const studentAnswer = blank.answer.toLowerCase().trim();
-    const correctAnswer = blank.correctAnswer.toLowerCase().trim();
-    
-    // Allow for minor variations (plurals, verb forms)
-    if (studentAnswer === correctAnswer || 
-        studentAnswer === correctAnswer + 's' ||
-        correctAnswer === studentAnswer + 's' ||
-        studentAnswer.startsWith(correctAnswer) ||
-        correctAnswer.startsWith(studentAnswer)) {
+    const studentAnswer = String(blank.answer ?? '').toLowerCase().trim();
+    const correctAnswer = String(blank.correctAnswer ?? '').toLowerCase().trim();
+    if (studentAnswer && studentAnswer === correctAnswer) {
       correctCount++;
     }
   });
@@ -199,13 +213,12 @@ function scoreFillBlanks(
 }
 
 /**
- * Scores word matching assignments
+ * Scores word matching assignments (legacy)
  */
 function scoreWordMatching(
-  answers: any, // eslint-disable-line @typescript-eslint/no-explicit-any
-  _matchingWords: string[] // eslint-disable-line @typescript-eslint/no-unused-vars
+  answers: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ): { score: number; maxScore: number; feedback: string } {
-  if (!answers.matches || !Array.isArray(answers.matches)) {
+  if (!answers?.matches || !Array.isArray(answers.matches) || answers.matches.length === 0) {
     return { score: 0, maxScore: 100, feedback: 'No answers provided' };
   }
 
@@ -232,8 +245,12 @@ function scoreCustomWords(
   answers: any, // eslint-disable-line @typescript-eslint/no-explicit-any
   requiredWords: string[]
 ): { score: number; maxScore: number; feedback: string } {
-  if (!answers.story || typeof answers.story !== 'string') {
+  if (!answers?.story || typeof answers.story !== 'string') {
     return { score: 0, maxScore: 100, feedback: 'No story provided' };
+  }
+
+  if (!Array.isArray(requiredWords) || requiredWords.length === 0) {
+    return { score: 100, maxScore: 100, feedback: 'Story submitted!' };
   }
 
   const story = answers.story.toLowerCase();

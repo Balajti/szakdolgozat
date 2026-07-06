@@ -486,10 +486,15 @@ function AssignmentCreatePageInner() {
                   <div className="rounded-lg bg-muted/50 p-4">
                     <p className="text-sm font-medium mb-1">Feladat típus:</p>
                     <Badge variant="outline">
-                      {formData.assignmentType === "basic" && "Alapvető történet"}
-                      {formData.assignmentType === "fill_blanks" && "Kihagyásos feladat"}
-                      {formData.assignmentType === "word_matching" && "Szópárosítás"}
+                      {formData.assignmentType === "basic" && "Történet olvasása"}
+                      {formData.assignmentType === "fill_blanks" && "Hiányzó szavas történet"}
                     </Badge>
+                    {formData.assignmentType === "fill_blanks" && formData.blankPositions.length > 0 && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {formData.blankPositions.length} hiányzó szó:{" "}
+                        {formData.blankPositions.map((b: { word: string }) => b.word).join(", ")}
+                      </p>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -554,21 +559,20 @@ function AssignmentCreatePageInner() {
                 <Badge variant="outline">Szint: {formData.level}</Badge>
                 {formData.assignmentType && (
                   <Badge variant="outline">
-                    {formData.assignmentType === "basic" && "Alapvető"}
-                    {formData.assignmentType === "fill_blanks" && "Kihagyásos"}
-                    {formData.assignmentType === "word_matching" && "Szópárosítás"}
+                    {formData.assignmentType === "basic" && "Történet olvasása"}
+                    {formData.assignmentType === "fill_blanks" && "Hiányzó szavas"}
                   </Badge>
                 )}
               </div>
               <div className="prose prose-sm max-w-none">
                 <p className="whitespace-pre-wrap break-words">{getPreviewContent()}</p>
               </div>
-              {formData.assignmentType === "word_matching" && formData.matchingWords.length > 0 && (
+              {formData.assignmentType === "fill_blanks" && formData.blankPositions.length > 0 && (
                 <div>
-                  <p className="font-medium text-sm mb-2">Párosítandó szavak:</p>
+                  <p className="font-medium text-sm mb-2">Hiányzó szavak:</p>
                   <div className="flex flex-wrap gap-2">
-                    {formData.matchingWords.map((word, idx) => (
-                      <Badge key={idx} variant="outline">{word}</Badge>
+                    {formData.blankPositions.map((blank: { word: string }, idx: number) => (
+                      <Badge key={idx} variant="outline">{blank.word}</Badge>
                     ))}
                   </div>
                 </div>

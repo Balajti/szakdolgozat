@@ -66,6 +66,8 @@ const resolvedConfig: ResourcesConfig = {
   }
 };
 
+export const amplifyConfig = resolvedConfig;
+
 let configured = false;
 
 export function ensureAmplifyConfigured() {

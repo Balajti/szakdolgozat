@@ -11,6 +11,10 @@ export const auth = defineAuth({
     email: true,
   },
   userAttributes: {
+    fullname: {
+      required: false,
+      mutable: true,
+    },
     birthdate: {
       required: false,
       mutable: true,
@@ -30,6 +34,9 @@ export const auth = defineAuth({
     postConfirmation,
     customMessage,
   },
+  access: (allow) => [
+    allow.resource(postConfirmation).to(['addUserToGroup']),
+  ],
   // senders: {
   //   email: {
   //     fromEmail: 'no-reply@wordnest.app',

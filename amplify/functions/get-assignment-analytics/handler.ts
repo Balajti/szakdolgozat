@@ -9,7 +9,8 @@ interface SubmissionData {
   score: number;
   maxScore: number;
   submittedAt: string;
-  studentId: string;
+  studentId?: string;
+  studentEmail?: string;
   timeSpentSeconds?: number;
 }
 
@@ -42,10 +43,11 @@ export const handler: GetAssignmentAnalyticsHandler = async (event: any) => { //
 
     // Calculate analytics
     const totalSubmissions = submissions.length;
-    const recipientCount = (assignment.recipientCount as number) || 0;
-    const completionRate = recipientCount > 0 
-      ? Math.round((totalSubmissions / recipientCount) * 100)
-      : 0;
+
+    // Prefer the explicit recipient count from distribution, otherwise fall
+    // back to the emails the assignment was sent to.
+    const sentTo = Array.isArray(assignment.sentTo) ? assignment.sentTo : [];
+    const recipientCount = (assignment.recipientCount as number) || sentTo.length;
 
     // Score statistics
     let totalScore = 0;
@@ -57,22 +59,32 @@ export const handler: GetAssignmentAnalyticsHandler = async (event: any) => { //
 
     submissions.forEach((sub: unknown) => {
       const submission = sub as SubmissionData;
-      totalScore += submission.score;
-      totalMaxScore += submission.maxScore;
-      
-      const percentage = (submission.score / submission.maxScore) * 100;
+      const maxScore = Number(submission.maxScore) > 0 ? Number(submission.maxScore) : 100;
+      const score = Number(submission.score) || 0;
+
+      totalScore += score;
+      totalMaxScore += maxScore;
+
+      const percentage = (score / maxScore) * 100;
       if (percentage >= 70) {
         passedCount++;
       }
 
-      studentScores[submission.studentId] = percentage;
-      
+      const studentKey = submission.studentId || submission.studentEmail || 'unknown';
+      studentScores[studentKey] = percentage;
+
       if (submission.timeSpentSeconds) {
         totalTimeSpent += submission.timeSpentSeconds;
       }
     });
 
-    const averageScore = totalSubmissions > 0 
+    // Completion is measured per unique student, capped at 100%
+    const uniqueSubmitters = Object.keys(studentScores).length;
+    const completionRate = recipientCount > 0
+      ? Math.min(100, Math.round((uniqueSubmitters / recipientCount) * 100))
+      : (totalSubmissions > 0 ? 100 : 0);
+
+    const averageScore = totalSubmissions > 0 && totalMaxScore > 0
       ? Math.round((totalScore / totalMaxScore) * 100)
       : 0;
 

@@ -1,23 +1,18 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, use } from "react";
-import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
   BookOpen,
   Clock,
   Loader2,
   CheckCircle2,
-  Mail,
   ArrowRight,
   Sparkles,
-  Trophy,
-  Star,
   GripVertical,
   RotateCcw,
   Send,
   Timer,
-  XCircle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -48,12 +43,6 @@ interface BlankPosition {
   word: string;
   offset: number;
   length: number;
-}
-
-interface MatchPair {
-  word: string;
-  selectedMatch: string | null;
-  isCorrect: boolean | null;
 }
 
 // ===================
@@ -144,8 +133,26 @@ function ProgressSteps({ currentStep }: { currentStep: Step }) {
 }
 
 // ===================
-// Fill-in-the-blanks component
+// Fill-in-the-blanks component (drag & drop)
 // ===================
+interface BankChip {
+  id: number;
+  word: string;
+}
+
+// Drops malformed or overlapping blank entries so the rendered blanks always
+// match the answer bookkeeping.
+function sanitizeBlanks(content: string, blanks: BlankPosition[]): BlankPosition[] {
+  const valid: BlankPosition[] = [];
+  let scanEnd = 0;
+  for (const blank of [...blanks].sort((a, b) => a.offset - b.offset)) {
+    if (!blank.word || blank.offset < scanEnd || blank.offset + blank.length > content.length) continue;
+    valid.push(blank);
+    scanEnd = blank.offset + blank.length;
+  }
+  return valid;
+}
+
 function FillBlanksTask({
   content,
   blanks,
@@ -155,11 +162,21 @@ function FillBlanksTask({
   blanks: BlankPosition[];
   onComplete: (answers: { blankIndex: number; answer: string; correctAnswer: string }[]) => void;
 }) {
-  const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [showResults, setShowResults] = useState(false);
-  const sortedBlanks = [...blanks].sort((a, b) => a.offset - b.offset);
+  const sortedBlanks = sanitizeBlanks(content, blanks);
 
-  // Build text segments
+  // One draggable chip per blank, shuffled once
+  const [bank] = useState<BankChip[]>(() =>
+    sanitizeBlanks(content, blanks)
+      .map((blank, id) => ({ id, word: blank.word }))
+      .sort(() => Math.random() - 0.5)
+  );
+
+  // blank index -> chip id
+  const [placements, setPlacements] = useState<Record<number, number>>({});
+  const [selectedChip, setSelectedChip] = useState<number | null>(null);
+  const [showResults, setShowResults] = useState(false);
+
+  // Build text segments around the blanks
   const segments: { type: "text" | "blank"; content: string; blankIndex?: number }[] = [];
   let lastEnd = 0;
 
@@ -174,28 +191,76 @@ function FillBlanksTask({
     segments.push({ type: "text", content: content.substring(lastEnd) });
   }
 
-  const allFilled = sortedBlanks.every((_, idx) => answers[idx]?.trim());
+  const chipUsed = (chipId: number) => Object.values(placements).includes(chipId);
+  const chipById = (chipId: number) => bank.find((c) => c.id === chipId);
+
+  const placeChip = (blankIdx: number, chipId: number) => {
+    if (showResults) return;
+    setPlacements((prev) => {
+      const next = { ...prev };
+      // If this chip is already in another blank, move it
+      for (const key of Object.keys(next)) {
+        if (next[Number(key)] === chipId) delete next[Number(key)];
+      }
+      next[blankIdx] = chipId;
+      return next;
+    });
+    setSelectedChip(null);
+  };
+
+  const clearBlank = (blankIdx: number) => {
+    if (showResults) return;
+    setPlacements((prev) => {
+      const next = { ...prev };
+      delete next[blankIdx];
+      return next;
+    });
+  };
+
+  const handleBlankClick = (blankIdx: number) => {
+    if (showResults) return;
+    if (selectedChip !== null) {
+      placeChip(blankIdx, selectedChip);
+    } else if (placements[blankIdx] !== undefined) {
+      clearBlank(blankIdx);
+    }
+  };
+
+  const handleDrop = (blankIdx: number, e: React.DragEvent) => {
+    e.preventDefault();
+    const chipId = parseInt(e.dataTransfer.getData("text/plain"), 10);
+    if (!Number.isNaN(chipId)) placeChip(blankIdx, chipId);
+  };
+
+  const answerForBlank = (blankIdx: number): string => {
+    const chipId = placements[blankIdx];
+    if (chipId === undefined) return "";
+    return chipById(chipId)?.word ?? "";
+  };
+
+  const isCorrect = (blankIdx: number): boolean | null => {
+    if (!showResults) return null;
+    const answer = answerForBlank(blankIdx).toLowerCase().trim();
+    const correct = sortedBlanks[blankIdx].word.toLowerCase().trim();
+    return answer === correct;
+  };
+
+  const allFilled = sortedBlanks.every((_, idx) => placements[idx] !== undefined);
 
   const handleCheck = () => {
     setShowResults(true);
     const answerList = sortedBlanks.map((blank, idx) => ({
       blankIndex: idx,
-      answer: answers[idx]?.trim() || "",
+      answer: answerForBlank(idx),
       correctAnswer: blank.word,
     }));
     onComplete(answerList);
   };
 
-  const isCorrect = (idx: number) => {
-    if (!showResults) return null;
-    const answer = answers[idx]?.toLowerCase().trim() || "";
-    const correct = sortedBlanks[idx].word.toLowerCase().trim();
-    return answer === correct;
-  };
-
   const correctCount = showResults
     ? sortedBlanks.filter((_, idx) => isCorrect(idx)).length
     : 0;
+  const incorrectCount = showResults ? sortedBlanks.length - correctCount : 0;
 
   return (
     <div className="space-y-6">
@@ -206,21 +271,44 @@ function FillBlanksTask({
             <Sparkles className="h-4 w-4 text-primary" />
             Szóbank
           </CardTitle>
-          <CardDescription>Használd ezeket a szavakat a hiányzó helyek kitöltéséhez</CardDescription>
+          <CardDescription>
+            Húzd a szavakat a szövegben lévő üres helyekre! (Vagy koppints egy szóra, majd az üres helyre.)
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            {[...sortedBlanks]
-              .sort(() => Math.random() - 0.5)
-              .map((blank, idx) => (
-                <Badge
-                  key={idx}
-                  variant="outline"
-                  className="text-sm px-3 py-1.5 font-medium bg-white dark:bg-card shadow-sm"
+            {bank.map((chip) => {
+              const used = chipUsed(chip.id);
+              return (
+                <button
+                  key={chip.id}
+                  type="button"
+                  draggable={!used && !showResults}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData("text/plain", String(chip.id));
+                    e.dataTransfer.effectAllowed = "move";
+                  }}
+                  onClick={() => {
+                    if (used || showResults) return;
+                    setSelectedChip((prev) => (prev === chip.id ? null : chip.id));
+                  }}
+                  disabled={used || showResults}
+                  className={`
+                    inline-flex items-center gap-1.5 rounded-xl border-2 px-3 py-1.5 text-sm font-medium
+                    shadow-sm transition-all select-none
+                    ${used
+                      ? "opacity-40 border-border bg-muted cursor-default"
+                      : selectedChip === chip.id
+                        ? "border-primary ring-2 ring-primary/30 bg-primary/10 cursor-grab"
+                        : "border-border bg-white dark:bg-card cursor-grab hover:border-primary/50 active:cursor-grabbing"
+                    }
+                  `}
                 >
-                  {blank.word}
-                </Badge>
-              ))}
+                  <GripVertical className="h-3.5 w-3.5 opacity-50" />
+                  {chip.word}
+                </button>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
@@ -228,35 +316,44 @@ function FillBlanksTask({
       {/* Story with blanks */}
       <Card>
         <CardContent className="p-6 sm:p-8">
-          <div className="text-base leading-[2.2] whitespace-pre-wrap">
+          <div className="text-base leading-[2.4] whitespace-pre-wrap">
             {segments.map((seg, idx) => {
               if (seg.type === "text") {
                 return <span key={idx}>{seg.content}</span>;
               }
               const blankIdx = seg.blankIndex!;
+              const placedWord = answerForBlank(blankIdx);
               const correct = isCorrect(blankIdx);
               return (
-                <span key={idx} className="inline-block mx-1 align-bottom">
-                  <input
-                    type="text"
-                    value={answers[blankIdx] || ""}
-                    onChange={(e) =>
-                      setAnswers((prev) => ({ ...prev, [blankIdx]: e.target.value }))
-                    }
-                    disabled={showResults}
-                    placeholder="..."
+                <span key={idx} className="inline-block mx-1 align-baseline">
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleBlankClick(blankIdx)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") handleBlankClick(blankIdx);
+                    }}
+                    onDragOver={(e) => {
+                      if (!showResults) e.preventDefault();
+                    }}
+                    onDrop={(e) => handleDrop(blankIdx, e)}
                     className={`
-                      w-24 sm:w-28 border-b-2 bg-transparent text-center text-sm font-medium
-                      focus:outline-none transition-colors px-1 py-0.5
-                      ${
-                        showResults
-                          ? correct
-                            ? "border-green-500 text-green-700 dark:text-green-400"
-                            : "border-red-500 text-red-700 dark:text-red-400"
-                          : "border-primary/40 focus:border-primary"
+                      inline-flex min-w-24 sm:min-w-28 items-center justify-center rounded-lg border-2 border-dashed
+                      px-2 py-0.5 text-sm font-medium text-center transition-colors
+                      ${showResults
+                        ? correct
+                          ? "border-green-500 bg-green-500/10 text-green-700 dark:text-green-400"
+                          : "border-red-500 bg-red-500/10 text-red-700 dark:text-red-400"
+                        : placedWord
+                          ? "border-primary bg-primary/10 text-primary cursor-pointer"
+                          : selectedChip !== null
+                            ? "border-primary/70 bg-primary/5 cursor-pointer animate-pulse"
+                            : "border-primary/40 bg-muted/40 cursor-pointer"
                       }
                     `}
-                  />
+                  >
+                    {placedWord || "..."}
+                  </span>
                   {showResults && !correct && (
                     <span className="text-xs text-green-600 dark:text-green-400 ml-1">
                       ({seg.content})
@@ -275,8 +372,8 @@ function FillBlanksTask({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <Card className={correctCount === sortedBlanks.length ? 
-            "border-green-500/30 bg-green-500/5" : 
+          <Card className={correctCount === sortedBlanks.length ?
+            "border-green-500/30 bg-green-500/5" :
             "border-amber-500/30 bg-amber-500/5"
           }>
             <CardContent className="p-6 text-center">
@@ -284,243 +381,12 @@ function FillBlanksTask({
                 {correctCount === sortedBlanks.length ? "🎉" : "💪"}
               </div>
               <p className="text-lg font-bold">
-                {correctCount} / {sortedBlanks.length} helyes
+                {correctCount} helyes, {incorrectCount} hibás
               </p>
               <p className="text-sm text-muted-foreground mt-1">
                 {correctCount === sortedBlanks.length
                   ? "Tökéletes munka!"
-                  : "Jó munka! Nézd át a piros szavakat."}
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
-      ) : (
-        <div className="flex justify-center">
-          <Button onClick={handleCheck} disabled={!allFilled} size="lg" className="gap-2">
-            <CheckCircle2 className="h-5 w-5" />
-            Ellenőrzés
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ===================
-// Word matching component
-// ===================
-function WordMatchingTask({
-  words,
-  storyContent,
-  onComplete,
-}: {
-  words: string[];
-  storyContent?: string;
-  onComplete: (answers: { word: string; selectedDefinition: string; correctDefinition: string }[]) => void;
-}) {
-  // For a real app you'd fetch translations. Here we use the words themselves
-  // and shuffle them for matching. The student needs to find the correct order.
-  const [shuffledWords] = useState(() => [...words].sort(() => Math.random() - 0.5));
-  const [selected, setSelected] = useState<{ left: number | null; right: number | null }>({
-    left: null,
-    right: null,
-  });
-  const [matches, setMatches] = useState<Map<number, number>>(new Map());
-  const [showResults, setShowResults] = useState(false);
-  const [correctMatches, setCorrectMatches] = useState<Set<number>>(new Set());
-
-  // Create pairs: original order = correct, shuffled = what student sees on right
-  const leftWords = words;
-  const rightWords = shuffledWords;
-
-  const handleLeftClick = (idx: number) => {
-    if (showResults || matches.has(idx)) return;
-    setSelected((prev) => ({ ...prev, left: idx }));
-
-    // If right is already selected, make pair
-    if (selected.right !== null) {
-      const rightIdx = selected.right;
-      if (!Array.from(matches.values()).includes(rightIdx)) {
-        setMatches((prev) => new Map(prev).set(idx, rightIdx));
-        setSelected({ left: null, right: null });
-      }
-    }
-  };
-
-  const handleRightClick = (idx: number) => {
-    if (showResults || Array.from(matches.values()).includes(idx)) return;
-    setSelected((prev) => ({ ...prev, right: idx }));
-
-    // If left is already selected, make pair
-    if (selected.left !== null) {
-      const leftIdx = selected.left;
-      if (!matches.has(leftIdx)) {
-        setMatches((prev) => new Map(prev).set(leftIdx, idx));
-        setSelected({ left: null, right: null });
-      }
-    }
-  };
-
-  const handleUnmatch = (leftIdx: number) => {
-    if (showResults) return;
-    setMatches((prev) => {
-      const next = new Map(prev);
-      next.delete(leftIdx);
-      return next;
-    });
-  };
-
-  const allMatched = matches.size === leftWords.length;
-
-  const handleCheck = () => {
-    setShowResults(true);
-    const correct = new Set<number>();
-    const answerList: { word: string; selectedDefinition: string; correctDefinition: string }[] = [];
-
-    matches.forEach((rightIdx, leftIdx) => {
-      const leftWord = leftWords[leftIdx];
-      const rightWord = rightWords[rightIdx];
-      const isMatch = leftWord === rightWord;
-      if (isMatch) correct.add(leftIdx);
-      answerList.push({
-        word: leftWord,
-        selectedDefinition: rightWord,
-        correctDefinition: leftWord,
-      });
-    });
-
-    setCorrectMatches(correct);
-    onComplete(answerList);
-  };
-
-  const correctCount = correctMatches.size;
-
-  const getLeftColor = (idx: number) => {
-    if (showResults && matches.has(idx)) {
-      return correctMatches.has(idx)
-        ? "border-green-500 bg-green-500/10 text-green-700 dark:text-green-400"
-        : "border-red-500 bg-red-500/10 text-red-700 dark:text-red-400";
-    }
-    if (matches.has(idx)) return "border-primary bg-primary/10 text-primary";
-    if (selected.left === idx) return "border-primary ring-2 ring-primary/30 bg-primary/5";
-    return "border-border hover:border-primary/50 hover:bg-muted/50";
-  };
-
-  const getRightColor = (idx: number) => {
-    const matchedLeft = Array.from(matches.entries()).find(([, v]) => v === idx);
-    if (showResults && matchedLeft) {
-      return correctMatches.has(matchedLeft[0])
-        ? "border-green-500 bg-green-500/10 text-green-700 dark:text-green-400"
-        : "border-red-500 bg-red-500/10 text-red-700 dark:text-red-400";
-    }
-    if (Array.from(matches.values()).includes(idx)) return "border-primary bg-primary/10 text-primary";
-    if (selected.right === idx) return "border-primary ring-2 ring-primary/30 bg-primary/5";
-    return "border-border hover:border-primary/50 hover:bg-muted/50";
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Story content if available */}
-      {storyContent && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-primary" />
-              Történet
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="prose prose-sm max-w-none max-h-48 overflow-y-auto">
-              <p className="whitespace-pre-wrap text-sm leading-relaxed">{storyContent}</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Instructions */}
-      <Card className="border-primary/20 bg-primary/5">
-        <CardContent className="p-4">
-          <p className="text-sm text-center text-muted-foreground">
-            Párosítsd össze a szavakat! Kattints egy szóra a bal oldalon, majd a megfelelő párjára a jobb oldalon.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Matching grid */}
-      <div className="grid grid-cols-2 gap-4 sm:gap-6">
-        {/* Left column */}
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground text-center mb-3">Szavak</p>
-          {leftWords.map((word, idx) => {
-            const matchedRightIdx = matches.get(idx);
-            return (
-              <motion.button
-                key={`left-${idx}`}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => matches.has(idx) ? handleUnmatch(idx) : handleLeftClick(idx)}
-                className={`
-                  w-full px-3 py-2.5 rounded-xl border-2 text-sm font-medium
-                  transition-all cursor-pointer flex items-center justify-between gap-2
-                  ${getLeftColor(idx)}
-                `}
-              >
-                <span className="truncate">{word}</span>
-                {matches.has(idx) && !showResults && (
-                  <XCircle className="h-3.5 w-3.5 shrink-0 opacity-50" />
-                )}
-                {showResults && matches.has(idx) && (
-                  correctMatches.has(idx) ? 
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" /> :
-                    <XCircle className="h-4 w-4 shrink-0 text-red-500" />
-                )}
-              </motion.button>
-            );
-          })}
-        </div>
-
-        {/* Right column */}
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground text-center mb-3">Párok</p>
-          {rightWords.map((word, idx) => (
-            <motion.button
-              key={`right-${idx}`}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => handleRightClick(idx)}
-              disabled={Array.from(matches.values()).includes(idx)}
-              className={`
-                w-full px-3 py-2.5 rounded-xl border-2 text-sm font-medium
-                transition-all cursor-pointer
-                ${getRightColor(idx)}
-                ${Array.from(matches.values()).includes(idx) ? "opacity-60" : ""}
-              `}
-            >
-              <span className="truncate">{word}</span>
-            </motion.button>
-          ))}
-        </div>
-      </div>
-
-      {/* Results */}
-      {showResults ? (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <Card className={correctCount === leftWords.length ? 
-            "border-green-500/30 bg-green-500/5" : 
-            "border-amber-500/30 bg-amber-500/5"
-          }>
-            <CardContent className="p-6 text-center">
-              <div className="text-4xl mb-2">
-                {correctCount === leftWords.length ? "🎉" : "💪"}
-              </div>
-              <p className="text-lg font-bold">
-                {correctCount} / {leftWords.length} helyes
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {correctCount === leftWords.length
-                  ? "Minden szót helyesen párosítottál!"
-                  : "Nézd meg a pirossal jelölt párokat!"}
+                  : "Jó munka! A pirossal jelölt helyeknél zárójelben látod a helyes szót."}
               </p>
             </CardContent>
           </Card>
@@ -530,16 +396,16 @@ function WordMatchingTask({
           <Button
             variant="outline"
             onClick={() => {
-              setMatches(new Map());
-              setSelected({ left: null, right: null });
+              setPlacements({});
+              setSelectedChip(null);
             }}
-            disabled={matches.size === 0}
+            disabled={Object.keys(placements).length === 0}
             className="gap-2"
           >
             <RotateCcw className="h-4 w-4" />
             Újrakezdés
           </Button>
-          <Button onClick={handleCheck} disabled={!allMatched} size="lg" className="gap-2">
+          <Button onClick={handleCheck} disabled={!allFilled} size="lg" className="gap-2">
             <CheckCircle2 className="h-5 w-5" />
             Ellenőrzés
           </Button>
@@ -768,7 +634,7 @@ function AssignmentPageInner({ params }: { params: Promise<{ id: string }> }) {
   const [taskScore, setTaskScore] = useState(0);
   const [taskMaxScore, setTaskMaxScore] = useState(100);
   const [taskCompleted, setTaskCompleted] = useState(false);
-  const [taskAnswers, setTaskAnswers] = useState<any>(null);
+  const [taskAnswers, setTaskAnswers] = useState<Record<string, unknown> | null>(null);
   const timer = useTimer();
 
   useEffect(() => {
@@ -845,23 +711,11 @@ function AssignmentPageInner({ params }: { params: Promise<{ id: string }> }) {
     const correct = answers.filter(
       (a) => a.answer.toLowerCase().trim() === a.correctAnswer.toLowerCase().trim()
     ).length;
-    const score = Math.round((correct / answers.length) * 100);
+    const score = answers.length > 0 ? Math.round((correct / answers.length) * 100) : 0;
     setTaskScore(score);
     setTaskMaxScore(100);
     setTaskCompleted(true);
     setTaskAnswers({ blanks: answers });
-    timer.stop();
-  };
-
-  const handleWordMatchingComplete = (answers: { word: string; selectedDefinition: string; correctDefinition: string }[]) => {
-    const correct = answers.filter(
-      (a) => a.selectedDefinition === a.correctDefinition
-    ).length;
-    const score = Math.round((correct / answers.length) * 100);
-    setTaskScore(score);
-    setTaskMaxScore(100);
-    setTaskCompleted(true);
-    setTaskAnswers({ matches: answers });
     timer.stop();
   };
 
@@ -890,17 +744,18 @@ function AssignmentPageInner({ params }: { params: Promise<{ id: string }> }) {
     try {
       const { client } = await import("@/lib/amplify-client");
 
-      // Use the submitAssignment mutation
+      // The submitAssignment Lambda grades the answers and records both the
+      // submission and the teacher-facing summary used by the statistics.
       const submitMutation = /* GraphQL */ `
         mutation SubmitAssignment(
           $assignmentId: ID!
-          $studentId: ID!
+          $studentEmail: AWSEmail
           $answers: AWSJSON!
           $timeSpentSeconds: Int
         ) {
           submitAssignment(
             assignmentId: $assignmentId
-            studentId: $studentId
+            studentEmail: $studentEmail
             answers: $answers
             timeSpentSeconds: $timeSpentSeconds
           ) {
@@ -917,32 +772,13 @@ function AssignmentPageInner({ params }: { params: Promise<{ id: string }> }) {
         }
       `;
 
-      // Also create a simple submission with email for tracking
-      const createSubmissionMutation = /* GraphQL */ `
-        mutation CreateAssignmentSubmission($input: CreateAssignmentSubmissionInput!) {
-          createAssignmentSubmission(input: $input) {
-            id
-          }
-        }
-      `;
-
-      const now = new Date().toISOString();
-
       await client.graphql({
-        query: createSubmissionMutation,
+        query: submitMutation,
         variables: {
-          input: {
-            assignmentId: id,
-            teacherId: assignment.teacherId,
-            assignmentType: assignment.assignmentType,
-            studentEmail: studentEmail.trim().toLowerCase(),
-            submittedAt: now,
-            status: "submitted",
-            score: taskScore,
-            maxScore: taskMaxScore,
-            timeSpentSeconds: timer.seconds,
-            answers: taskAnswers ? JSON.stringify(taskAnswers) : null,
-          },
+          assignmentId: id,
+          studentEmail: studentEmail.trim().toLowerCase(),
+          answers: JSON.stringify(taskAnswers ?? { completed: true }),
+          timeSpentSeconds: timer.seconds,
         },
         authMode: "apiKey",
       });
@@ -1013,21 +849,21 @@ function AssignmentPageInner({ params }: { params: Promise<{ id: string }> }) {
 
   const getAssignmentTypeLabel = () => {
     switch (assignment.assignmentType) {
-      case "fill_blanks": return "Szókitöltés";
+      case "fill_blanks": return "Hiányzó szavak";
       case "word_matching": return "Szópárosítás";
       case "custom_words": return "Szógyakorlás";
       default: return "Olvasási feladat";
     }
   };
 
-  // Parse blank positions JSON
+  // Parse blank positions JSON and drop malformed entries up front
   const parsedBlanks: BlankPosition[] = (() => {
-    if (!assignment.blankPositions) return [];
+    if (!assignment.blankPositions || !assignment.storyContent) return [];
     try {
       const parsed = typeof assignment.blankPositions === "string"
         ? JSON.parse(assignment.blankPositions)
         : assignment.blankPositions;
-      return Array.isArray(parsed) ? parsed : [];
+      return Array.isArray(parsed) ? sanitizeBlanks(assignment.storyContent, parsed) : [];
     } catch { return []; }
   })();
 
@@ -1176,12 +1012,6 @@ function AssignmentPageInner({ params }: { params: Promise<{ id: string }> }) {
                   content={assignment.storyContent}
                   blanks={parsedBlanks}
                   onComplete={handleFillBlanksComplete}
-                />
-              ) : assignment.assignmentType === "word_matching" && assignment.matchingWords && assignment.matchingWords.length > 0 ? (
-                <WordMatchingTask
-                  words={assignment.matchingWords}
-                  storyContent={assignment.storyContent}
-                  onComplete={handleWordMatchingComplete}
                 />
               ) : assignment.storyContent ? (
                 <BasicReadingTask

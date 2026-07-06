@@ -42,6 +42,53 @@ interface WordDetails {
     usageNotes: string | null;
 }
 
+const STORY_WORD_COUNTS: Record<string, string> = {
+    A1: "350-450",
+    A2: "450-600",
+    B1: "600-750",
+    B2: "750-900",
+    C1: "900-1100",
+    C2: "900-1100",
+};
+
+function escapeRegExp(text: string): string {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Finds every whole-word occurrence of the target words directly in the story
+ * text. The AI-reported offsets are unreliable, so we always recompute them
+ * here — accurate offsets are required for the fill-in-the-blanks assignments.
+ */
+function computeHighlightedWords(
+    content: string,
+    targetWords: string[]
+): Array<{ word: string; offset: number; length: number }> {
+    const highlighted: Array<{ word: string; offset: number; length: number }> = [];
+
+    for (const word of targetWords) {
+        const trimmed = word.trim();
+        if (!trimmed) continue;
+
+        const pattern = new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(trimmed)}(?![\\p{L}\\p{N}])`, "giu");
+        let match: RegExpExecArray | null;
+        while ((match = pattern.exec(content)) !== null) {
+            highlighted.push({
+                word: match[0],
+                offset: match.index,
+                length: match[0].length,
+            });
+        }
+    }
+
+    return highlighted.sort((a, b) => a.offset - b.offset);
+}
+
+function findMissingWords(content: string, words: string[]): string[] {
+    const lowered = content.toLowerCase();
+    return words.filter((word) => !lowered.includes(word.trim().toLowerCase()));
+}
+
 async function generateStoryWithAI(input: SanitizedInput): Promise<GeneratedStory> {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error("GEMINI_API_KEY environment variable not set");
@@ -49,8 +96,9 @@ async function generateStoryWithAI(input: SanitizedInput): Promise<GeneratedStor
     const ai = new GoogleGenAI({ apiKey });
     const { level, age, unknownWords, requiredWords, excludedWords, mode } = input;
 
-    const targetWords = [...new Set([...unknownWords, ...requiredWords])];
+    const targetWords = [...new Set([...unknownWords, ...requiredWords].map((w) => w.trim()).filter(Boolean))];
     const avoidWords = excludedWords.length > 0 ? excludedWords : [];
+    const wordCount = STORY_WORD_COUNTS[level] ?? "600-800";
 
     const ageContext = age <= 10
         ? "a young child who loves adventures, animals, and fantasy"
@@ -61,11 +109,11 @@ async function generateStoryWithAI(input: SanitizedInput): Promise<GeneratedStor
     const modeContext = mode === "placement"
         ? "This is a placement test story to assess vocabulary level."
         : mode === "teacher"
-            ? "This is a teacher-assigned story for classroom learning."
+            ? "This is a teacher-assigned story for classroom learning. The teacher's requirements below are STRICT and must all be satisfied."
             : "This is a personalized story for enjoyment and immersion.";
 
     const topicPrompt = input.topic
-        ? `Topic: Write a story specifically about "${input.topic}".`
+        ? `Topic (MANDATORY): The story MUST be about "${input.topic}". The plot, setting and vocabulary must clearly revolve around this theme from beginning to end.`
         : "Scenario: Choose a completely RANDOM and CREATIVE scenario (e.g., sci-fi, mystery, fantasy, slice of life, historical).";
 
     const difficultyHint = input.difficulty === "beginner"
@@ -76,63 +124,58 @@ async function generateStoryWithAI(input: SanitizedInput): Promise<GeneratedStor
                 ? "Feel free to use sophisticated vocabulary, complex sentence structures, and nuanced language."
                 : "Adjust vocabulary naturally for the CEFR level.";
 
-    const prompt = `You are a creative storyteller writing a captivating bedtime story for a ${age}-year-old reader at CEFR level ${level}.
+    const buildPrompt = (missingWords: string[]) => `You are a creative storyteller writing a captivating story for a ${age}-year-old reader at CEFR level ${level}.
 
 ${modeContext}
 ${topicPrompt}
 ${difficultyHint}
 
-**Requirements:**
+**Requirements (ALL are mandatory):**
 - Target audience: ${ageContext}
 - CEFR Level: ${level}
-- Story length: ~1000 words (Keep it concise but engaging)
-- Must naturally include these target words multiple times: ${targetWords.join(", ")}
-- Repeat each target word 2-3 times throughout the story in different contexts
-
-${avoidWords.length > 0 ? `- AVOID these words: ${avoidWords.join(", ")}` : ""}
+- Story length: ${wordCount} words. Do NOT shorten the story below this range.
+${targetWords.length > 0 ? `- The story MUST contain every one of these target words, each used at least twice in natural contexts: ${targetWords.join(", ")}` : ""}
+${avoidWords.length > 0 ? `- The story must NEVER use these words: ${avoidWords.join(", ")}` : ""}
+${missingWords.length > 0 ? `- IMPORTANT: your previous attempt left out these words. This time the story MUST include each of them: ${missingWords.join(", ")}` : ""}
 
 **Story Guidelines:**
-- **Style:** Bedtime story / Fiction. NOT an educational text or lesson.
+- **Style:** Fiction. NOT an educational text or lesson.
 - **Scenario:** ${input.topic ? `Focus strictly on the requested topic: "${input.topic}".` : "Be creative and unique."}
-- **Tone:** Relaxing, engaging, and immersive.
-- **Structure:** Create a rich narrative with a clear beginning, middle, and end.
+- **Tone:** Engaging and immersive.
+- **Structure:** A rich narrative with a clear beginning, middle, and end.
 - **Age Appropriateness:**
-    - If the user is an adult (>18), write a mature, interesting story suitable for adults.
-    - If the user is a child, keep it whimsical and fun.
-- **Vocabulary:** Naturally weave target words into the story context. Do not force them.
-- **Length:** Aim for ~1000 words.
+    - If the reader is an adult (>18), write a mature, interesting story suitable for adults.
+    - If the reader is a child, keep it whimsical and fun.
 
 **Format your response as JSON:**
 {
   "title": "Engaging story title (5-7 words)",
-  "content": "The complete story text with proper paragraphs",
-  "highlightedWords": [
-    {"word": "target word from the story", "offset": character_position, "length": word_length}
-  ]
+  "content": "The complete story text with proper paragraphs"
 }
 
-Important:
-1. In highlightedWords, include ALL occurrences of the NEW/UNKNOWN words (${targetWords.join(", ")})
-2. Find their exact positions in the content text for each occurrence
-3. DO NOT use markdown formatting (**, *, etc.) in the story content - write plain text only`;
+Important: DO NOT use markdown formatting (**, *, etc.) in the story content - write plain text only.`;
 
-    try {
-        console.log("[generateStoryWithAI] Calling Gemini API...");
+    const MAX_ATTEMPTS = 2;
+    let missingFromPrevious: string[] = [];
+    let lastResult: GeneratedStory | null = null;
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        console.log(`[generateStoryWithAI] Calling Gemini API (attempt ${attempt}/${MAX_ATTEMPTS})...`);
         const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",
-            contents: prompt,
+            contents: buildPrompt(missingFromPrevious),
             config: {
                 responseMimeType: "application/json",
-                temperature: 1.0,
+                temperature: attempt === 1 ? 1.0 : 0.7,
                 topP: 0.95,
                 topK: 40,
+                maxOutputTokens: 8192,
                 thinkingConfig: {
                     thinkingBudget: 0,
                 },
             },
         });
 
-        console.log("[generateStoryWithAI] Response received");
         const text = response.text;
         if (!text) throw new Error("No text received from AI response");
 
@@ -140,49 +183,26 @@ Important:
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (!jsonMatch) throw new Error("Failed to parse JSON from AI response");
 
-        const parsed = JSON.parse(jsonMatch[0]) as GeneratedStory;
+        const parsed = JSON.parse(jsonMatch[0]) as { title?: string; content?: string };
         if (!parsed.title || !parsed.content) throw new Error("Invalid story structure from AI");
 
-        if (!Array.isArray(parsed.highlightedWords)) {
-            parsed.highlightedWords = [];
+        const highlightedWords = computeHighlightedWords(parsed.content, targetWords);
+        lastResult = { title: parsed.title, content: parsed.content, highlightedWords };
+
+        const missing = findMissingWords(parsed.content, targetWords);
+        if (missing.length === 0) {
+            console.log("[generateStoryWithAI] Story generated successfully:", parsed.title);
+            return lastResult;
         }
 
-        console.log("[generateStoryWithAI] Story generated successfully:", parsed.title);
-        return parsed;
-    } catch (error) {
-        console.error("[generateStoryWithAI] Gemini API error:", error);
-        console.log("[generateStoryWithAI] Using fallback story");
-        return generateFallbackStory(input);
+        console.warn(`[generateStoryWithAI] Attempt ${attempt} is missing required words:`, missing);
+        missingFromPrevious = missing;
     }
-}
 
-function generateFallbackStory(input: SanitizedInput): GeneratedStory {
-    const { level, unknownWords, requiredWords } = input;
-    const targetWords = [...new Set([...unknownWords, ...requiredWords])];
-
-    const title = `Learning Adventure (${level})`;
-    const content = `Once upon a time, there was a curious learner who loved discovering new words and improving their English skills every single day.
-
-Every morning, they would wake up excited to practice. They knew that learning ${targetWords.slice(0, 3).join(", ")} ${targetWords.length > 3 ? "and many other words" : ""} would help them communicate better. The learner understood that each word had its own special meaning and purpose.
-
-During the day, they would read books, listen to stories, and talk with friends. When they encountered ${targetWords[0] || "new words"}, they would write them down in a special notebook. This notebook became their treasure chest of vocabulary.
-
-The learner discovered that using ${targetWords[1] || "these words"} in sentences made them easier to remember. They practiced speaking aloud, creating their own stories, and sharing them with others. Sometimes the stories were funny, and sometimes they were serious, but they were always interesting.
-
-As weeks passed, the learner noticed something wonderful. The words that once seemed difficult, like ${targetWords[2] || "challenging vocabulary"}, now felt natural. They could use them without thinking too hard. This progress made them feel proud and motivated to continue learning.
-
-Their teacher was impressed with how much they had improved. Their friends enjoyed listening to their stories. The learner realized that patience and daily practice were the keys to success. Every new word was like a stepping stone, helping them reach new heights in their language journey.
-
-With confidence growing stronger each day, the learner looked forward to discovering even more words and becoming an excellent English speaker.
-
-The end.`;
-
-    const highlightedWords = targetWords.map(word => {
-        const offset = content.indexOf(word);
-        return offset >= 0 ? { word, offset, length: word.length } : null;
-    }).filter((h): h is { word: string; offset: number; length: number } => h !== null);
-
-    return { title, content, highlightedWords };
+    // Accept the best attempt even if a couple of required words are missing;
+    // a mostly-correct themed story is better than failing the whole job.
+    console.warn("[generateStoryWithAI] Returning story despite missing words:", missingFromPrevious);
+    return lastResult!;
 }
 
 async function translateWithAI(

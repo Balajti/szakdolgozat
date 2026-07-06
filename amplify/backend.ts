@@ -219,22 +219,9 @@ backend.processGenerationJob.resources.lambda.addToRolePolicy(
 );
 
 // Post-confirmation trigger is already wired via defineAuth({ triggers: { postConfirmation } })
-// in auth/resource.ts — no need for manual addPropertyOverride or addPermission here.
-
-
-
-
-
-
-
-// 4. Grant DynamoDB Permissions using Wildcard (Break IAM Dependency)
-// We use a wildcard for the table name to avoid referencing the Table ARN directly
-backend.postConfirmation.resources.lambda.addToRolePolicy(
-  new PolicyStatement({
-    actions: ['dynamodb:PutItem'],
-    resources: ['arn:aws:dynamodb:*:*:table/*'],
-  })
-);
+// in auth/resource.ts. Its data access (profile creation) is granted through
+// `allow.resource(postConfirmation)` in the data schema, which avoids a circular
+// dependency between the auth and data stacks.
 
 
 

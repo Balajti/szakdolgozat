@@ -36,6 +36,7 @@ import type { Assignment, ClassSummary, TeacherProfile } from "@/lib/types";
 import { RequireAuth } from "@/components/providers/require-auth";
 import { LogoutButton } from "@/components/ui/logout-button";
 import { ClassesManagement } from "@/components/teacher/classes-management";
+import { AssignmentAnalytics } from "@/components/teacher/assignment-analytics";
 import { useAvatarUrl } from "@/hooks/use-avatar-url";
 
 const assignmentStatusLabels: Record<Assignment["status"], string> = {
@@ -476,15 +477,14 @@ function TeacherPortalPageInner() {
             <div>
               <h2 className="text-3xl font-display font-bold mb-2">Elemzések</h2>
               <p className="text-muted-foreground">
-                Részletes statisztikák az osztályok teljesítményéről.
+                Részletes statisztikák a feladatok teljesítéséről.
               </p>
             </div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Elemzések</CardTitle>
-                <CardDescription>Részletes statisztikák az osztályok teljesítményéről.</CardDescription>
-              </CardHeader>
-            </Card>
+            <AssignmentAnalytics
+              teacherId={profile.id}
+              assignments={assignments}
+              submissions={data?.submissions ?? []}
+            />
           </div>
         )}
 

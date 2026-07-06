@@ -17,6 +17,7 @@ import { adjustDifficulty } from '../functions/adjust-difficulty/resource';
 import { trackVocabularyProgress } from '../functions/track-vocabulary-progress/resource';
 import { cleanupOldStories } from '../functions/cleanup-old-stories/resource';
 import { publishResults } from '../functions/publish-results/resource';
+import { postConfirmation } from '../functions/post-confirmation/resource';
 
 const schema = a.schema({
   WordMastery: a.enum(['known', 'learning', 'unknown']),
@@ -629,7 +630,8 @@ const schema = a.schema({
     .mutation()
     .arguments({
       assignmentId: a.id().required(),
-      studentId: a.id().required(),
+      studentId: a.id(),
+      studentEmail: a.email(),
       answers: a.json().required(),
       timeSpentSeconds: a.integer(),
     })
@@ -777,7 +779,11 @@ const schema = a.schema({
     .arguments({ jobId: a.string().required() })
     .authorization((allow) => [allow.authenticated(), allow.publicApiKey()])
     .handler(a.handler.function(publishResults)),
-});
+}).authorization((allow) => [
+  // Lets the Cognito post-confirmation trigger create the Student/TeacherProfile
+  // records through AppSync without creating a circular auth<->data stack dependency.
+  allow.resource(postConfirmation),
+]);
 
 export type Schema = ClientSchema<typeof schema>;
 

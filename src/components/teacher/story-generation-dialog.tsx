@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Loader2, Sparkles, BookOpen, List, Languages, CheckCircle2, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Loader2, Sparkles, BookOpen, List, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -60,28 +60,118 @@ const ASSIGNMENT_TYPES = [
   {
     value: "basic",
     label: "Történet olvasása",
-    description: "Egyszerű történet generálása a megadott szinten, kiemelt szavakkal.",
+    description: "Egyszerű történet generálása a megadott témában és szinten.",
     icon: BookOpen,
   },
   {
     value: "fill_blanks",
-    label: "Lyukas szöveg",
-    description: "A tanulónak be kell írnia a hiányzó szavakat a szövegbe.",
+    label: "Hiányzó szavas történet",
+    description:
+      "A történetből szavak hiányoznak, a tanuló húzza őket a helyükre. A megadott szavak biztosan a hiányzók közé kerülnek.",
     icon: List,
   },
-  {
-    value: "word_matching",
-    label: "Szópárosító",
-    description: "A kiemelt szavak és jelentésük összepárosítása.",
-    icon: Languages,
-  },
 ];
+
+const MISSING_WORD_OPTIONS = [3, 4, 5, 6, 8, 10, 12, 15];
 
 const GENERATION_STEPS = [
   { key: "starting", label: "Generálás indítása..." },
   { key: "generating", label: "AI történet írása folyamatban..." },
   { key: "processing", label: "Szavak feldolgozása..." },
 ];
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function findWordOccurrences(content: string, word: string): { offset: number; length: number }[] {
+  const trimmed = word.trim();
+  if (!trimmed) return [];
+  const results: { offset: number; length: number }[] = [];
+  try {
+    const pattern = new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(trimmed)}(?![\\p{L}\\p{N}])`, "giu");
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(content)) !== null) {
+      results.push({ offset: match.index, length: match[0].length });
+    }
+  } catch {
+    // Very old browsers without lookbehind support: fall back to simple search
+    let idx = content.toLowerCase().indexOf(trimmed.toLowerCase());
+    while (idx !== -1) {
+      results.push({ offset: idx, length: trimmed.length });
+      idx = content.toLowerCase().indexOf(trimmed.toLowerCase(), idx + trimmed.length);
+    }
+  }
+  return results;
+}
+
+/**
+ * Picks the words that will be blanked out of the story.
+ * Priority: 1) the teacher's own words (always blanked), 2) the AI's
+ * theme/target words, 3) other meaningful words from the story — until
+ * the requested number of blanks is reached.
+ */
+function buildBlankPositions(
+  content: string,
+  highlightedWords: HighlightedWord[],
+  teacherWords: string[],
+  count: number
+): HighlightedWord[] {
+  const blanks: HighlightedWord[] = [];
+  const usedRanges: Array<[number, number]> = [];
+  const usedWords = new Set<string>();
+
+  const tryAddWord = (word: string): boolean => {
+    const key = word.trim().toLowerCase();
+    if (!key || usedWords.has(key)) return false;
+
+    const occurrences = findWordOccurrences(content, word);
+    const spot = occurrences.find(
+      (o) => !usedRanges.some(([start, end]) => o.offset < end && o.offset + o.length > start)
+    );
+    if (!spot) return false;
+
+    blanks.push({
+      word: content.substring(spot.offset, spot.offset + spot.length),
+      offset: spot.offset,
+      length: spot.length,
+    });
+    usedRanges.push([spot.offset, spot.offset + spot.length]);
+    usedWords.add(key);
+    return true;
+  };
+
+  // 1. The teacher's words are always among the missing ones
+  teacherWords.forEach(tryAddWord);
+  const target = Math.max(count, blanks.length);
+
+  // 2. Theme/target words highlighted by the AI
+  const uniqueHighlighted = Array.from(new Set(highlightedWords.map((h) => h.word)));
+  for (const word of uniqueHighlighted) {
+    if (blanks.length >= target) break;
+    tryAddWord(word);
+  }
+
+  // 3. Fall back to other meaningful words from the story text
+  if (blanks.length < target) {
+    const candidates = Array.from(
+      new Set(
+        content
+          .replace(/[^\p{L}\s'-]/gu, " ")
+          .split(/\s+/)
+          .filter((w) => w.length >= 5)
+          .map((w) => w.toLowerCase())
+      )
+    ).sort(() => Math.random() - 0.5);
+
+    for (const candidate of candidates) {
+      if (blanks.length >= target) break;
+      tryAddWord(candidate);
+    }
+  }
+
+  return blanks.sort((a, b) => a.offset - b.offset);
+}
 
 export function StoryGenerationDialog({
   open,
@@ -94,47 +184,50 @@ export function StoryGenerationDialog({
   const [assignmentType, setAssignmentType] = useState("basic");
   const [topic, setTopic] = useState("");
   const [customWords, setCustomWords] = useState("");
+  const [missingWordCount, setMissingWordCount] = useState(8);
   const [generationStep, setGenerationStep] = useState(0);
-
-  const [blankRatio, setBlankRatio] = useState(0.3);
-  const [pairCount, setPairCount] = useState(8);
 
   // Watch for result from async generation
   useEffect(() => {
     if (result?.story) {
       const storyData = result.story;
+      const highlightedWords = storyData.highlightedWords || [];
 
-      // Process based on assignment type
-      const baseAssignment = {
+      const teacherWords = customWords
+        .split(",")
+        .map((w) => w.trim())
+        .filter((w) => w.length > 0);
+
+      let processedAssignment: GeneratedAssignment = {
         title: storyData.title,
         content: storyData.content,
         level,
         assignmentType,
+        highlightedWords,
       };
 
-      let processedAssignment: GeneratedAssignment;
-      const highlightedWords = storyData.highlightedWords || [];
-
-      if (assignmentType === "basic") {
-        processedAssignment = {
-          ...baseAssignment,
+      if (assignmentType === "fill_blanks") {
+        const blanks = buildBlankPositions(
+          storyData.content,
           highlightedWords,
-        };
-      } else if (assignmentType === "fill_blanks") {
-        const blanks = processBlankPositions(storyData.content, highlightedWords, blankRatio);
+          teacherWords,
+          missingWordCount
+        );
+
+        if (blanks.length === 0) {
+          toast({
+            title: "Hiba",
+            description: "Nem sikerült kihagyható szavakat találni a történetben. Próbáld újra.",
+            variant: "destructive",
+          });
+          reset();
+          return;
+        }
+
         processedAssignment = {
-          ...baseAssignment,
+          ...processedAssignment,
           blankPositions: blanks,
         };
-      } else if (assignmentType === "word_matching") {
-        const matchingWords = extractMatchingWords(highlightedWords, pairCount);
-        processedAssignment = {
-          ...baseAssignment,
-          matchingWords,
-          highlightedWords,
-        };
-      } else {
-        processedAssignment = baseAssignment;
       }
 
       onGenerated(processedAssignment);
@@ -156,7 +249,7 @@ export function StoryGenerationDialog({
     if (generationError) {
       setGenerationStep(0);
       toast({
-        title: "Hiba",
+        title: "Hiba a generálás során",
         description: "Nem sikerült generálni a történetet. Próbáld újra.",
         variant: "destructive",
       });
@@ -228,33 +321,10 @@ export function StoryGenerationDialog({
     }
   };
 
-  const processBlankPositions = (content: string, highlightedWords: HighlightedWord[], ratio: number): HighlightedWord[] => {
-    if (!highlightedWords || highlightedWords.length === 0) return [];
-
-    // Calculate number of blanks based on ratio
-    const numBlanks = Math.max(
-      3,
-      Math.floor(highlightedWords.length * ratio)
-    );
-
-    const shuffled = [...highlightedWords].sort(() => Math.random() - 0.5);
-    const selected = shuffled.slice(0, numBlanks);
-
-    return selected.map((word) => ({
-      word: word.word,
-      offset: word.offset,
-      length: word.length,
-    }));
-  };
-
-  const extractMatchingWords = (highlightedWords: HighlightedWord[], count: number): string[] => {
-    if (!highlightedWords || highlightedWords.length === 0) return [];
-
-    // Select words for matching based on count
-    const numWords = Math.min(count, Math.max(4, highlightedWords.length));
-    const shuffled = [...highlightedWords].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, numWords).map((w) => w.word);
-  };
+  const teacherWordCount = customWords
+    .split(",")
+    .map((w) => w.trim())
+    .filter((w) => w.length > 0).length;
 
   return (
     <Dialog open={open} onOpenChange={(newOpen) => {
@@ -315,7 +385,7 @@ export function StoryGenerationDialog({
               </div>
 
               <p className="text-xs text-muted-foreground text-center">
-                Ez 15-45 másodpercet vehet igénybe...
+                Ez akár 1-2 percet is igénybe vehet...
               </p>
             </motion.div>
           ) : (
@@ -332,7 +402,9 @@ export function StoryGenerationDialog({
                     <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
                     <div className="text-sm">
                       <p className="font-medium text-destructive">Generálási hiba</p>
-                      <p className="text-destructive/80 mt-1">{generationError}</p>
+                      <p className="text-destructive/80 mt-1">
+                        Valami hiba történt, a történet nem készült el. Próbáld újra!
+                      </p>
                     </div>
                   </div>
                 )}
@@ -390,55 +462,6 @@ export function StoryGenerationDialog({
                   </div>
                 </div>
 
-                {/* Dynamic Fields based on Assignment Type */}
-                {assignmentType === "fill_blanks" && (
-                  <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
-                    <div className="space-y-2">
-                      <Label>Hiányzó szavak aránya</Label>
-                      <div className="flex items-center gap-4">
-                        <Input
-                          type="range"
-                          min="0.1"
-                          max="0.8"
-                          step="0.1"
-                          value={blankRatio}
-                          onChange={(e) => setBlankRatio(parseFloat(e.target.value))}
-                          className="flex-1"
-                        />
-                        <span className="w-12 text-right font-medium">
-                          {Math.round(blankRatio * 100)}%
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        A kiemelt szavak hány százaléka legyen üres hely.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {assignmentType === "word_matching" && (
-                  <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
-                    <div className="space-y-2">
-                      <Label htmlFor="pair-count">Párok száma</Label>
-                      <Select value={String(pairCount)} onValueChange={(v) => setPairCount(parseInt(v))}>
-                        <SelectTrigger id="pair-count">
-                          <SelectValue placeholder="Válassz darabszámot" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[4, 6, 8, 10, 12, 15].map((num) => (
-                            <SelectItem key={num} value={String(num)}>
-                              {num} pár
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">
-                        Hány szópárt kelljen megtalálni a feladatban.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
                 {/* Topic */}
                 <div className="space-y-2">
                   <Label htmlFor="topic">Téma (opcionális)</Label>
@@ -450,13 +473,13 @@ export function StoryGenerationDialog({
                     maxLength={100}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Ha üresen hagyod, az AI véletlenszerű témát választ.
+                    A történet erről a témáról fog szólni. Ha üresen hagyod, az AI véletlenszerű témát választ.
                   </p>
                 </div>
 
                 {/* Custom Words */}
                 <div className="space-y-2">
-                  <Label htmlFor="custom-words">Egyedi szavak (opcionális)</Label>
+                  <Label htmlFor="custom-words">Kötelező szavak (opcionális)</Label>
                   <Textarea
                     id="custom-words"
                     value={customWords}
@@ -466,9 +489,42 @@ export function StoryGenerationDialog({
                     maxLength={500}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Az AI ezeket a szavakat fogja beépíteni a történetbe.
+                    {assignmentType === "fill_blanks"
+                      ? "Ezek a szavak biztosan szerepelni fognak a történetben, és a hiányzó szavak közé kerülnek."
+                      : "Az AI ezeket a szavakat beépíti a történetbe."}
                   </p>
                 </div>
+
+                {/* Missing word count for fill_blanks */}
+                {assignmentType === "fill_blanks" && (
+                  <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+                    <div className="space-y-2">
+                      <Label htmlFor="missing-count">Hiányzó szavak száma</Label>
+                      <Select
+                        value={String(missingWordCount)}
+                        onValueChange={(v) => setMissingWordCount(parseInt(v))}
+                      >
+                        <SelectTrigger id="missing-count">
+                          <SelectValue placeholder="Válassz darabszámot" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MISSING_WORD_OPTIONS.map((num) => (
+                            <SelectItem key={num} value={String(num)}>
+                              {num} szó
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {teacherWordCount > 0 && teacherWordCount < missingWordCount
+                          ? `A megadott ${teacherWordCount} szó mellé további ${missingWordCount - teacherWordCount} szót a téma alapján választ a rendszer.`
+                          : teacherWordCount >= missingWordCount && teacherWordCount > 0
+                            ? `Mind a ${teacherWordCount} megadott szó hiányozni fog a történetből.`
+                            : "A hiányzó szavakat a történet témájához illő szavak közül választja a rendszer."}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Info Card */}
                 <Card className="bg-muted/50">
@@ -479,7 +535,7 @@ export function StoryGenerationDialog({
                         <p className="font-medium text-foreground mb-1">AI Generálás</p>
                         <p>
                           A Gemini AI egy eredeti, érdekes történetet fog készíteni a megadott
-                          paraméterek alapján. A generálás 15-45 másodpercet vesz igénybe.
+                          paraméterek alapján. A generálás akár 1-2 percet is igénybe vehet.
                         </p>
                       </div>
                     </div>

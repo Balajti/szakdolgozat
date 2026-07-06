@@ -49,6 +49,11 @@ interface UseAsyncStoryGenerationReturn {
     onComplete: (callback: (storyId: string) => void) => void; // Register callback for when generation completes
 }
 
+// Generous upper bound: the backend Lambda has 5 minutes; if no result arrives
+// by then the job is considered lost and the user gets an error instead of an
+// endless spinner.
+const GENERATION_TIMEOUT_MS = 5 * 60 * 1000;
+
 export function useAsyncStoryGeneration(): UseAsyncStoryGenerationReturn {
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -56,6 +61,14 @@ export function useAsyncStoryGeneration(): UseAsyncStoryGenerationReturn {
     const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null);
     const currentJobIdRef = useRef<string | null>(null);
     const onCompleteCallbackRef = useRef<((storyId: string) => void) | null>(null);
+    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const clearGenerationTimeout = useCallback(() => {
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+        }
+    }, []);
 
     // Cleanup subscription on unmount
     useEffect(() => {
@@ -63,6 +76,10 @@ export function useAsyncStoryGeneration(): UseAsyncStoryGenerationReturn {
             if (subscriptionRef.current) {
                 subscriptionRef.current.unsubscribe();
                 subscriptionRef.current = null;
+            }
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+                timeoutRef.current = null;
             }
         };
     }, []);
@@ -75,9 +92,10 @@ export function useAsyncStoryGeneration(): UseAsyncStoryGenerationReturn {
             subscriptionRef.current.unsubscribe();
             subscriptionRef.current = null;
         }
+        clearGenerationTimeout();
         currentJobIdRef.current = null;
         onCompleteCallbackRef.current = null;
-    }, []);
+    }, [clearGenerationTimeout]);
 
     const onComplete = useCallback((callback: (storyId: string) => void) => {
         onCompleteCallbackRef.current = callback;
@@ -135,6 +153,18 @@ export function useAsyncStoryGeneration(): UseAsyncStoryGenerationReturn {
             const jobId = response.data.startStoryGeneration.jobId;
             currentJobIdRef.current = jobId;
 
+            // Watchdog: fail loudly if no completion/failure event ever arrives
+            clearGenerationTimeout();
+            timeoutRef.current = setTimeout(() => {
+                if (currentJobIdRef.current !== jobId) return;
+                setError('A generálás túllépte az időkorlátot. Kérlek, próbáld újra.');
+                setIsGenerating(false);
+                if (subscriptionRef.current) {
+                    subscriptionRef.current.unsubscribe();
+                    subscriptionRef.current = null;
+                }
+            }, GENERATION_TIMEOUT_MS);
+
             // Subscribe to updates for this job
             const subscriptionQuery = /* GraphQL */ `
         subscription OnStoryGenerationUpdate($jobId: String!) {
@@ -176,6 +206,7 @@ export function useAsyncStoryGeneration(): UseAsyncStoryGenerationReturn {
                     if (update.jobId !== currentJobIdRef.current) return;
 
                     if (update.status === 'completed' && update.story) {
+                        clearGenerationTimeout();
                         setResult({
                             story: update.story,
                             newWords: update.newWords || [],
@@ -194,6 +225,7 @@ export function useAsyncStoryGeneration(): UseAsyncStoryGenerationReturn {
                             subscriptionRef.current = null;
                         }
                     } else if (update.status === 'failed') {
+                        clearGenerationTimeout();
                         setError(update.error || 'Story generation failed');
                         setIsGenerating(false);
 
@@ -207,6 +239,7 @@ export function useAsyncStoryGeneration(): UseAsyncStoryGenerationReturn {
                 },
                 error: (err: any) => {
                     console.error('Subscription error:', err);
+                    clearGenerationTimeout();
                     setError('Subscription error: ' + (err.message || 'Unknown error'));
                     setIsGenerating(false);
 
@@ -222,11 +255,12 @@ export function useAsyncStoryGeneration(): UseAsyncStoryGenerationReturn {
             return jobId;
         } catch (err: any) {
             console.error('Error starting story generation:', err);
+            clearGenerationTimeout();
             setError(err.message || 'Failed to start story generation');
             setIsGenerating(false);
             throw err;
         }
-    }, []);
+    }, [clearGenerationTimeout]);
 
     return {
         generateStory,

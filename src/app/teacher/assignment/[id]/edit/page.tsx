@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { use, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import {
@@ -46,7 +46,8 @@ interface Assignment {
     matchingWords?: string[];
 }
 
-function AssignmentEditPageInner({ params }: { params: { id: string } }) {
+function AssignmentEditPageInner({ params }: { params: Promise<{ id: string }> }) {
+    const { id: assignmentId } = use(params);
     const router = useRouter();
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
@@ -65,7 +66,7 @@ function AssignmentEditPageInner({ params }: { params: { id: string } }) {
     useEffect(() => {
         loadAssignment();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [params.id]);
+    }, [assignmentId]);
 
     const loadAssignment = async () => {
         try {
@@ -89,7 +90,7 @@ function AssignmentEditPageInner({ params }: { params: { id: string } }) {
 
             const response = (await client.graphql({
                 query: getAssignmentQuery,
-                variables: { id: params.id },
+                variables: { id: assignmentId },
             })) as { data?: { getAssignment?: Assignment } };
 
             const assignmentData = response.data?.getAssignment;
@@ -110,7 +111,7 @@ function AssignmentEditPageInner({ params }: { params: { id: string } }) {
                     description: "Csak piszkozat státuszú feladatokat lehet szerkeszteni.",
                     variant: "destructive",
                 });
-                router.push(`/teacher/assignment/${params.id}`);
+                router.push(`/teacher/assignment/${assignmentId}`);
                 return;
             }
 
@@ -199,7 +200,7 @@ function AssignmentEditPageInner({ params }: { params: { id: string } }) {
                 query: updateAssignmentMutation,
                 variables: {
                     input: {
-                        id: params.id,
+                        id: assignmentId,
                         title: formData.title,
                         storyContent: formData.content,
                         level: formData.level,
@@ -441,7 +442,7 @@ function AssignmentEditPageInner({ params }: { params: { id: string } }) {
     );
 }
 
-export default function AssignmentEditPage({ params }: { params: { id: string } }) {
+export default function AssignmentEditPage({ params }: { params: Promise<{ id: string }> }) {
     return (
         <RequireAuth role="teacher">
             <AssignmentEditPageInner params={params} />
