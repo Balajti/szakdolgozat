@@ -56,6 +56,7 @@ export interface StudentProfile {
   level: string;
   streak: number;
   vocabularyCount: number;
+  totalStoriesRead?: number | null;
   achievements: Achievement[];
   words: Word[];
   stories: Story[];

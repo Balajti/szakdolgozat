@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
+import { TextToSpeech } from "@/components/common/text-to-speech";
 
 interface WordTranslation {
   word: string;
@@ -277,10 +278,13 @@ export default function InteractiveStoryReader({
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-md w-full h-[92vh] overflow-y-auto sm:max-w-lg sm:h-auto sm:max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span className="capitalize">{selectedWord}</span>
+            <DialogTitle className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2 min-w-0">
+                <span className="capitalize truncate">{selectedWord}</span>
+                {selectedWord && <TextToSpeech text={selectedWord} language="en-US" size="sm" />}
+              </span>
               {translation && (
-                <Badge variant="outline" className="ml-2">
+                <Badge variant="outline" className="ml-2 shrink-0">
                   {translation.sourceLanguage} → {translation.targetLanguage}
                 </Badge>
               )}
@@ -343,7 +347,10 @@ export default function InteractiveStoryReader({
                 {/* Example Sentence with Translation */}
                 {translation.exampleSentence && (
                   <div className="space-y-2">
-                    <p className="text-sm font-semibold text-foreground">Példamondat</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground">Példamondat</p>
+                      <TextToSpeech text={translation.exampleSentence} language="en-US" size="sm" />
+                    </div>
                     <div className="border-l-4 border-primary/40 pl-4 space-y-2">
                       <p className="text-base italic text-foreground">
                         {translation.exampleSentence}

@@ -3,21 +3,21 @@ import { getDBClient } from '../shared/dynamodb-client';
 
 // Badge definitions with unlock criteria
 const BADGES = [
-  { type: '7-day-streak', title: '7-Day Streak', description: 'Study for 7 days in a row', icon: '🔥', target: 7 },
-  { type: '30-day-streak', title: '30-Day Streak', description: 'Study for 30 days in a row', icon: '🌟', target: 30 },
-  { type: '100-words', title: '100 Words Mastered', description: 'Master 100 words', icon: '📚', target: 100 },
-  { type: '500-words', title: '500 Words Mastered', description: 'Master 500 words', icon: '🎓', target: 500 },
-  { type: '1000-words', title: '1000 Words Mastered', description: 'Master 1000 words', icon: '🏆', target: 1000 },
-  { type: '10-stories', title: '10 Stories Read', description: 'Read 10 stories', icon: '📖', target: 10 },
-  { type: '50-stories', title: '50 Stories Read', description: 'Read 50 stories', icon: '📚', target: 50 },
-  { type: '100-stories', title: '100 Stories Read', description: 'Read 100 stories', icon: '🎯', target: 100 },
-  { type: 'first-assignment', title: 'First Assignment', description: 'Complete your first assignment', icon: '✅', target: 1 },
-  { type: '10-assignments', title: '10 Assignments', description: 'Complete 10 assignments', icon: '💯', target: 10 },
-  { type: '50-assignments', title: '50 Assignments', description: 'Complete 50 assignments', icon: '🌟', target: 50 },
-  { type: 'perfect-score', title: 'Perfect Score', description: 'Get 100% on any assignment', icon: '🏅', target: 1 },
-  { type: '10-perfect-scores', title: '10 Perfect Scores', description: 'Get 100% on 10 assignments', icon: '💎', target: 10 },
-  { type: 'early-bird', title: 'Early Bird', description: 'Complete an assignment before the due date', icon: '🌅', target: 1 },
-  { type: 'quiz-master', title: 'Quiz Master', description: 'Complete 10 story quizzes with 80%+ score', icon: '🧠', target: 10 },
+  { type: '7-day-streak', title: '7 napos sorozat', description: 'Tanulj 7 napon át egymás után', icon: '🔥', target: 7 },
+  { type: '30-day-streak', title: '30 napos sorozat', description: 'Tanulj 30 napon át egymás után', icon: '🌟', target: 30 },
+  { type: '100-words', title: '100 elsajátított szó', description: 'Sajátíts el 100 szót', icon: '📚', target: 100 },
+  { type: '500-words', title: '500 elsajátított szó', description: 'Sajátíts el 500 szót', icon: '🎓', target: 500 },
+  { type: '1000-words', title: '1000 elsajátított szó', description: 'Sajátíts el 1000 szót', icon: '🏆', target: 1000 },
+  { type: '10-stories', title: '10 elolvasott történet', description: 'Olvass el 10 történetet', icon: '📖', target: 10 },
+  { type: '50-stories', title: '50 elolvasott történet', description: 'Olvass el 50 történetet', icon: '📚', target: 50 },
+  { type: '100-stories', title: '100 elolvasott történet', description: 'Olvass el 100 történetet', icon: '🎯', target: 100 },
+  { type: 'first-assignment', title: 'Első feladat', description: 'Teljesítsd az első feladatodat', icon: '✅', target: 1 },
+  { type: '10-assignments', title: '10 feladat', description: 'Teljesíts 10 feladatot', icon: '💯', target: 10 },
+  { type: '50-assignments', title: '50 feladat', description: 'Teljesíts 50 feladatot', icon: '🌟', target: 50 },
+  { type: 'perfect-score', title: 'Hibátlan megoldás', description: 'Érj el 100%-ot egy feladatban', icon: '🏅', target: 1 },
+  { type: '10-perfect-scores', title: '10 hibátlan megoldás', description: 'Érj el 100%-ot 10 feladatban', icon: '💎', target: 10 },
+  { type: 'early-bird', title: 'Korán kelő', description: 'Teljesíts egy feladatot a határidő előtt', icon: '🌅', target: 1 },
+  { type: 'quiz-master', title: 'Kvízmester', description: 'Teljesíts 10 kvízt legalább 80%-os eredménnyel', icon: '🧠', target: 10 },
 ];
 
 export const handler: Schema['checkBadges']['functionHandler'] = async (event) => {
@@ -51,15 +51,20 @@ export const handler: Schema['checkBadges']['functionHandler'] = async (event) =
       expressionAttributeNames: { '#studentId': 'studentId' },
       expressionAttributeValues: { ':studentId': studentId },
     });
-    const masteredWordsCount = wordsResult.items.filter(w => w.masteryLevel === 'known').length;
-    
-    const storiesResult = await dbClient.query('Story', {
-      indexName: 'byStudentId',
-      keyConditionExpression: '#studentId = :studentId',
-      expressionAttributeNames: { '#studentId': 'studentId' },
-      expressionAttributeValues: { ':studentId': studentId },
-    });
-    const storiesCount = storiesResult.items.length;
+    const masteredWordsCount = wordsResult.items.filter(w => w.mastery === 'known').length;
+
+    // Prefer the explicit "finished reading" counter; fall back to the number
+    // of generated stories for profiles created before it existed.
+    let storiesCount = Number(student.totalStoriesRead ?? 0);
+    if (!storiesCount) {
+      const storiesResult = await dbClient.query('Story', {
+        indexName: 'byStudentId',
+        keyConditionExpression: '#studentId = :studentId',
+        expressionAttributeNames: { '#studentId': 'studentId' },
+        expressionAttributeValues: { ':studentId': studentId },
+      });
+      storiesCount = storiesResult.items.filter(s => Number(s.readCount ?? 0) > 0).length;
+    }
     
     const submissionsResult = await dbClient.query('AssignmentSubmission', {
       indexName: 'byStudentId',
@@ -73,7 +78,7 @@ export const handler: Schema['checkBadges']['functionHandler'] = async (event) =
       s.score === s.maxScore && (s.maxScore as number) > 0
     ).length;
     
-    const currentStreak = (student.currentStreak as number) || 0;
+    const currentStreak = (student.streak as number) || (student.currentStreak as number) || 0;
     
     // Check each badge
     const newBadges = [];

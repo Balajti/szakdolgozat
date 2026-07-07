@@ -17,6 +17,7 @@ import {
   Send,
   Trash2,
   Pencil,
+  Copy,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { RequireAuth } from "@/components/providers/require-auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AssignmentTemplates } from "@/components/teacher/assignment-templates";
 
 interface Assignment {
   id: string;
@@ -51,6 +53,9 @@ interface Assignment {
   classGroupName?: string;
   sentTo?: string[];
   storyContent?: string;
+  blankPositions?: string;
+  requiredWords?: (string | null)[];
+  isTemplate?: boolean | null;
   createdAt?: string;
 }
 
@@ -66,6 +71,7 @@ function AssignmentsPageInner() {
   const [loading, setLoading] = useState(true);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [classes, setClasses] = useState<ClassGroup[]>([]);
+  const [teacherId, setTeacherId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClass, setSelectedClass] = useState<string>("all");
 
@@ -79,6 +85,7 @@ function AssignmentsPageInner() {
       const { client } = await import("@/lib/amplify-client");
       const { getCurrentUser } = await import("aws-amplify/auth");
       const user = await getCurrentUser();
+      setTeacherId(user.userId);
 
       // Load assignments
       const listAssignmentsQuery = /* GraphQL */ `
@@ -95,6 +102,9 @@ function AssignmentsPageInner() {
               classGroupName
               sentTo
               storyContent
+              blankPositions
+              requiredWords
+              isTemplate
               createdAt
             }
           }
@@ -106,7 +116,8 @@ function AssignmentsPageInner() {
         variables: { teacherId: user.userId },
       })) as { data?: { listAssignmentsByTeacher?: { items?: Assignment[] } } };
 
-      const assignmentsData = assignmentsResponse.data?.listAssignmentsByTeacher?.items || [];
+      const assignmentsData = (assignmentsResponse.data?.listAssignmentsByTeacher?.items || [])
+        .filter((assignment) => !assignment.isTemplate);
       setAssignments(assignmentsData);
 
       // Load classes
@@ -137,6 +148,52 @@ function AssignmentsPageInner() {
       toast({
         title: "Hiba",
         description: "Nem sikerült betölteni az adatokat.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveAsTemplate = async (assignment: Assignment) => {
+    try {
+      const { client } = await import("@/lib/amplify-client");
+
+      const createTemplateMutation = /* GraphQL */ `
+        mutation CreateAssignment($input: CreateAssignmentInput!) {
+          createAssignment(input: $input) {
+            id
+          }
+        }
+      `;
+
+      await client.graphql({
+        query: createTemplateMutation,
+        variables: {
+          input: {
+            teacherId,
+            title: assignment.title,
+            dueDate: assignment.dueDate,
+            level: assignment.level,
+            status: "draft",
+            assignmentType: assignment.assignmentType,
+            storyContent: assignment.storyContent ?? null,
+            blankPositions: assignment.blankPositions ?? null,
+            requiredWords: (assignment.requiredWords ?? []).filter((w): w is string => !!w),
+            isTemplate: true,
+            originalAssignmentId: assignment.id,
+            usageCount: 0,
+          },
+        },
+      });
+
+      toast({
+        title: "Sablon elmentve",
+        description: "A feladatot a Sablonok fül alatt találod, bármikor újra kiküldheted.",
+      });
+    } catch (error) {
+      console.error("Error saving template:", error);
+      toast({
+        title: "Hiba",
+        description: "Nem sikerült elmenteni a sablont.",
         variant: "destructive",
       });
     }
@@ -261,6 +318,10 @@ function AssignmentsPageInner() {
                   </DropdownMenuItem>
                 </>
               )}
+              <DropdownMenuItem onClick={() => handleSaveAsTemplate(assignment)}>
+                <Copy className="h-4 w-4 mr-2" />
+                Mentés sablonként
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => handleDeleteAssignment(assignment.id)}
                 className="text-destructive"
@@ -397,12 +458,15 @@ function AssignmentsPageInner() {
             transition={{ duration: 0.3, delay: 0.1 }}
           >
             <Tabs defaultValue="unassigned" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="unassigned">
                   Nem kiosztott ({unassignedAssignments.length})
                 </TabsTrigger>
                 <TabsTrigger value="assigned">
                   Kiosztott ({assignedAssignments.length})
+                </TabsTrigger>
+                <TabsTrigger value="templates">
+                  Sablonok
                 </TabsTrigger>
               </TabsList>
 
@@ -448,6 +512,10 @@ function AssignmentsPageInner() {
                     ))}
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="templates">
+                {teacherId ? <AssignmentTemplates teacherId={teacherId} /> : null}
               </TabsContent>
             </Tabs>
           </motion.div>

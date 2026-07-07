@@ -20,6 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ErrorCard } from "@/components/ui/error-card";
 import { useToast } from "@/hooks/use-toast";
 
 // ===================
@@ -492,6 +493,12 @@ function BasicReadingTask({
 // ===================
 // Completed Screen
 // ===================
+interface SubmitResult {
+  percentage: number;
+  feedback: string;
+  passed: boolean;
+}
+
 function CompletedScreen({
   score,
   maxScore,
@@ -500,6 +507,7 @@ function CompletedScreen({
   submitting,
   submitted,
   studentEmail,
+  serverResult,
 }: {
   score: number;
   maxScore: number;
@@ -508,6 +516,7 @@ function CompletedScreen({
   submitting: boolean;
   submitted: boolean;
   studentEmail: string;
+  serverResult: SubmitResult | null;
 }) {
   const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 100;
   const isPerfect = percentage === 100;
@@ -537,6 +546,25 @@ function CompletedScreen({
           transition={{ delay: 0.4 }}
         >
           <h2 className="text-2xl font-bold mb-2">Sikeresen beküldve! 🎉</h2>
+
+          {serverResult && assignmentType !== "basic" ? (
+            <div className="mx-auto mb-4 max-w-sm rounded-2xl border border-border/60 bg-card p-5 space-y-2">
+              <p className="text-4xl font-bold">{serverResult.percentage}%</p>
+              <p className="text-sm font-medium">{serverResult.feedback}</p>
+              <Badge
+                className={
+                  serverResult.passed
+                    ? "bg-green-100 text-green-800"
+                    : "bg-amber-100 text-amber-800"
+                }
+              >
+                {serverResult.passed ? "Sikeres teljesítés" : "Nem érte el a 70%-ot"}
+              </Badge>
+            </div>
+          ) : serverResult?.feedback ? (
+            <p className="text-sm font-medium mb-2">{serverResult.feedback}</p>
+          ) : null}
+
           <p className="text-muted-foreground mb-2">
             A tanárod értesítést kapott a teljesítésedről.
           </p>
@@ -631,6 +659,7 @@ function AssignmentPageInner({ params }: { params: Promise<{ id: string }> }) {
   const [currentStep, setCurrentStep] = useState<Step>("email");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [serverResult, setServerResult] = useState<SubmitResult | null>(null);
   const [taskScore, setTaskScore] = useState(0);
   const [taskMaxScore, setTaskMaxScore] = useState(100);
   const [taskCompleted, setTaskCompleted] = useState(false);
@@ -772,7 +801,7 @@ function AssignmentPageInner({ params }: { params: Promise<{ id: string }> }) {
         }
       `;
 
-      await client.graphql({
+      const response = (await client.graphql({
         query: submitMutation,
         variables: {
           assignmentId: id,
@@ -781,7 +810,20 @@ function AssignmentPageInner({ params }: { params: Promise<{ id: string }> }) {
           timeSpentSeconds: timer.seconds,
         },
         authMode: "apiKey",
-      });
+      })) as {
+        data?: {
+          submitAssignment?: { percentage: number; feedback: string; passed: boolean };
+        };
+      };
+
+      const result = response.data?.submitAssignment;
+      if (result) {
+        setServerResult({
+          percentage: result.percentage,
+          feedback: result.feedback,
+          passed: result.passed,
+        });
+      }
 
       setSubmitted(true);
       toast({
@@ -818,20 +860,18 @@ function AssignmentPageInner({ params }: { params: Promise<{ id: string }> }) {
     );
   }
 
-  // Not found
+  // Not found / failed to load
   if (!assignment) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5">
-        <Card className="max-w-md mx-4">
-          <CardContent className="p-8 text-center">
-            <div className="text-5xl mb-4">😕</div>
-            <h2 className="text-xl font-bold mb-2">Nem található feladat</h2>
-            <p className="text-muted-foreground">
-              Ez a feladat már nem elérhető vagy hibás a link.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <ErrorCard
+        fullPage
+        title="Nem található feladat"
+        description="Ez a feladat már nem elérhető, hibás a link, vagy hálózati hiba történt."
+        onRetry={() => {
+          setLoading(true);
+          loadAssignment();
+        }}
+      />
     );
   }
 
@@ -1043,6 +1083,7 @@ function AssignmentPageInner({ params }: { params: Promise<{ id: string }> }) {
                 submitting={submitting}
                 submitted={submitted}
                 studentEmail={studentEmail}
+                serverResult={serverResult}
               />
             </motion.div>
           )}

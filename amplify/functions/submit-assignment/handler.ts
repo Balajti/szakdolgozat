@@ -79,7 +79,7 @@ export const handler: SubmitAssignmentHandler = async (event: any) => { // eslin
         // Basic story reading - full points for completion
         score = 100;
         maxScore = 100;
-        feedback = 'Great job completing the story!';
+        feedback = 'Szép munka, elolvastad a történetet!';
         break;
 
       case 'fill_blanks':
@@ -191,7 +191,7 @@ function scoreFillBlanks(
   answers: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ): { score: number; maxScore: number; feedback: string } {
   if (!answers?.blanks || !Array.isArray(answers.blanks) || answers.blanks.length === 0) {
-    return { score: 0, maxScore: 100, feedback: 'No answers provided' };
+    return { score: 0, maxScore: 100, feedback: 'Nem érkezett válasz.' };
   }
 
   const blanks = answers.blanks as FillBlanksAnswer[];
@@ -207,7 +207,7 @@ function scoreFillBlanks(
   });
 
   const score = Math.round((correctCount / totalBlanks) * 100);
-  const feedback = `You got ${correctCount} out of ${totalBlanks} words correct!`;
+  const feedback = `${totalBlanks} szóból ${correctCount}-t találtál el!`;
 
   return { score, maxScore: 100, feedback };
 }
@@ -219,7 +219,7 @@ function scoreWordMatching(
   answers: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ): { score: number; maxScore: number; feedback: string } {
   if (!answers?.matches || !Array.isArray(answers.matches) || answers.matches.length === 0) {
-    return { score: 0, maxScore: 100, feedback: 'No answers provided' };
+    return { score: 0, maxScore: 100, feedback: 'Nem érkezett válasz.' };
   }
 
   const matches = answers.matches as WordMatchingAnswer[];
@@ -233,7 +233,7 @@ function scoreWordMatching(
   });
 
   const score = Math.round((correctCount / totalWords) * 100);
-  const feedback = `You matched ${correctCount} out of ${totalWords} words correctly!`;
+  const feedback = `${totalWords} szóból ${correctCount}-t párosítottál helyesen!`;
 
   return { score, maxScore: 100, feedback };
 }
@@ -246,11 +246,11 @@ function scoreCustomWords(
   requiredWords: string[]
 ): { score: number; maxScore: number; feedback: string } {
   if (!answers?.story || typeof answers.story !== 'string') {
-    return { score: 0, maxScore: 100, feedback: 'No story provided' };
+    return { score: 0, maxScore: 100, feedback: 'Nem érkezett történet.' };
   }
 
   if (!Array.isArray(requiredWords) || requiredWords.length === 0) {
-    return { score: 100, maxScore: 100, feedback: 'Story submitted!' };
+    return { score: 100, maxScore: 100, feedback: 'A történeted beküldve!' };
   }
 
   const story = answers.story.toLowerCase();
@@ -264,7 +264,7 @@ function scoreCustomWords(
   });
 
   const score = Math.round((usedCount / totalWords) * 100);
-  const feedback = `You used ${usedCount} out of ${totalWords} required words in your story!`;
+  const feedback = `A ${totalWords} kötelező szóból ${usedCount}-t használtál a történetedben!`;
 
   return { score, maxScore: 100, feedback };
 }

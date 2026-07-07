@@ -22,11 +22,10 @@ import {
   Award
 } from "lucide-react";
 
-import { Alert } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MetricCard } from "@/components/ui/metric-card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -37,6 +36,8 @@ import { RequireAuth } from "@/components/providers/require-auth";
 import { LogoutButton } from "@/components/ui/logout-button";
 import { ClassesManagement } from "@/components/teacher/classes-management";
 import { AssignmentAnalytics } from "@/components/teacher/assignment-analytics";
+import { StudentsOverview } from "@/components/teacher/students-overview";
+import { ErrorCard } from "@/components/ui/error-card";
 import { useAvatarUrl } from "@/hooks/use-avatar-url";
 
 const assignmentStatusLabels: Record<Assignment["status"], string> = {
@@ -65,7 +66,7 @@ type DashboardView = typeof dashboardNavItems[number]['value'];
 
 function TeacherPortalPageInner() {
   const router = useRouter();
-  const { data, isLoading, isFetching, error } = useTeacherDashboard();
+  const { data, isLoading, error, refetch } = useTeacherDashboard();
   const [activeView, setActiveView] = useState<DashboardView>('overview');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
@@ -131,9 +132,12 @@ function TeacherPortalPageInner() {
 
   if (error) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Alert variant="destructive" title="Hiba történt" description="Nem sikerült betölteni a tanári adataidat. Próbáld újra később." />
-      </div>
+      <ErrorCard
+        fullPage
+        title="Nem sikerült betölteni a tanári irányítópultot"
+        description="Ellenőrizd az internetkapcsolatod, majd próbáld újra."
+        onRetry={() => refetch()}
+      />
     );
   }
 
@@ -490,18 +494,62 @@ function TeacherPortalPageInner() {
 
         {activeView === 'assignments' && (
           <div className="space-y-6">
-            <div>
-              <h2 className="text-3xl font-display font-bold mb-2">Feladatok</h2>
-              <p className="text-muted-foreground">
-                Kezeld a kiadott és piszkozat feladatokat.
-              </p>
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <h2 className="text-3xl font-display font-bold mb-2">Feladatok</h2>
+                <p className="text-muted-foreground">
+                  Kezeld a kiadott és piszkozat feladatokat.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => router.push('/teacher/assignments')}>
+                  Részletes nézet
+                </Button>
+                <Button onClick={() => router.push('/teacher/assignment/create')} className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Új feladat
+                </Button>
+              </div>
             </div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Feladatok</CardTitle>
-                <CardDescription>Kezeld a kiadott és piszkozat feladatokat.</CardDescription>
-              </CardHeader>
-            </Card>
+            {assignments.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <BookOpenCheck className="mx-auto h-12 w-12 text-muted-foreground/40" />
+                  <h3 className="mt-4 text-lg font-semibold">Még nincs feladatod</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Hozz létre az első feladatodat az AI segítségével!
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-3">
+                {assignments.map((assignment) => (
+                  <Card
+                    key={assignment.id}
+                    className="cursor-pointer transition-shadow hover:shadow-md"
+                    onClick={() => router.push(`/teacher/assignment/${assignment.id}`)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-semibold truncate">{assignment.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Szint: {assignment.level} • Határidő:{" "}
+                            {new Date(assignment.dueDate).toLocaleDateString("hu-HU")}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <Badge className={cn(assignmentStatusAccent[assignment.status])}>
+                            {assignmentStatusLabels[assignment.status]}
+                          </Badge>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -510,15 +558,10 @@ function TeacherPortalPageInner() {
             <div>
               <h2 className="text-3xl font-display font-bold mb-2">Diákok</h2>
               <p className="text-muted-foreground">
-                Diákok listája és egyéni fejlődésük.
+                Az osztályaidhoz csatlakozott diákok és a fejlődésük.
               </p>
             </div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Diákok</CardTitle>
-                <CardDescription>Diákok listája és egyéni fejlődésük.</CardDescription>
-              </CardHeader>
-            </Card>
+            <StudentsOverview teacherId={profile.id} />
           </div>
         )}
       </main>

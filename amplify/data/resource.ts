@@ -374,6 +374,7 @@ const schema = a.schema({
     level: a.string().required(),
     streak: a.integer().required(),
     vocabularyCount: a.integer().required(),
+    totalStoriesRead: a.integer(),
     createdAt: a.datetime().required(),
     updatedAt: a.datetime().required(),
     achievements: a.ref('AchievementView').array(),

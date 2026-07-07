@@ -10,6 +10,7 @@ export const getStudentDashboardQuery = /* GraphQL */ `
         level
         streak
         vocabularyCount
+        totalStoriesRead
         createdAt
         updatedAt
         achievements {

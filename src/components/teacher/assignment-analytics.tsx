@@ -6,8 +6,8 @@ import { hu } from "date-fns/locale";
 import { BarChart3, CheckCircle2, Clock, Loader2, TrendingUp, Users } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorCard } from "@/components/ui/error-card";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -33,12 +33,6 @@ interface AssignmentAnalyticsData {
   needsImprovementCount: number;
 }
 
-interface AssignmentAnalyticsProps {
-  teacherId: string;
-  assignments: Assignment[];
-  submissions: SubmissionSummary[];
-}
-
 const analyticsQuery = /* GraphQL */ `
   query GetAssignmentAnalytics($assignmentId: ID!, $teacherId: ID!) {
     getAssignmentAnalytics(assignmentId: $assignmentId, teacherId: $teacherId) {
@@ -54,6 +48,25 @@ const analyticsQuery = /* GraphQL */ `
       excellentCount
       goodCount
       needsImprovementCount
+    }
+  }
+`;
+
+const listSubmissionsQuery = /* GraphQL */ `
+  query ListSubmissionsByTeacher($teacherId: ID!) {
+    listSubmissionsByTeacher(teacherId: $teacherId) {
+      items {
+        id
+        assignmentId
+        teacherId
+        studentId
+        studentName
+        submittedAt
+        score
+        unknownWords
+        createdAt
+        updatedAt
+      }
     }
   }
 `;
@@ -108,38 +121,60 @@ function DistributionBar({
   );
 }
 
-export function AssignmentAnalytics({ teacherId, assignments, submissions }: AssignmentAnalyticsProps) {
-  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>(assignments[0]?.id ?? "");
+/**
+ * Analytics for one assignment: metric tiles, score distribution, hardest
+ * words, and the submissions list. Pass `submissions` when the caller already
+ * has them (teacher dashboard); otherwise the panel fetches them itself.
+ */
+export function AssignmentAnalyticsPanel({
+  teacherId,
+  assignmentId,
+  submissions,
+}: {
+  teacherId: string;
+  assignmentId: string;
+  submissions?: SubmissionSummary[];
+}) {
   const [analytics, setAnalytics] = useState<AssignmentAnalyticsData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!selectedAssignmentId && assignments.length > 0) {
-      setSelectedAssignmentId(assignments[0].id);
-    }
-  }, [assignments, selectedAssignmentId]);
+  const [fetchedSubmissions, setFetchedSubmissions] = useState<SubmissionSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const loadAnalytics = useCallback(async () => {
-    if (!selectedAssignmentId || !teacherId) return;
+    if (!assignmentId || !teacherId) return;
     setLoading(true);
-    setError(null);
+    setError(false);
     try {
       const { client } = await import("@/lib/amplify-client");
-      const response = (await client.graphql({
+      const analyticsPromise = client.graphql({
         query: analyticsQuery,
-        variables: { assignmentId: selectedAssignmentId, teacherId },
-      })) as { data?: { getAssignmentAnalytics?: AssignmentAnalyticsData } };
+        variables: { assignmentId, teacherId },
+      }) as Promise<{ data?: { getAssignmentAnalytics?: AssignmentAnalyticsData } }>;
 
-      setAnalytics(response.data?.getAssignmentAnalytics ?? null);
+      const submissionsPromise = submissions
+        ? Promise.resolve(null)
+        : (client.graphql({
+            query: listSubmissionsQuery,
+            variables: { teacherId },
+          }) as Promise<{ data?: { listSubmissionsByTeacher?: { items?: SubmissionSummary[] } } }>);
+
+      const [analyticsResponse, submissionsResponse] = await Promise.all([
+        analyticsPromise,
+        submissionsPromise,
+      ]);
+
+      setAnalytics(analyticsResponse.data?.getAssignmentAnalytics ?? null);
+      if (submissionsResponse) {
+        setFetchedSubmissions(submissionsResponse.data?.listSubmissionsByTeacher?.items ?? []);
+      }
     } catch (err) {
       console.error("Error loading assignment analytics:", err);
-      setError("Nem sikerült betölteni az elemzést. Próbáld újra.");
+      setError(true);
       setAnalytics(null);
     } finally {
       setLoading(false);
     }
-  }, [selectedAssignmentId, teacherId]);
+  }, [assignmentId, teacherId, submissions]);
 
   useEffect(() => {
     loadAnalytics();
@@ -147,11 +182,193 @@ export function AssignmentAnalytics({ teacherId, assignments, submissions }: Ass
 
   const assignmentSubmissions = useMemo(
     () =>
-      submissions
-        .filter((s) => s.assignmentId === selectedAssignmentId)
+      (submissions ?? fetchedSubmissions)
+        .filter((s) => s.assignmentId === assignmentId)
         .sort((a, b) => Date.parse(b.submittedAt) - Date.parse(a.submittedAt)),
-    [submissions, selectedAssignmentId]
+    [submissions, fetchedSubmissions, assignmentId]
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error || !analytics) {
+    return (
+      <div className="flex justify-center">
+        <ErrorCard
+          title="Nem sikerült betölteni az elemzést"
+          onRetry={loadAnalytics}
+        />
+      </div>
+    );
+  }
+
+  const distributionTotal =
+    analytics.excellentCount + analytics.goodCount + analytics.needsImprovementCount;
+
+  return (
+    <div className="space-y-6">
+      {/* Metric tiles */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatTile
+          icon={<Users className="h-4 w-4" />}
+          label="Beküldések"
+          value={analytics.totalSubmissions}
+          suffix="db"
+        />
+        <StatTile
+          icon={<CheckCircle2 className="h-4 w-4" />}
+          label="Teljesítési arány"
+          value={analytics.completionRate}
+          suffix="%"
+        />
+        <StatTile
+          icon={<TrendingUp className="h-4 w-4" />}
+          label="Átlag eredmény"
+          value={analytics.averageScore}
+          suffix="%"
+        />
+        <StatTile
+          icon={<Clock className="h-4 w-4" />}
+          label="Átlagos idő"
+          value={analytics.averageTimeMinutes}
+          suffix="perc"
+        />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Score distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Eredmények megoszlása</CardTitle>
+            <CardDescription>
+              Sikeres teljesítés (legalább 70%): {analytics.passRate}%
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {distributionTotal === 0 ? (
+              <p className="text-sm text-muted-foreground">Még nincs beküldött megoldás.</p>
+            ) : (
+              <>
+                <DistributionBar
+                  label="Kiváló (90% felett)"
+                  count={analytics.excellentCount}
+                  total={distributionTotal}
+                  colorClass="bg-green-500"
+                />
+                <DistributionBar
+                  label="Jó (70-89%)"
+                  count={analytics.goodCount}
+                  total={distributionTotal}
+                  colorClass="bg-primary"
+                />
+                <DistributionBar
+                  label="Fejlesztendő (70% alatt)"
+                  count={analytics.needsImprovementCount}
+                  total={distributionTotal}
+                  colorClass="bg-amber-500"
+                />
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Challenging words */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Legnehezebb szavak</CardTitle>
+            <CardDescription>Ezekkel a szavakkal küzdöttek legtöbbet a diákok.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {analytics.mostChallengingWords.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Nincs adat — vagy még senki nem küldött be megoldást, vagy mindenki mindent eltalált. 🎉
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {analytics.mostChallengingWords.map((word) => (
+                  <Badge key={word} variant="outline" className="text-sm px-3 py-1">
+                    {word}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Submissions list */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Beküldött megoldások</CardTitle>
+          <CardDescription>A feladat legutóbbi beküldései.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {assignmentSubmissions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Még nincs beküldött megoldás ehhez a feladathoz.</p>
+          ) : (
+            <div className="space-y-3">
+              {assignmentSubmissions.slice(0, 20).map((submission) => {
+                const score = submission.score ?? 0;
+                return (
+                  <div
+                    key={submission.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/30 px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{submission.studentName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(submission.submittedAt), {
+                          addSuffix: true,
+                          locale: hu,
+                        })}
+                      </p>
+                    </div>
+                    <Badge
+                      className={
+                        score >= 90
+                          ? "bg-green-100 text-green-800"
+                          : score >= 70
+                            ? "bg-primary/10 text-primary"
+                            : "bg-amber-100 text-amber-800"
+                      }
+                    >
+                      {score}%
+                    </Badge>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/**
+ * Teacher dashboard analytics view: assignment picker + the analytics panel.
+ */
+export function AssignmentAnalytics({
+  teacherId,
+  assignments,
+  submissions,
+}: {
+  teacherId: string;
+  assignments: Assignment[];
+  submissions: SubmissionSummary[];
+}) {
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>(assignments[0]?.id ?? "");
+
+  useEffect(() => {
+    if (!selectedAssignmentId && assignments.length > 0) {
+      setSelectedAssignmentId(assignments[0].id);
+    }
+  }, [assignments, selectedAssignmentId]);
 
   if (assignments.length === 0) {
     return (
@@ -166,9 +383,6 @@ export function AssignmentAnalytics({ teacherId, assignments, submissions }: Ass
       </Card>
     );
   }
-
-  const distributionTotal =
-    (analytics?.excellentCount ?? 0) + (analytics?.goodCount ?? 0) + (analytics?.needsImprovementCount ?? 0);
 
   return (
     <div className="space-y-6">
@@ -197,156 +411,12 @@ export function AssignmentAnalytics({ teacherId, assignments, submissions }: Ass
         </CardContent>
       </Card>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : error ? (
-        <Card>
-          <CardContent className="p-8 text-center space-y-4">
-            <p className="text-sm text-destructive">{error}</p>
-            <Button variant="outline" onClick={loadAnalytics}>
-              Újrapróbálás
-            </Button>
-          </CardContent>
-        </Card>
-      ) : analytics ? (
-        <>
-          {/* Metric tiles */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatTile
-              icon={<Users className="h-4 w-4" />}
-              label="Beküldések"
-              value={analytics.totalSubmissions}
-              suffix="db"
-            />
-            <StatTile
-              icon={<CheckCircle2 className="h-4 w-4" />}
-              label="Teljesítési arány"
-              value={analytics.completionRate}
-              suffix="%"
-            />
-            <StatTile
-              icon={<TrendingUp className="h-4 w-4" />}
-              label="Átlag eredmény"
-              value={analytics.averageScore}
-              suffix="%"
-            />
-            <StatTile
-              icon={<Clock className="h-4 w-4" />}
-              label="Átlagos idő"
-              value={analytics.averageTimeMinutes}
-              suffix="perc"
-            />
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Score distribution */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Eredmények megoszlása</CardTitle>
-                <CardDescription>
-                  Sikeres teljesítés (legalább 70%): {analytics.passRate}%
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {distributionTotal === 0 ? (
-                  <p className="text-sm text-muted-foreground">Még nincs beküldött megoldás.</p>
-                ) : (
-                  <>
-                    <DistributionBar
-                      label="Kiváló (90% felett)"
-                      count={analytics.excellentCount}
-                      total={distributionTotal}
-                      colorClass="bg-green-500"
-                    />
-                    <DistributionBar
-                      label="Jó (70-89%)"
-                      count={analytics.goodCount}
-                      total={distributionTotal}
-                      colorClass="bg-primary"
-                    />
-                    <DistributionBar
-                      label="Fejlesztendő (70% alatt)"
-                      count={analytics.needsImprovementCount}
-                      total={distributionTotal}
-                      colorClass="bg-amber-500"
-                    />
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Challenging words */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Legnehezebb szavak</CardTitle>
-                <CardDescription>Ezekkel a szavakkal küzdöttek legtöbbet a diákok.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {analytics.mostChallengingWords.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Nincs adat — vagy még senki nem küldött be megoldást, vagy mindenki mindent eltalált. 🎉
-                  </p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {analytics.mostChallengingWords.map((word) => (
-                      <Badge key={word} variant="outline" className="text-sm px-3 py-1">
-                        {word}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Submissions list */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Beküldött megoldások</CardTitle>
-              <CardDescription>A kiválasztott feladat legutóbbi beküldései.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {assignmentSubmissions.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Még nincs beküldött megoldás ehhez a feladathoz.</p>
-              ) : (
-                <div className="space-y-3">
-                  {assignmentSubmissions.slice(0, 20).map((submission) => {
-                    const score = submission.score ?? 0;
-                    return (
-                      <div
-                        key={submission.id}
-                        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/30 px-4 py-3"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{submission.studentName}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(submission.submittedAt), {
-                              addSuffix: true,
-                              locale: hu,
-                            })}
-                          </p>
-                        </div>
-                        <Badge
-                          className={
-                            score >= 90
-                              ? "bg-green-100 text-green-800"
-                              : score >= 70
-                                ? "bg-primary/10 text-primary"
-                                : "bg-amber-100 text-amber-800"
-                          }
-                        >
-                          {score}%
-                        </Badge>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </>
+      {selectedAssignmentId ? (
+        <AssignmentAnalyticsPanel
+          teacherId={teacherId}
+          assignmentId={selectedAssignmentId}
+          submissions={submissions}
+        />
       ) : (
         <Card>
           <CardContent className="p-8 text-center text-sm text-muted-foreground">

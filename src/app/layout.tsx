@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Poppins, Baloo_2 } from "next/font/google";
 import "./globals.css";
 
@@ -42,6 +42,15 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.ico",
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "WordNest",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#ff7a30",
 };
 
 export default function RootLayout({

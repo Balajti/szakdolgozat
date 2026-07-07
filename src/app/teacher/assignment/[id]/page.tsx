@@ -19,6 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { RequireAuth } from "@/components/providers/require-auth";
+import { AssignmentAnalyticsPanel } from "@/components/teacher/assignment-analytics";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -51,8 +52,21 @@ function AssignmentViewPageInner({ params }: { params: Promise<{ id: string }> }
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [assignment, setAssignment] = useState<Assignment | null>(null);
+    const [teacherId, setTeacherId] = useState<string | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const { getCurrentUser } = await import("aws-amplify/auth");
+                const user = await getCurrentUser();
+                setTeacherId(user.userId);
+            } catch (error) {
+                console.error("Error loading current user:", error);
+            }
+        })();
+    }, []);
 
     useEffect(() => {
         loadAssignment();
@@ -373,6 +387,24 @@ function AssignmentViewPageInner({ params }: { params: Promise<{ id: string }> }
                             </CardContent>
                         </Card>
                     </motion.div>
+
+                    {/* Analytics */}
+                    {teacherId && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: 0.2 }}
+                            className="space-y-4"
+                        >
+                            <div>
+                                <h2 className="text-xl font-display font-bold">Elemzés</h2>
+                                <p className="text-sm text-muted-foreground">
+                                    A diákok eredményei ennél a feladatnál.
+                                </p>
+                            </div>
+                            <AssignmentAnalyticsPanel teacherId={teacherId} assignmentId={assignment.id} />
+                        </motion.div>
+                    )}
                 </div>
             </main>
 

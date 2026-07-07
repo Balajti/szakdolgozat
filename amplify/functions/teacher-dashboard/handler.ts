@@ -48,7 +48,9 @@ export const handler: Schema["getTeacherDashboard"]["functionHandler"] = async (
   };
 
   const assignments = await queryByIndex("Assignment", "byTeacherId", "teacherId", teacherId, 200);
-  const sortedAssignments = assignments.sort((a, b) => Date.parse(String(a.dueDate)) - Date.parse(String(b.dueDate)));
+  const sortedAssignments = assignments
+    .filter((assignment) => !assignment.isTemplate)
+    .sort((a, b) => Date.parse(String(a.dueDate)) - Date.parse(String(b.dueDate)));
 
   const assignmentViews: AssignmentView[] = sortedAssignments.map((assignment) => {
     const assignmentFallback = new Date().toISOString();

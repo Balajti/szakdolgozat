@@ -93,7 +93,7 @@ export function VocabularyChart({ studentId, days = 30 }: VocabularyChartProps) 
   }
 
   const chartData = {
-    labels: progressData.map((d) => new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+    labels: progressData.map((d) => new Date(d.date).toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })),
     datasets: [
       {
         label: 'Ismert szavak',

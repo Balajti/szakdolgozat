@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowDown, ArrowUp } from 'lucide-react';
+import { ArrowDown, ArrowUp, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface DifficultyAdjusterProps {
@@ -14,77 +13,84 @@ interface DifficultyAdjusterProps {
 
 const LEVEL_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
-export function DifficultyAdjuster({ text: _text, currentLevel, onTextAdjusted: _onTextAdjusted }: DifficultyAdjusterProps) {
-  const [adjusting, setAdjusting] = useState(false);
+/**
+ * "Könnyebb / nehezebb változat" control: rewrites the story text one CEFR
+ * level down or up via the adjustDifficulty mutation.
+ */
+export function DifficultyAdjuster({ text, currentLevel, onTextAdjusted }: DifficultyAdjusterProps) {
+  const [adjusting, setAdjusting] = useState<'simplify' | 'complexify' | null>(null);
   const { toast } = useToast();
 
   const currentLevelIndex = LEVEL_ORDER.indexOf(currentLevel.toUpperCase());
   const canSimplify = currentLevelIndex > 0;
-  const canComplexify = currentLevelIndex < LEVEL_ORDER.length - 1;
+  const canComplexify = currentLevelIndex >= 0 && currentLevelIndex < LEVEL_ORDER.length - 1;
 
   const handleAdjust = async (direction: 'simplify' | 'complexify') => {
-    setAdjusting(true);
+    setAdjusting(direction);
     try {
       const targetIndex = direction === 'simplify' ? currentLevelIndex - 1 : currentLevelIndex + 1;
       const targetLevel = LEVEL_ORDER[targetIndex];
 
       const { client } = await import('@/lib/amplify-client');
       const response = await client.mutations.adjustDifficulty({
-        text: _text,
-        currentLevel,
+        text,
+        currentLevel: currentLevel.toUpperCase(),
         targetLevel,
       });
 
-      toast({
-        title: 'Text Adjusted',
-        description: `Text has been ${direction === 'simplify' ? 'simplified' : 'made more complex'} to ${targetLevel} level.`,
-      });
-
       if (response.data?.adjustedText) {
-        _onTextAdjusted?.(response.data.adjustedText, targetLevel);
+        onTextAdjusted?.(response.data.adjustedText, targetLevel);
+        toast({
+          title: 'Szöveg átírva',
+          description: `A történet mostantól ${targetLevel} szinten olvasható.`,
+        });
+      } else {
+        throw new Error('No adjusted text returned');
       }
     } catch (error) {
       console.error('Error adjusting difficulty:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to adjust text difficulty. Please try again.',
+        title: 'Hiba',
+        description: 'Nem sikerült átírni a szöveget. Próbáld újra.',
         variant: 'destructive',
       });
     } finally {
-      setAdjusting(false);
+      setAdjusting(null);
     }
   };
 
+  if (currentLevelIndex < 0) return null;
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Adjust Difficulty</CardTitle>
-        <CardDescription>
-          Current level: <span className="font-semibold">{currentLevel.toUpperCase()}</span>
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex gap-2">
-        <Button
-          onClick={() => handleAdjust('simplify')}
-          disabled={!canSimplify || adjusting}
-          variant="outline"
-          className="flex-1"
-        >
-          <ArrowDown className="h-4 w-4 mr-2" />
-          Simplify
-          {canSimplify && ` (to ${LEVEL_ORDER[currentLevelIndex - 1]})`}
-        </Button>
-        <Button
-          onClick={() => handleAdjust('complexify')}
-          disabled={!canComplexify || adjusting}
-          variant="outline"
-          className="flex-1"
-        >
-          <ArrowUp className="h-4 w-4 mr-2" />
-          Make Complex
-          {canComplexify && ` (to ${LEVEL_ORDER[currentLevelIndex + 1]})`}
-        </Button>
-      </CardContent>
-    </Card>
+    <div className="flex flex-wrap gap-2">
+      <Button
+        onClick={() => handleAdjust('simplify')}
+        disabled={!canSimplify || adjusting !== null}
+        variant="outline"
+        size="sm"
+        className="gap-1.5"
+      >
+        {adjusting === 'simplify' ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <ArrowDown className="h-4 w-4" />
+        )}
+        Könnyebb változat{canSimplify ? ` (${LEVEL_ORDER[currentLevelIndex - 1]})` : ''}
+      </Button>
+      <Button
+        onClick={() => handleAdjust('complexify')}
+        disabled={!canComplexify || adjusting !== null}
+        variant="outline"
+        size="sm"
+        className="gap-1.5"
+      >
+        {adjusting === 'complexify' ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <ArrowUp className="h-4 w-4" />
+        )}
+        Nehezebb változat{canComplexify ? ` (${LEVEL_ORDER[currentLevelIndex + 1]})` : ''}
+      </Button>
+    </div>
   );
 }

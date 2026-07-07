@@ -103,6 +103,7 @@ export const handler: Schema["getStudentDashboard"]["functionHandler"] = async (
     level: String(profileRecord.level ?? DEFAULT_LEVEL),
     streak: currentStreak,
     vocabularyCount: masteredWordCount,
+    totalStoriesRead: Number(profileRecord.totalStoriesRead ?? 0),
     createdAt: String(profileRecord.createdAt ?? profileFallback),
     updatedAt: String(profileRecord.updatedAt ?? profileRecord.createdAt ?? profileFallback),
   };

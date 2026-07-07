@@ -7,15 +7,24 @@ import { useState, useEffect } from 'react';
 interface TextToSpeechProps {
   text: string;
   language?: string;
+  /** Optional button label shown next to the icon. */
+  label?: string;
+  size?: 'default' | 'sm' | 'icon';
 }
 
-export function TextToSpeech({ text, language = 'en-US' }: TextToSpeechProps) {
+export function TextToSpeech({ text, language = 'en-US', label, size = 'icon' }: TextToSpeechProps) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
 
   useEffect(() => {
     // Check if browser supports speech synthesis
     setIsSupported('speechSynthesis' in window);
+    return () => {
+      // Stop any ongoing speech when the button unmounts (e.g. dialog closes)
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
   }, []);
 
   const handleSpeak = () => {
@@ -46,11 +55,13 @@ export function TextToSpeech({ text, language = 'en-US' }: TextToSpeechProps) {
   return (
     <Button
       variant="outline"
-      size="icon"
+      size={size}
       onClick={handleSpeak}
-      title={isSpeaking ? 'Stop speaking' : 'Read aloud'}
+      title={isSpeaking ? 'Felolvasás leállítása' : 'Felolvasás'}
+      className={label ? 'gap-1.5' : undefined}
     >
       {isSpeaking ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+      {label}
     </Button>
   );
 }

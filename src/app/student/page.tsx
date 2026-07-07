@@ -19,9 +19,11 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ErrorCard } from "@/components/ui/error-card";
 import { useStudentDashboard } from "@/lib/hooks/use-student-dashboard";
 import { RequireAuth } from "@/components/providers/require-auth";
 import { VocabularyQuickList } from "@/components/student/vocabulary-quick-list";
+import { VocabularyChart } from "@/components/student/vocabulary-chart";
 import { RecentStories } from "@/components/student/recent-stories";
 import { BadgesDisplay } from "@/components/student/badges-display";
 import { VocabularyList } from "@/components/student/vocabulary-list";
@@ -48,7 +50,7 @@ type DashboardView = typeof dashboardNavItems[number]['value'];
 function StudentPortalPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { data, isLoading, refetch } = useStudentDashboard();
+  const { data, isLoading, error: dashboardError, refetch } = useStudentDashboard();
   const [isGenerationModalOpen, setIsGenerationModalOpen] = useState(false);
   const [isGeneratingSurprise, setIsGeneratingSurprise] = useState(false);
   const [activeView, setActiveView] = useState<DashboardView>('overview');
@@ -67,6 +69,29 @@ function StudentPortalPageInner() {
       setActiveView(view);
     }
   }, [searchParams]);
+
+  // Record today's vocabulary snapshot so the progress chart has data.
+  // Fire-and-forget: chart data is a nice-to-have, never block the dashboard.
+  const profileId = data?.profile?.id;
+  useEffect(() => {
+    if (!profileId || data?.source !== "api") return;
+    (async () => {
+      try {
+        const { client } = await import('@/lib/amplify-client');
+        const trackProgressMutation = /* GraphQL */ `
+          mutation TrackVocabularyProgress($studentId: ID!) {
+            trackVocabularyProgress(studentId: $studentId) { date knownWords }
+          }
+        `;
+        await client.graphql({
+          query: trackProgressMutation,
+          variables: { studentId: profileId },
+        });
+      } catch (error) {
+        console.error('Error tracking vocabulary progress:', error);
+      }
+    })();
+  }, [profileId, data?.source]);
 
   const handleViewChange = (view: DashboardView) => {
     setActiveView(view);
@@ -339,6 +364,17 @@ function StudentPortalPageInner() {
     );
   }
 
+  if (dashboardError || !data?.profile) {
+    return (
+      <ErrorCard
+        fullPage
+        title="Nem sikerült betölteni az irányítópultot"
+        description="Ellenőrizd az internetkapcsolatod, majd próbáld újra."
+        onRetry={() => refetch()}
+      />
+    );
+  }
+
   const profile = data?.profile;
 
   return (
@@ -489,8 +525,8 @@ function StudentPortalPageInner() {
                   </div>
                   <span className="text-sm text-muted-foreground">Történetek</span>
                 </div>
-                <p className="text-3xl font-display font-bold">{profile?.stories?.length || 0}</p>
-                <p className="text-xs text-muted-foreground mt-1">teljesítve</p>
+                <p className="text-3xl font-display font-bold">{profile?.totalStoriesRead || 0}</p>
+                <p className="text-xs text-muted-foreground mt-1">elolvasva</p>
               </div>
 
               <div className="bg-card rounded-2xl p-6 border border-border/40">
@@ -542,7 +578,25 @@ function StudentPortalPageInner() {
                     </>
                   )}
                 </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => router.push('/student/practice')}
+                  className="border-white/30 text-black hover:bg-white/10"
+                >
+                  <BookOpen className="mr-2 h-5 w-5" />
+                  Napi gyakorlás
+                </Button>
               </div>
+            </div>
+
+            {/* Vocabulary progress chart */}
+            <div className="bg-card rounded-2xl p-6 border border-border/40">
+              <h3 className="text-lg font-semibold mb-2">Szókincs fejlődés</h3>
+              <p className="text-sm text-muted-foreground mb-6">
+                Az elmúlt két hét ismert és tanulás alatt lévő szavai.
+              </p>
+              <VocabularyChart studentId={profile?.id || ""} days={14} />
             </div>
 
             {/* Charts and Stories Grid */}
@@ -587,11 +641,17 @@ function StudentPortalPageInner() {
 
         {activeView === 'vocabulary' && (
           <div className="space-y-6">
-            <div>
-              <h2 className="text-3xl font-display font-bold mb-2">Szókincs</h2>
-              <p className="text-muted-foreground">
-                Tekintsd meg az ismeretlen és tanult szavaidat fordításokkal együtt.
-              </p>
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <h2 className="text-3xl font-display font-bold mb-2">Szókincs</h2>
+                <p className="text-muted-foreground">
+                  Tekintsd meg az ismeretlen és tanult szavaidat fordításokkal együtt.
+                </p>
+              </div>
+              <Button onClick={() => router.push('/student/practice')} className="gap-2">
+                <Sparkles className="h-4 w-4" />
+                Napi gyakorlás
+              </Button>
             </div>
             <VocabularyList studentId={profile?.id || ""} />
           </div>
