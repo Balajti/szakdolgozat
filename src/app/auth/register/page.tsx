@@ -142,9 +142,10 @@ function RegisterPageContent() {
             password: password,
           });
 
-          // Redirect based on the role they selected during registration
+          // Redirect based on the role they selected during registration;
+          // new students first take the placement test to set their level
           const role = form.getValues("role");
-          const redirectPath = role === "teacher" ? "/teacher" : "/student";
+          const redirectPath = role === "teacher" ? "/teacher" : "/student/placement";
           router.push(redirectPath);
         } catch (signInError) {
           console.error("Auto sign-in failed", signInError);

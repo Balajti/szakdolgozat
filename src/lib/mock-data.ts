@@ -112,6 +112,7 @@ export const mockStudentProfile: StudentProfile = {
   level: "A2",
   streak: 5,
   vocabularyCount: mockWords.filter((word) => word.mastery !== "unknown").length,
+  placementCompleted: true,
   achievements: mockAchievements,
   words: mockWords,
   stories: mockStories,

@@ -494,6 +494,23 @@ function StudentPortalPageInner() {
       <main className="container mx-auto px-6 py-8">
         {activeView === 'overview' && (
           <div className="space-y-8">
+            {/* Placement test prompt for students who haven't taken it yet */}
+            {data?.source === "api" && profile && !profile.placementCompleted && (
+              <div className="rounded-2xl border border-primary/30 bg-primary/5 p-6 flex flex-wrap items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <h3 className="text-lg font-semibold">Mérd fel a szintedet! 🎯</h3>
+                  <p className="text-sm text-muted-foreground mt-1 max-w-xl">
+                    Egy 2-3 perces szintfelmérővel beállítjuk, milyen nehézségű történeteket kapj.
+                    Enélkül A1 (kezdő) szintről indulsz.
+                  </p>
+                </div>
+                <Button onClick={() => router.push('/student/placement')} className="gap-2 shrink-0">
+                  <Sparkles className="h-4 w-4" />
+                  Szintfelmérő indítása
+                </Button>
+              </div>
+            )}
+
             {/* Stats Bar */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-card rounded-2xl p-6 border border-border/40">
@@ -679,6 +696,19 @@ function StudentPortalPageInner() {
             </div>
 
             <ProfileSettings studentId={profile?.id || ""} />
+
+            <div className="pt-6">
+              <h3 className="text-xl font-semibold mb-4">Szintfelmérő</h3>
+              <div className="rounded-2xl border border-border/40 bg-card p-6 flex flex-wrap items-center justify-between gap-4">
+                <p className="text-sm text-muted-foreground max-w-xl">
+                  Jelenlegi szinted: <span className="font-semibold text-foreground">{profile?.level}</span>.
+                  Ha úgy érzed, fejlődtél, futtasd újra a szintfelmérőt — a történeteid az új szintedhez igazodnak.
+                </p>
+                <Button variant="outline" onClick={() => router.push('/student/placement')}>
+                  Szintfelmérő újraindítása
+                </Button>
+              </div>
+            </div>
 
             <div className="pt-6">
               <h3 className="text-xl font-semibold mb-4">Történet preferenciák</h3>

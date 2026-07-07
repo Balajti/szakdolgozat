@@ -11,6 +11,7 @@ export const getStudentDashboardQuery = /* GraphQL */ `
         streak
         vocabularyCount
         totalStoriesRead
+        placementCompleted
         createdAt
         updatedAt
         achievements {
