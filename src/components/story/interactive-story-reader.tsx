@@ -87,24 +87,10 @@ export default function InteractiveStoryReader({
       setTranslation(result);
       setTranslationCache(prev => new Map(prev).set(cleanWord, result));
     } catch (error) {
+      // Leave translation empty so the dialog shows its error state; a fake
+      // translation would get cached and could be saved into the word list.
       console.error('Translation error:', error);
-      // Show basic fallback on error
-      const fallbackTranslation = {
-        word: cleanWord,
-        translation: `[Fordítás: ${cleanWord}]`,
-        sourceLanguage: 'en',
-        targetLanguage,
-        exampleSentence: `The student learned the word "${cleanWord}" today.`,
-        exampleTranslation: `A diák megtanulta a(z) "${cleanWord}" szót ma.`,
-        phonetic: undefined,
-        partOfSpeech: undefined,
-        pastTense: undefined,
-        futureTense: undefined,
-        pluralForm: undefined,
-        usageNotes: 'Kérlek, ellenőrizd az internetkapcsolatod a részletes fordításhoz.'
-      };
-      setTranslation(fallbackTranslation);
-      setTranslationCache(prev => new Map(prev).set(cleanWord, fallbackTranslation));
+      setTranslation(null);
     } finally {
       setIsLoading(false);
     }
@@ -395,9 +381,16 @@ export default function InteractiveStoryReader({
                 )}
               </>
             ) : (
-              <p className="text-center text-muted-foreground py-4">
-                Nem sikerült betölteni a fordítást
-              </p>
+              <div className="text-center py-4 space-y-3">
+                <p className="text-muted-foreground">
+                  Nem sikerült betölteni a fordítást.
+                </p>
+                {selectedWord && (
+                  <Button variant="outline" size="sm" onClick={() => handleWordClick(selectedWord)}>
+                    Újrapróbálás
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         </DialogContent>

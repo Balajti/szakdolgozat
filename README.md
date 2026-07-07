@@ -64,9 +64,10 @@ To connect to AWS Amplify, supply the Cognito and AppSync identifiers described 
 
 ### Go live on AWS
 
-Starting from a fresh AWS account? Follow the step‑by‑step backend guide:
+Starting from a fresh AWS account? Follow the step‑by‑step guide:
 
-- Backend setup: [`docs/backend-setup.md`](./docs/backend-setup.md)
+- **Fresh account deploy (recommended): [`docs/new-aws-account-deploy.md`](./docs/new-aws-account-deploy.md)**
+- Backend details: [`docs/backend-setup.md`](./docs/backend-setup.md)
 - Env template: `.env.example` (copy to `.env.local` and fill values)
 
 ### Available Commands

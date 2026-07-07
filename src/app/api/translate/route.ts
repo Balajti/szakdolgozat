@@ -17,8 +17,15 @@ interface WordDetails {
 }
 
 export async function POST(request: NextRequest) {
+  let word = '';
+  let targetLanguage = 'hu';
+  let sourceLanguage = 'en';
+
   try {
-    const { word, targetLanguage = 'hu', sourceLanguage = 'en' } = await request.json();
+    const body = await request.json();
+    word = body.word;
+    targetLanguage = body.targetLanguage || 'hu';
+    sourceLanguage = body.sourceLanguage || 'en';
 
     if (!word) {
       return NextResponse.json(
@@ -66,11 +73,14 @@ Important:
     - Write partOfSpeech in Hungarian(főnév, ige, melléknév, határozószó, etc.)`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-lite',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
         temperature: 0.7,
+        thinkingConfig: {
+          thinkingBudget: 0,
+        },
       },
     });
 
@@ -104,24 +114,12 @@ Important:
 
     return NextResponse.json(result);
   } catch (error) {
+    // No fake fallback translation: surface the failure so the UI can show a
+    // proper error instead of caching (and possibly saving) garbage data.
     console.error('Translation error:', error);
-
-    // Return fallback translation on error
-    const { word = 'unknown', targetLanguage = 'hu', sourceLanguage = 'en' } = await request.json().catch(() => ({}));
-
-    return NextResponse.json({
-      word,
-      translation: `[Translation for "${word}"]`,
-      sourceLanguage,
-      targetLanguage,
-      exampleSentence: `The student used the word "${word}" in their essay.`,
-      exampleTranslation: targetLanguage === 'hu' ? `A diák a "${word}" szót használta az esszéjében.` : '',
-      phonetic: null,
-      partOfSpeech: null,
-      pastTense: null,
-      futureTense: null,
-      pluralForm: null,
-      usageNotes: 'Please ensure you have a stable internet connection for detailed translations.',
-    });
+    return NextResponse.json(
+      { error: 'translation_failed', word },
+      { status: 502 }
+    );
   }
 }

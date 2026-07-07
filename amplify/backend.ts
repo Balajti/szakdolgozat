@@ -218,6 +218,16 @@ backend.processGenerationJob.resources.lambda.addToRolePolicy(
   })
 );
 
+// Allow the assignment distributor to send notification emails via SES.
+// The sender address itself comes from the FROM_EMAIL environment variable
+// and must be a verified SES identity in this account/region.
+backend.distributeAssignment.resources.lambda.addToRolePolicy(
+  new PolicyStatement({
+    actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+    resources: ['*'],
+  })
+);
+
 // Post-confirmation trigger is already wired via defineAuth({ triggers: { postConfirmation } })
 // in auth/resource.ts. Its data access (profile creation) is granted through
 // `allow.resource(postConfirmation)` in the data schema, which avoids a circular

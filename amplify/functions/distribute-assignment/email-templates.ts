@@ -19,7 +19,6 @@ interface EmailTemplateData {
     assignmentUrl: string;
 }
 
-const BASE_URL = process.env.BASE_URL || 'https://your-app.com';
 
 /**
  * Base HTML email template with WordNest branding

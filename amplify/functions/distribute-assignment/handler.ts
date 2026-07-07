@@ -7,11 +7,15 @@ import { generateAssignmentEmail, generatePlainTextEmail } from './email-templat
 type DistributeAssignmentHandler = Schema['distributeAssignment']['functionHandler'];
 
 const dbClient = new DynamoDBDataClient();
-const sesClient = new SESClient({ region: process.env.AWS_REGION || 'us-east-1' });
+const sesClient = new SESClient({ region: process.env.AWS_REGION || 'eu-central-1' });
 
-// Email configuration
-const FROM_EMAIL = process.env.FROM_EMAIL || 'wordnest.language.learn@gmail.com';
-const BASE_URL = process.env.BASE_URL || 'https://your-app.com';
+// Email configuration comes from the function environment (see resource.ts).
+// When FROM_EMAIL or BASE_URL is not configured, in-app notifications are still
+// created but email sending is skipped instead of failing with broken links or
+// an unverified sender address.
+const FROM_EMAIL = process.env.FROM_EMAIL || '';
+const BASE_URL = process.env.BASE_URL || '';
+const EMAIL_ENABLED = Boolean(FROM_EMAIL && BASE_URL);
 
 interface StudentInClass {
   studentId: string;
@@ -107,19 +111,19 @@ export const handler: DistributeAssignmentHandler = async (event: any) => { // e
     console.log(`Distributing assignment to ${targetStudents.length} students`);
 
     // Create notification message based on assignment type
-    let notificationMessage = `New assignment: ${assignment.title}`;
+    let notificationMessage = `Új feladat: ${assignment.title}`;
 
     if (assignment.assignmentType === 'fill_blanks') {
       const wordCount = (assignment.requiredWords as string[])?.length || 0;
-      notificationMessage += ` - Fill in ${wordCount} missing words`;
+      notificationMessage += wordCount > 0 ? ` – ${wordCount} hiányzó szó pótlása` : ' – hiányzó szavas történet';
     } else if (assignment.assignmentType === 'word_matching') {
       const matchCount = (assignment.matchingWords as string[])?.length || 0;
-      notificationMessage += ` - Match ${matchCount} words`;
+      notificationMessage += ` – ${matchCount} szó párosítása`;
     } else if (assignment.assignmentType === 'custom_words') {
-      notificationMessage += ' - Practice with custom vocabulary';
+      notificationMessage += ' – szógyakorlás';
     }
 
-    notificationMessage += ` | Due: ${assignment.dueDate}`;
+    notificationMessage += ` | Határidő: ${assignment.dueDate}`;
 
     // Send emails and create notifications for each student
     const notifications = [];
@@ -141,7 +145,7 @@ export const handler: DistributeAssignmentHandler = async (event: any) => { // e
         senderId: teacherId,
         senderName: teacherName,
         type: 'assignment',
-        title: `New Assignment: ${assignment.title}`,
+        title: `Új feladat: ${assignment.title}`,
         message: notificationMessage,
         assignmentId: assignmentId,
         isRead: false,
@@ -151,8 +155,13 @@ export const handler: DistributeAssignmentHandler = async (event: any) => { // e
       const saved = await dbClient.put('Notification', notification);
       notifications.push(saved);
 
-      // Send email if student has email
-      if (student.studentEmail && student.studentEmail.trim()) {
+      // Send email if configured and the student has an email address
+      if (!EMAIL_ENABLED) {
+        if (student.studentEmail) {
+          console.warn('Email sending skipped: FROM_EMAIL/APP_URL environment variables are not configured.');
+          emailResults.push({ email: student.studentEmail, status: 'failed', error: 'email_not_configured' });
+        }
+      } else if (student.studentEmail && student.studentEmail.trim()) {
         try {
           const emailData = {
             studentName: student.studentName || 'Student',

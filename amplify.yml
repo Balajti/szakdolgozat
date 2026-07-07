@@ -5,16 +5,17 @@ backend:
       commands:
         - npm install --cache .npm --prefer-offline
         - cd amplify && npm install && cd ..
-        - echo "=== Checking for ampx ==="
-        - which npx
-        - npx ampx --version
-        - echo "=== Running pipeline-deploy ==="
-        - npx ampx pipeline-deploy --branch main --app-id d2x8cnzz4q21ir
+        # AWS_APP_ID and AWS_BRANCH are provided automatically by Amplify Hosting,
+        # so this build spec works on any account/app without editing.
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
 frontend:
   phases:
     preBuild:
       commands:
-        - npx ampx generate outputs --branch main --app-id d2x8cnzz4q21ir
+        - npx ampx generate outputs --branch $AWS_BRANCH --app-id $AWS_APP_ID
+        # Expose the Gemini key to the Next.js server runtime (used by /api/translate).
+        # Set GEMINI_API_KEY under App settings -> Environment variables.
+        - env | grep -e GEMINI_API_KEY >> .env.production || true
     build:
       commands:
         - npm run build
