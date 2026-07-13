@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import {
@@ -60,10 +60,21 @@ interface GeneratedAssignment {
   matchingWords?: string[];
 }
 
+function isAlreadyExistsError(error: unknown): boolean {
+  const message = (error as { errors?: Array<{ message?: string; errorType?: string }> })?.errors
+    ?.map((e) => `${e.errorType ?? ""} ${e.message ?? ""}`)
+    .join(" ") ?? "";
+  return /Conditional|already exists|DynamoDB:ConditionalCheckFailed/i.test(message);
+}
+
 function AssignmentCreatePageInner() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  // Stable ids + in-flight flag so one form submission can never create two records
+  const draftIdRef = useRef<string>(crypto.randomUUID());
+  const sendIdRef = useRef<string>(crypto.randomUUID());
+  const savingRef = useRef(false);
   const [classes, setClasses] = useState<ClassGroup[]>([]);
   const [classesLoading, setClassesLoading] = useState(true);
   const [classesError, setClassesError] = useState<string | null>(null);
@@ -184,6 +195,11 @@ function AssignmentCreatePageInner() {
       return;
     }
 
+    // Synchronous re-entry guard: a fast double-click can fire before the
+    // disabled state re-renders, which would create the assignment twice
+    if (savingRef.current) return;
+    savingRef.current = true;
+
     setLoading(true);
     try {
       const { client } = await import("@/lib/amplify-client");
@@ -201,10 +217,13 @@ function AssignmentCreatePageInner() {
 
       const dueDate = formData.dueDate || getDefaultDueDate();
 
+      // Client-generated id makes the create idempotent: if the request is
+      // ever retried, the second attempt fails instead of inserting a copy
       await client.graphql({
         query: createAssignmentMutation,
         variables: {
           input: {
+            id: draftIdRef.current,
             teacherId: user.userId,
             title: formData.title,
             storyContent: formData.content,
@@ -224,14 +243,22 @@ function AssignmentCreatePageInner() {
       });
 
       router.push("/teacher/assignments");
+      // Keep the guard set: the page is navigating away, a re-enabled button
+      // would allow one more click before unmount
+      return;
     } catch (error) {
+      // If a retried request already created this exact record, treat it as success
+      if (isAlreadyExistsError(error)) {
+        router.push("/teacher/assignments");
+        return;
+      }
       console.error("Error saving draft:", error);
       toast({
         title: "Hiba",
         description: "Nem sikerült menteni a piszkozatot.",
         variant: "destructive",
       });
-    } finally {
+      savingRef.current = false;
       setLoading(false);
     }
   };
@@ -251,6 +278,9 @@ function AssignmentCreatePageInner() {
       return;
     }
 
+    if (savingRef.current) return;
+    savingRef.current = true;
+
     setSendingToClass(true);
     try {
       const { client } = await import("@/lib/amplify-client");
@@ -265,6 +295,7 @@ function AssignmentCreatePageInner() {
           description: "Az osztályban nincsenek diákok.",
           variant: "destructive",
         });
+        savingRef.current = false;
         setSendingToClass(false);
         return;
       }
@@ -312,6 +343,7 @@ function AssignmentCreatePageInner() {
         query: createAssignmentMutation,
         variables: {
           input: {
+            id: sendIdRef.current,
             teacherId: user.userId,
             title: formData.title,
             storyContent: formData.content,
@@ -333,19 +365,22 @@ function AssignmentCreatePageInner() {
         description: `A feladat ${studentEmails.length} diáknak elküldve.`,
       });
 
-      // TODO: Send actual emails to students
-      // This would typically be done via an AWS Lambda function or similar service
-
       setIsSendDialogOpen(false);
       router.push("/teacher/assignments");
+      return;
     } catch (error) {
+      if (isAlreadyExistsError(error)) {
+        setIsSendDialogOpen(false);
+        router.push("/teacher/assignments");
+        return;
+      }
       console.error("Error sending assignment:", error);
       toast({
         title: "Hiba",
         description: "Nem sikerült kiküldeni a feladatot.",
         variant: "destructive",
       });
-    } finally {
+      savingRef.current = false;
       setSendingToClass(false);
     }
   };

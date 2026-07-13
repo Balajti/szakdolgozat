@@ -55,7 +55,9 @@ const resolvedConfig: ResourcesConfig = {
       endpoint: envOr("NEXT_PUBLIC_APPSYNC_ENDPOINT", outputs?.data?.url),
       region: envOr("NEXT_PUBLIC_AWS_REGION", outputs?.data?.aws_region || "eu-central-1"),
       defaultAuthMode: defaultGraphQLAuthMode,
-      apiKey: process.env.NEXT_PUBLIC_APPSYNC_API_KEY,
+      // The API key powers the public assignment page (unregistered students);
+      // fall back to the generated outputs so it works without extra env vars
+      apiKey: process.env.NEXT_PUBLIC_APPSYNC_API_KEY || (outputs?.data as { api_key?: string })?.api_key,
     },
   },
   Storage: {

@@ -18,6 +18,7 @@ import {
   Trash2,
   Pencil,
   Copy,
+  Link2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -318,6 +319,23 @@ function AssignmentsPageInner() {
                   </DropdownMenuItem>
                 </>
               )}
+              <DropdownMenuItem
+                onClick={async () => {
+                  const link = `${window.location.origin}/assignment/${assignment.id}`;
+                  try {
+                    await navigator.clipboard.writeText(link);
+                    toast({
+                      title: "Link a vágólapon",
+                      description: "Küldd el a diákoknak — regisztráció nélkül is megnyithatják.",
+                    });
+                  } catch {
+                    toast({ title: "A link", description: link });
+                  }
+                }}
+              >
+                <Link2 className="h-4 w-4 mr-2" />
+                Feladat link másolása
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleSaveAsTemplate(assignment)}>
                 <Copy className="h-4 w-4 mr-2" />
                 Mentés sablonként

@@ -60,7 +60,7 @@ function AssignmentSendPageInner({ params }: { params: Promise<{ id: string }> }
     const loadData = async () => {
         try {
             const { client } = await import("@/lib/amplify-client");
-            const { getCurrentUser } = (await import("aws-amplify/auth")).default;
+            const { getCurrentUser } = await import("aws-amplify/auth");
             const user = await getCurrentUser();
 
             // Load assignment
@@ -178,7 +178,7 @@ function AssignmentSendPageInner({ params }: { params: Promise<{ id: string }> }
         setSending(true);
         try {
             const { client } = await import("@/lib/amplify-client");
-            const { getCurrentUser } = (await import("aws-amplify/auth")).default;
+            const { getCurrentUser } = await import("aws-amplify/auth");
             const user = await getCurrentUser();
 
             // Extract student emails

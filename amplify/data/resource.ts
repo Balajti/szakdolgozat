@@ -186,7 +186,9 @@ const schema = a.schema({
       index('teacherId').name('byTeacherId').queryField('listAssignmentsByTeacher'),
       index('classGroupId').name('byClassGroupId').queryField('listAssignmentsByClass'),
     ])
-    .authorization((allow) => [allow.authenticated()]),
+    // publicApiKey: unregistered students open assignments via the public
+    // /assignment/[id] link, which reads with the API key
+    .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
   AssignmentSubmission: a
     .model({
       assignmentId: a.id().required(),

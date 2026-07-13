@@ -62,9 +62,9 @@ export const handler: SubmitAssignmentHandler = async (event: any) => { // eslin
     }
 
     const effectiveStudentId = (studentProfile?.id as string) || studentId || normalizedEmail!;
-    const studentName =
-      (studentProfile?.name as string) ||
-      (normalizedEmail ? normalizedEmail.split('@')[0] : 'Student');
+    // Unregistered students are identified by their full email so the teacher
+    // can tell them apart in the results list
+    const studentName = (studentProfile?.name as string) || normalizedEmail || 'Student';
 
     const assignmentType = assignment.assignmentType as string;
     const teacherId = assignment.teacherId as string;

@@ -12,6 +12,7 @@ import {
     Send,
     Pencil,
     Trash2,
+    Link2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -265,6 +266,25 @@ function AssignmentViewPageInner({ params }: { params: Promise<{ id: string }> }
                             </div>
                         </div>
                         <div className="flex gap-2 shrink-0">
+                            <Button
+                                variant="outline"
+                                className="gap-2"
+                                onClick={async () => {
+                                    const link = `${window.location.origin}/assignment/${assignment.id}`;
+                                    try {
+                                        await navigator.clipboard.writeText(link);
+                                        toast({
+                                            title: "Link a vágólapon",
+                                            description: "Küldd el a diákoknak — regisztráció nélkül is megnyithatják.",
+                                        });
+                                    } catch {
+                                        toast({ title: "A link", description: link });
+                                    }
+                                }}
+                            >
+                                <Link2 className="h-4 w-4" />
+                                <span className="hidden sm:inline">Link másolása</span>
+                            </Button>
                             {assignment.status === "draft" && (
                                 <>
                                     <Button
