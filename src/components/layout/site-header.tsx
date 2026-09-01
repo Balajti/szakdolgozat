@@ -12,10 +12,10 @@ import { Logo } from "@/components/common/logo";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
+  { href: "/#how", label: "Hogyan működik" },
   { href: "/#features", label: "Funkciók" },
-  { href: "/#ai", label: "AI történetek" },
   { href: "/#portals", label: "Portálok" },
-  { href: "/#pricing", label: "Ingyenes" },
+  { href: "/#start", label: "Ingyenes" },
 ];
 
 export function SiteHeader() {
