@@ -13,7 +13,7 @@ export function SiteFooter() {
           <div className="max-w-md space-y-4">
             <Logo size="lg" />
             <p className="text-base text-muted-foreground">
-              WordNest playful módon segíti a magyar diákokat az angol szókincs
+              A WordNest játékos módon segíti a magyar diákokat az angol szókincsük
               fejlesztésében. AI által generált történetek, magyar fordítások és
               átlátható tanári analitikák egyetlen platformon.
             </p>
@@ -36,8 +36,8 @@ export function SiteFooter() {
                   </Link>
                 </li>
                 <li>
-                  <Link className="hover:text-primary" href="/#ai">
-                    AI történetek
+                  <Link className="hover:text-primary" href="/#how">
+                    Hogyan működik
                   </Link>
                 </li>
                 <li>
@@ -71,7 +71,7 @@ export function SiteFooter() {
             </div>
             <div className="space-y-2">
               <h3 className="font-display text-lg font-semibold text-foreground">
-                Kezdj el
+                Kezdés
               </h3>
               <ul className="space-y-2 text-muted-foreground">
                 <li>
